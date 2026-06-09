@@ -1,6 +1,5 @@
 <!-- src/lib/components/Footer.svelte -->
 <script lang="ts">
-	import logo from '$lib/assets/logo.svg';
 	import Shield from '@lucide/svelte/icons/shield';
 	import FileText from '@lucide/svelte/icons/file-text';
 </script>
@@ -10,10 +9,10 @@
 		<!-- Main Content -->
 		<div class="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8">
 			<!-- Col 1: Logo y Contactos -->
-			<div class="flex flex-col gap-4 md:col-span-1">
-				<img src={logo} alt="Cinepic" class="h-10 w-auto object-contain object-left opacity-90" />
+			<div class="flex flex-col items-center md:items-start gap-4 md:col-span-1">
+				<img src="/logo.svg" alt="Cinepic" class="h-10 w-auto object-contain opacity-90" />
 				<div class="w-3/4 h-px bg-white/10 mt-1"></div>
-				<div class="flex items-center gap-4 mt-1">
+				<div class="flex items-center justify-center md:justify-start gap-4 mt-1">
 					<a href="mailto:contacto@cinepic.com.ve" aria-label="Email" class="text-zinc-500 hover:text-white transition-colors">
 						<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
 					</a>

@@ -20,22 +20,22 @@
 
 <div class="flex items-center gap-3">
 	<span class="text-base sm:text-lg font-black text-zinc-300 hidden sm:flex items-center gap-2"><CalendarDays class="size-5 text-orange-500" /> Ver para:</span>
-	<div class="flex w-full sm:w-[360px] bg-zinc-900 border border-white/10 rounded-full h-11 p-1 shadow-inner">
+	<div class="flex w-full sm:w-[360px] bg-zinc-900 border border-white/10 rounded-full h-11 p-1 shadow-inner overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
 		<button 
-			class="flex-1 rounded-full font-bold transition-all text-xs sm:text-sm {selectedDateTab === 'hoy' ? 'bg-white text-black shadow-md' : 'text-zinc-400 hover:text-white'}"
+			class="flex-1 min-w-max px-3 whitespace-nowrap rounded-full font-bold transition-all text-xs sm:text-sm {selectedDateTab === 'hoy' ? 'bg-white text-black shadow-md' : 'text-zinc-400 hover:text-white'}"
 			onclick={() => { selectedDateTab = 'hoy'; customDate = undefined; }}
 		>
 			Hoy, Jun 7
 		</button>
 		<button 
-			class="flex-1 rounded-full font-bold transition-all text-xs sm:text-sm {selectedDateTab === 'manana' ? 'bg-white text-black shadow-md' : 'text-zinc-400 hover:text-white'}"
+			class="flex-1 min-w-max px-3 whitespace-nowrap rounded-full font-bold transition-all text-xs sm:text-sm {selectedDateTab === 'manana' ? 'bg-white text-black shadow-md' : 'text-zinc-400 hover:text-white'}"
 			onclick={() => { selectedDateTab = 'manana'; customDate = undefined; }}
 		>
 			Mañana
 		</button>
 		
 		{#if customDate}
-			<div role="button" tabindex="0" class="flex-1 flex items-center justify-center rounded-full font-bold transition-all text-xs sm:text-sm bg-white text-black shadow-md cursor-pointer group"
+			<div role="button" tabindex="0" class="flex-1 min-w-max px-3 whitespace-nowrap flex items-center justify-center rounded-full font-bold transition-all text-xs sm:text-sm bg-white text-black shadow-md cursor-pointer group"
 					onclick={() => isCalendarOpen = true}
 					onkeydown={(e) => e.key === 'Enter' && (isCalendarOpen = true)}>
 				<span class="truncate pl-2 capitalize">{formatCustomDate(customDate)}</span>
@@ -45,7 +45,7 @@
 			</div>
 		{:else}
 			<Popover.Root bind:open={isCalendarOpen}>
-				<Popover.Trigger class="flex-1 rounded-full font-bold transition-all text-xs sm:text-sm {selectedDateTab === 'custom' ? 'bg-white text-black shadow-md' : 'text-zinc-400 hover:text-white'}">
+				<Popover.Trigger class="flex-1 min-w-max px-3 whitespace-nowrap rounded-full font-bold transition-all text-xs sm:text-sm {selectedDateTab === 'custom' ? 'bg-white text-black shadow-md' : 'text-zinc-400 hover:text-white'}">
 					Otra fecha
 				</Popover.Trigger>
 				<Popover.Content sideOffset={8} class="z-[100] rounded-3xl bg-zinc-950 p-0 shadow-2xl border border-white/10 overflow-hidden w-auto">

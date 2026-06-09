@@ -7,13 +7,18 @@ import alienPoster from '$lib/assets/posters/alien.png';
 import gladiatorPoster from '$lib/assets/posters/gladiator.png';
 import wickedPoster from '$lib/assets/posters/wicked.png';
 import moanaPoster from '$lib/assets/posters/moana.png';
+import kravenPoster from '$lib/assets/posters/kraven.png';
+import mufasaPoster from '$lib/assets/posters/mufasa.png';
+import sonicPoster from '$lib/assets/posters/sonic.png';
+import capitanPoster from '$lib/assets/posters/capitan.png';
+import thunderboltsPoster from '$lib/assets/posters/thunderbolts.png';
 
 export const comingSoonMovies: Movie[] = [
-	{ id: 11, title: 'Kraven el Cazador', poster: dune2Poster, releaseDate: 'AGO 30' },
-	{ id: 12, title: 'Mufasa: El Rey León', poster: insideOut2Poster, releaseDate: 'SEP 15' },
-	{ id: 13, title: 'Sonic 3: La Película', poster: deadpoolPoster, releaseDate: 'OCT 20' },
-	{ id: 14, title: 'Capitán América', poster: oppenheimerPoster, releaseDate: 'NOV 05' },
-	{ id: 15, title: 'Thunderbolts*', poster: alienPoster, releaseDate: 'DIC 10' }
+	{ id: 11, title: 'Kraven el Cazador', poster: kravenPoster, releaseDate: 'AGO 30' },
+	{ id: 12, title: 'Mufasa: El Rey León', poster: mufasaPoster, releaseDate: 'SEP 15' },
+	{ id: 13, title: 'Sonic 3: La Película', poster: sonicPoster, releaseDate: 'OCT 20' },
+	{ id: 14, title: 'Capitán América', poster: capitanPoster, releaseDate: 'NOV 05' },
+	{ id: 15, title: 'Thunderbolts*', poster: thunderboltsPoster, releaseDate: 'DIC 10' }
 ];
 
 export const nowPlaying: Movie[] = [

@@ -11,4 +11,5 @@ export interface Movie {
 	};
 	showtimes?: string[];
 	releaseDate?: string;
+	duration?: string;
 }

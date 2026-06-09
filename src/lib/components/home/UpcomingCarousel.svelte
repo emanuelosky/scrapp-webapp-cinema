@@ -17,13 +17,13 @@
 				<Carousel.Content class="-ml-2 md:-ml-4 justify-center">
 					{#each movies as movie (movie.id)}
 						<Carousel.Item class="pl-2 md:pl-4 basis-[45%] sm:basis-[30%] md:basis-[22%] lg:basis-1/5">
-							<button class="w-full text-left group">
-								<div class="relative w-full overflow-hidden rounded-2xl ring-1 ring-white/10 shadow-lg transition-all duration-300 group-hover:ring-white/30 group-hover:shadow-[0_8px_30px_rgb(255,255,255,0.12)] group-hover:scale-[1.02]">
+							<div role="button" tabindex="0" class="group relative w-full text-left outline-none">
+								<div class="relative w-full overflow-hidden rounded-none shadow-lg">
 									{#if movie.poster}
 										<img
 											src={movie.poster}
 											alt={movie.title}
-											class="aspect-[2/3] w-full object-cover transition-opacity duration-300 group-hover:opacity-80"
+											class="aspect-[2/3] w-full object-cover transition-all duration-500 group-hover:scale-105 group-hover:opacity-80"
 										/>
 									{:else}
 										<div class="flex aspect-[2/3] w-full items-center justify-center bg-zinc-900 text-zinc-600 px-4">
@@ -31,11 +31,32 @@
 										</div>
 									{/if}
 									
-									<div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-12">
+									<div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-12 text-left transition-opacity duration-300 group-hover:opacity-0 z-20">
 										<h4 class="font-sans font-bold text-white uppercase leading-tight line-clamp-2 drop-shadow-md">{movie.title}</h4>
 									</div>
+
+									<!-- Hover Overlay (AMC Style) -->
+									<div class="absolute inset-0 bg-gradient-to-t from-[#111] via-[#111]/80 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex flex-col justify-end p-4 text-center z-30 pointer-events-none group-hover:pointer-events-auto">
+										<div class="translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+											<h3 class="text-xl md:text-2xl font-black text-white tracking-tight mb-2 leading-tight drop-shadow-md">{movie.title}</h3>
+											
+											<div class="flex items-center justify-center gap-3 text-zinc-300 text-[11px] md:text-xs font-semibold mb-2">
+												<span class="tracking-widest">{movie.duration || '2 HR 15 MIN'}</span>
+												<span class="w-px h-3 bg-zinc-500"></span>
+												<span class="tracking-widest">{movie.rating || 'B'}</span>
+											</div>
+											
+											<p class="text-zinc-400 text-[10px] md:text-xs font-medium mb-4 tracking-wider uppercase">
+												Estreno {movie.releaseDate || '25 JUL 2026'}
+											</p>
+											
+											<button class="w-full bg-zinc-200 hover:bg-white text-black font-bold py-2.5 rounded-full transition-colors text-sm shadow-xl">
+												Comprar Entradas
+											</button>
+										</div>
+									</div>
 								</div>
-							</button>
+							</div>
 						</Carousel.Item>
 					{/each}
 				</Carousel.Content>

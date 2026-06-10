@@ -130,7 +130,7 @@ export async function load() {
             title: m.title,
             poster: m.poster_url || '/placeholder.png',
             synopsis: m.synopsis,
-            duration: m.duration_mins ? `${m.duration_mins} min` : undefined,
+            duration: m.duration_mins ? `${Math.floor(m.duration_mins / 60)} HR ${String(m.duration_mins % 60).padStart(2, '0')} MIN` : undefined,
             genres: m.genres,
             rating: m.rating,
             label,

@@ -54,7 +54,7 @@
 						bind:value={customDate} 
 						minValue={today(getLocalTimeZone())}
 						maxValue={today(getLocalTimeZone()).add({ days: 14 })}
-						isDateUnavailable={(date) => !activeDates.includes(date.toString())}
+						isDateUnavailable={(date: DateValue) => !activeDates.includes(date.toString())}
 						class="p-4 bg-zinc-950 text-white"
 						onValueChange={(v: DateValue | undefined) => {
 							if (v) {

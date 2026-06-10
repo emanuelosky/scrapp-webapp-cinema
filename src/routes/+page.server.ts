@@ -88,17 +88,17 @@ export async function load() {
 
         // --- Compute label ---
         let label: string | undefined;
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const presaleDate = m.presale_date ? new Date(m.presale_date) : null;
+        const releaseDate = m.release_date ? new Date(m.release_date) : null;
 
         if (m.status_label && m.status_label !== 'AUTOMATICO') {
             // Manual override from admin
             label = m.status_label === 'NINGUNO' ? undefined : m.status_label;
         } else {
             // Auto logic based on dates
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const presaleDate = m.presale_date ? new Date(m.presale_date) : null;
-            const releaseDate = m.release_date ? new Date(m.release_date) : null;
-
             if (presaleDate && releaseDate && today >= presaleDate && today < releaseDate) {
                 label = 'PREVENTA';
             } else if (releaseDate) {

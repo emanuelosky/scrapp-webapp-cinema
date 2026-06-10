@@ -3,6 +3,26 @@
 	import type { Movie } from '$lib/types';
 
 	let { movies } = $props<{ movies: Movie[] }>();
+	
+	import type { CarouselAPI } from '$lib/components/ui/carousel/context.js';
+	let api = $state<CarouselAPI>();
+	let canScroll = $state(false);
+
+	$effect(() => {
+		if (!api) return;
+		const checkScroll = () => {
+			if (!api) return;
+			canScroll = api.canScrollNext() || api.canScrollPrev();
+		};
+		api.on('reInit', checkScroll);
+		api.on('resize', checkScroll);
+		checkScroll();
+		
+		return () => {
+			api?.off('reInit', checkScroll);
+			api?.off('resize', checkScroll);
+		};
+	});
 </script>
 
 <div class="w-full bg-[#000000] relative z-20">
@@ -13,8 +33,8 @@
 		</div>
 
 		<section class="relative">
-			<Carousel.Root opts={{ align: 'center', loop: false }} class="w-full">
-				<Carousel.Content class="-ml-2 md:-ml-4 justify-center">
+			<Carousel.Root opts={{ align: 'center', loop: false }} setApi={(a) => api = a} class="w-full">
+				<Carousel.Content class="-ml-2 md:-ml-4 {canScroll ? '' : 'justify-center'}">
 					{#each movies as movie (movie.id)}
 						<Carousel.Item class="pl-2 md:pl-4 basis-[45%] sm:basis-[30%] md:basis-[22%] lg:basis-1/5">
 							<div role="button" tabindex="0" class="group relative w-full text-left outline-none">
@@ -61,14 +81,16 @@
 					{/each}
 				</Carousel.Content>
 				
-				<div class="hidden md:flex absolute -left-12 -right-12 top-[40%] justify-between pointer-events-none">
-					<div class="pointer-events-auto">
-						<Carousel.Previous class="relative left-0 bg-white/5 backdrop-blur-md hover:bg-white hover:text-black text-white border-white/20 transition-all" />
+				{#if canScroll}
+					<div class="hidden md:flex absolute -left-12 -right-12 top-[40%] justify-between pointer-events-none">
+						<div class="pointer-events-auto">
+							<Carousel.Previous class="relative left-0 bg-white/5 backdrop-blur-md hover:bg-white hover:text-black text-white border-white/20 transition-all" />
+						</div>
+						<div class="pointer-events-auto">
+							<Carousel.Next class="relative right-0 bg-white/5 backdrop-blur-md hover:bg-white hover:text-black text-white border-white/20 transition-all" />
+						</div>
 					</div>
-					<div class="pointer-events-auto">
-						<Carousel.Next class="relative right-0 bg-white/5 backdrop-blur-md hover:bg-white hover:text-black text-white border-white/20 transition-all" />
-					</div>
-				</div>
+				{/if}
 			</Carousel.Root>
 		</section>
 	</div>

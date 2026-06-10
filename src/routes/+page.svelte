@@ -88,7 +88,7 @@
 	}
 </script>
 
-<div class="flex min-h-screen flex-col bg-black pb-20 font-sans text-zinc-50">
+<div class="flex min-h-screen flex-col bg-black pb-20 font-sans text-zinc-50 overflow-x-hidden w-full relative">
 	<!-- Sticky Header Group (Promo + Navbar) -->
 	<div class="sticky top-0 z-50 flex w-full flex-col">
 		<PromoBanner />

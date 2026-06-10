@@ -9,11 +9,10 @@ interface Showtime {
 }
 
 export async function load() {
-    // 1. Fetch active movies
+    // 1. Fetch all movies (so we can map inactive children to active parents)
     const { data: movies, error: moviesError } = await supabase
         .from('wbpp_movies')
-        .select('*')
-        .eq('is_active', true);
+        .select('*');
 
     if (moviesError || !movies) {
         console.error('Error fetching movies:', moviesError);
@@ -56,8 +55,8 @@ export async function load() {
     const comingSoonMovies: Movie[] = [];
     const activeDatesSet = new Set<string>();
 
-    // Filter to only display parent movies at top level
-    const displayMovies = movies.filter(m => !m.parent_id);
+    // Filter to only display ACTIVE parent movies at top level
+    const displayMovies = movies.filter(m => !m.parent_id && m.is_active);
 
     for (const m of displayMovies) {
         const movieShows = showtimesByMovie[m.id] || [];

@@ -29,18 +29,30 @@
 				<div class="md:w-[60%] p-6 md:p-10 flex flex-col">
 					<div class="mb-8">
 						<div class="flex items-center gap-3 mb-4">
-							<span class="bg-zinc-200 text-black text-[10px] font-black px-2 py-0.5 uppercase tracking-widest">{movie.label || 'ESTRENO'}</span>
-							<span class="text-[11px] font-bold text-zinc-400 border border-zinc-700 px-2 py-0.5">{movie.rating || 'B'}</span>
-							<span class="text-[11px] font-bold text-zinc-400">{movie.duration || '2 HR 15 MIN'}</span>
+							{#if movie.label}
+								<span class="bg-zinc-200 text-black text-[10px] font-black px-2 py-0.5 uppercase tracking-widest">{movie.label}</span>
+							{/if}
+							{#if movie.rating}
+								<span class="text-[11px] font-bold text-zinc-400 border border-zinc-700 px-2 py-0.5">{movie.rating}</span>
+							{/if}
+							{#if movie.formats?.video}
+								<span class="text-[11px] font-bold text-zinc-400 border border-zinc-700 px-2 py-0.5">{movie.formats.video}</span>
+							{/if}
+							{#if movie.formats?.language}
+								<span class="text-[11px] font-bold text-zinc-400 border border-zinc-700 px-2 py-0.5">{movie.formats.language}</span>
+							{/if}
+							{#if movie.duration}
+								<span class="text-[11px] font-bold text-zinc-400">{movie.duration}</span>
+							{/if}
 						</div>
 						<Dialog.Title class="text-3xl md:text-5xl font-black uppercase tracking-tight text-white mb-3 leading-none">{movie.title}</Dialog.Title>
 						<Dialog.Description class="text-zinc-400 text-sm md:text-base font-medium">
-							Acción, Sci-Fi, Aventura • Inglés Subtitulado
+							{movie.genres || 'Sin Género'}
 						</Dialog.Description>
 					</div>
 
 					<p class="text-zinc-300 text-sm leading-relaxed mb-8">
-						Explora el viaje mítico de Paul Atreides mientras se une con Chani y los Fremen en su camino de venganza contra los conspiradores que destruyeron a su familia.
+						{movie.synopsis || 'Sin sinopsis disponible para esta película.'}
 					</p>
 
 					<div class="w-full h-px bg-zinc-800 mb-8"></div>
@@ -83,7 +95,8 @@
 								if (movie) {
 									bookingState.startBooking(movie, selectedDate, selectedTime);
 									open = false;
-									await goto('/booking/' + movie.id);
+									// eslint-disable-next-line @typescript-eslint/no-explicit-any
+								await goto(`/booking/${movie.id}` as any);
 								}
 							}}
 						>

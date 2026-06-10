@@ -1,5 +1,5 @@
 export interface Movie {
-	id: number;
+	id: string | number;
 	title: string;
 	poster: string;
 	label?: string;
@@ -12,4 +12,6 @@ export interface Movie {
 	showtimes?: string[];
 	releaseDate?: string;
 	duration?: string;
+	synopsis?: string;
+	genres?: string;
 }

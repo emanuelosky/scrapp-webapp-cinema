@@ -23,7 +23,9 @@
 	import { cinemaState } from '$lib/state/cinema.svelte';
 	import Loader2 from '@lucide/svelte/icons/loader-2';
 
-	import { nowPlaying, comingSoonMovies } from '$lib/data/mockData';
+	let { data } = $props();
+	let nowPlaying = $derived(data.nowPlaying);
+	let comingSoonMovies = $derived(data.comingSoonMovies);
 	import type { Movie } from '$lib/types';
 	import { onMount } from 'svelte';
 

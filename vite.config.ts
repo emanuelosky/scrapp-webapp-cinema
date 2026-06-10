@@ -7,6 +7,6 @@ export default defineConfig({
 	server: {
 		port: 5174,
 		strictPort: true,
-		allowedHosts: ['.loca.lt', '.localtunnel.me']
+		allowedHosts: true
 	}
 });

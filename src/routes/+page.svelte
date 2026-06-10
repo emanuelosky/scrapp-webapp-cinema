@@ -52,15 +52,13 @@
 	let nowPlaying = $derived.by(() => {
 		return data.nowPlaying
 			.map(movie => {
-				const hasAnyShowtimes = Object.keys(movie.showtimesByDate || {}).length > 0;
 				const dayShowtimes = movie.showtimesByDate?.[selectedDateStr] || [];
 				return {
 					...movie,
-					showtimes: dayShowtimes,
-					_hasAnyShowtimes: hasAnyShowtimes
+					showtimes: dayShowtimes
 				};
 			})
-			.filter(movie => movie.showtimes.length > 0 || !movie._hasAnyShowtimes);
+			.filter(movie => movie.showtimes.length > 0);
 	});
 	
 	let heroButtonTextIndex = $state(0);

@@ -10,6 +10,7 @@ export interface Movie {
 		language: string;
 	};
 	showtimes?: string[];
+	showtimesByDate?: Record<string, string[]>;
 	releaseDate?: string;
 	duration?: string;
 	synopsis?: string;

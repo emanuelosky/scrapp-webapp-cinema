@@ -7,8 +7,9 @@
 
 	let {
 		selectedDateTab = $bindable('hoy'),
-		customDate = $bindable<DateValue | undefined>()
-	} = $props();
+		customDate = $bindable<DateValue | undefined>(),
+		activeDates = []
+	}: { selectedDateTab: 'hoy'|'manana'|'custom', customDate: DateValue | undefined, activeDates: string[] } = $props();
 
 	let isCalendarOpen = $state(false);
 
@@ -25,7 +26,7 @@
 			class="flex-1 min-w-max px-3 whitespace-nowrap rounded-full font-bold transition-all text-xs sm:text-sm {selectedDateTab === 'hoy' ? 'bg-white text-black shadow-md' : 'text-zinc-400 hover:text-white'}"
 			onclick={() => { selectedDateTab = 'hoy'; customDate = undefined; }}
 		>
-			Hoy, Jun 7
+			Hoy, {new Intl.DateTimeFormat('es-VE', { month: 'short', day: 'numeric' }).format(today(getLocalTimeZone()).toDate(getLocalTimeZone())).replace('.', '')}
 		</button>
 		<button 
 			class="flex-1 min-w-max px-3 whitespace-nowrap rounded-full font-bold transition-all text-xs sm:text-sm {selectedDateTab === 'manana' ? 'bg-white text-black shadow-md' : 'text-zinc-400 hover:text-white'}"
@@ -52,7 +53,8 @@
 					<Calendar
 						bind:value={customDate} 
 						minValue={today(getLocalTimeZone())}
-						maxValue={today(getLocalTimeZone()).add({ days: 7 })}
+						maxValue={today(getLocalTimeZone()).add({ days: 14 })}
+						isDateUnavailable={(date) => !activeDates.includes(date.toString())}
 						class="p-4 bg-zinc-950 text-white"
 						onValueChange={(v: DateValue | undefined) => {
 							if (v) {

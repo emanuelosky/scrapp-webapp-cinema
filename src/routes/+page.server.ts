@@ -54,12 +54,37 @@ export async function load() {
 
     const nowPlaying: Movie[] = [];
     const comingSoonMovies: Movie[] = [];
+    const activeDatesSet = new Set<string>();
 
     // Filter to only display parent movies at top level
     const displayMovies = movies.filter(m => !m.parent_id);
 
     for (const m of displayMovies) {
         const movieShows = showtimesByMovie[m.id] || [];
+        const showsByDateMap: Record<string, string[]> = {};
+
+        // Populate showsByDateMap and activeDatesSet
+        for (const s of movieShows) {
+            if (!showsByDateMap[s.show_date]) {
+                showsByDateMap[s.show_date] = [];
+            }
+            // Format time
+            const [hStr, mStr] = s.show_time.split(':');
+            let h = parseInt(hStr, 10);
+            const ampm = h >= 12 ? 'P.M.' : 'A.M.';
+            h = h % 12;
+            if (h === 0) h = 12;
+            const timeStr = `${h.toString().padStart(2, '0')}:${mStr} ${ampm}`;
+            
+            if (!showsByDateMap[s.show_date].includes(timeStr)) {
+                showsByDateMap[s.show_date].push(timeStr);
+            }
+            activeDatesSet.add(s.show_date);
+        }
+
+        for (const date in showsByDateMap) {
+            showsByDateMap[date].sort();
+        }
 
         // --- Compute label ---
         let label: string | undefined;
@@ -84,20 +109,9 @@ export async function load() {
             }
         }
 
-        // --- Collect today's showtimes only for display ---
-        const todayShows = movieShows.filter((s: Showtime) => s.show_date === todayStr);
-        const displayShows = todayShows.length > 0 ? todayShows : movieShows;
-
-        // Remove duplicate times and format (HH:MM:SS -> HH:MM AM/PM)
-        const uniqueTimes = [...new Set(displayShows.map((s: Showtime) => s.show_time))];
-        const formattedTimes = uniqueTimes.map((t: string) => {
-            const [hStr, mStr] = t.split(':');
-            let h = parseInt(hStr, 10);
-            const ampm = h >= 12 ? 'P.M.' : 'A.M.';
-            h = h % 12;
-            if (h === 0) h = 12;
-            return `${h.toString().padStart(2, '0')}:${mStr} ${ampm}`;
-        });
+        // --- Collect today's showtimes only for fallback/default display ---
+        const todayShows = showsByDateMap[todayStr] || [];
+        const formattedTimes = todayShows.length > 0 ? todayShows : (Object.values(showsByDateMap)[0] || []);
 
         // --- Parse format from POS (first available showtime) ---
         let videoStr = '2D';
@@ -127,7 +141,8 @@ export async function load() {
                 audio: 'ESTÁNDAR',
                 language: langStr
             },
-            showtimes: formattedTimes.sort()
+            showtimes: formattedTimes,
+            showtimesByDate: showsByDateMap
         };
 
         // Categorize: nowPlaying if has active showtimes or is already released, comingSoon if future release
@@ -151,5 +166,7 @@ export async function load() {
     };
     nowPlaying.sort((a, b) => labelRank(a.label) - labelRank(b.label));
 
-    return { nowPlaying, comingSoonMovies };
+    const activeDates = Array.from(activeDatesSet).sort();
+
+    return { nowPlaying, comingSoonMovies, activeDates };
 }

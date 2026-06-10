@@ -24,10 +24,11 @@
 	import Loader2 from '@lucide/svelte/icons/loader-2';
 
 	let { data } = $props();
-	let nowPlaying = $derived(data.nowPlaying);
 	let comingSoonMovies = $derived(data.comingSoonMovies);
+	let activeDates = $derived(data.activeDates);
 	import type { Movie } from '$lib/types';
 	import { onMount } from 'svelte';
+	import { getLocalTimeZone, today, type DateValue } from '@internationalized/date';
 
 	// Estado
 	let isDialogOpen = $state(false);
@@ -35,6 +36,32 @@
 	let isTheatreSelectorOpen = $state(false);
 	let isSearchOpen = $state(false);
 	let selectedMovie: Movie | null = $state(null);
+	
+	// Filtros de fecha
+	let selectedDateTab = $state<'hoy' | 'manana' | 'custom'>('hoy');
+	let customDate = $state<DateValue | undefined>();
+
+	let selectedDateStr = $derived.by(() => {
+		const tz = getLocalTimeZone();
+		if (selectedDateTab === 'hoy') return today(tz).toString();
+		if (selectedDateTab === 'manana') return today(tz).add({ days: 1 }).toString();
+		if (customDate) return customDate.toString();
+		return today(tz).toString();
+	});
+
+	let nowPlaying = $derived.by(() => {
+		return data.nowPlaying
+			.map(movie => {
+				const hasAnyShowtimes = Object.keys(movie.showtimesByDate || {}).length > 0;
+				const dayShowtimes = movie.showtimesByDate?.[selectedDateStr] || [];
+				return {
+					...movie,
+					showtimes: dayShowtimes,
+					_hasAnyShowtimes: hasAnyShowtimes
+				};
+			})
+			.filter(movie => movie.showtimes.length > 0 || !movie._hasAnyShowtimes);
+	});
 	
 	let heroButtonTextIndex = $state(0);
 	const heroButtonTexts = [
@@ -261,7 +288,7 @@
 			<h3 class="mb-4 font-display text-3xl tracking-wider text-white md:mb-0 md:text-4xl pl-4 md:pl-10">
 				Películas en este Cine
 			</h3>
-			<DateSelector />
+			<DateSelector bind:selectedDateTab bind:customDate {activeDates} />
 		</div>
 
 		<NowPlayingCarousel movies={nowPlaying} {openMovieDetails} />

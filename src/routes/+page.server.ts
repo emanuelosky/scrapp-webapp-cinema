@@ -5,11 +5,12 @@ interface Showtime {
     movie_id: string;
     show_date: string;
     show_time: string;
-    language_format: string;
+    language: string;
+    dimension: string;
 }
 
 export async function load() {
-    // 1. Fetch all movies (so we can map inactive children to active parents)
+    // 1. Fetch all movies (so we can map child entries to active mothers)
     const { data: movies, error: moviesError } = await supabase
         .from('wbpp_movies')
         .select('*');
@@ -19,33 +20,35 @@ export async function load() {
         return { nowPlaying: [], comingSoonMovies: [] };
     }
 
-    // Map each child movie to its parent ID
-    const childToParent = new Map<string, string>();
+    // Map each child movie to its mother ID
+    const childToMother = new Map<string, string>();
     for (const m of movies) {
-        if (m.parent_id) {
-            childToParent.set(m.id, m.parent_id);
+        if (m.grouped_ids && m.grouped_ids.length > 0) {
+            for (const childId of m.grouped_ids) {
+                childToMother.set(childId, m.id);
+            }
         }
     }
 
     // 2. Fetch active showtimes (include show_date for filtering by date)
     const { data: showtimes, error: showtimesError } = await supabase
         .from('wbpp_showtimes')
-        .select('movie_id, show_date, show_time, language_format')
+        .select('movie_id, show_date, show_time, language, dimension')
         .eq('is_active', true);
 
     if (showtimesError) {
         console.error('Error fetching showtimes:', showtimesError);
     }
 
-    // Group showtimes by parent ID if child, otherwise movie_id
+    // Group showtimes by mother ID if child, otherwise movie_id
     const showtimesByMovie: Record<string, Showtime[]> = {};
     if (showtimes) {
         for (const show of showtimes) {
-            const effectiveMovieId = childToParent.get(show.movie_id) || show.movie_id;
+            const effectiveMovieId = childToMother.get(show.movie_id) || show.movie_id;
             if (!showtimesByMovie[effectiveMovieId]) {
                 showtimesByMovie[effectiveMovieId] = [];
             }
-            showtimesByMovie[effectiveMovieId].push(show);
+            showtimesByMovie[effectiveMovieId].push(show as unknown as Showtime);
         }
     }
 
@@ -55,8 +58,8 @@ export async function load() {
     const comingSoonMovies: Movie[] = [];
     const activeDatesSet = new Set<string>();
 
-    // Filter to only display ACTIVE parent movies at top level
-    const displayMovies = movies.filter(m => !m.parent_id && m.is_active);
+    // Filter to only display ACTIVE top-level movies (mothers or ungrouped raws)
+    const displayMovies = movies.filter(m => !childToMother.has(m.id) && m.status === 'active');
 
     for (const m of displayMovies) {
         const movieShows = showtimesByMovie[m.id] || [];
@@ -88,21 +91,24 @@ export async function load() {
         // --- Compute label ---
         let label: string | undefined;
         
+        const releaseDate = m.release_date ? new Date(m.release_date + 'T00:00:00') : null;
+        const presaleDate = m.presale_date ? new Date(m.presale_date + 'T00:00:00') : null;
+        
+        const hasShowtimes = movieShows.length > 0;
+        
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const presaleDate = m.presale_date ? new Date(m.presale_date) : null;
-        const releaseDate = m.release_date ? new Date(m.release_date) : null;
 
-        if (m.status_label && m.status_label !== 'AUTOMATICO') {
-            // Manual override from admin
-            label = m.status_label === 'NINGUNO' ? undefined : m.status_label;
-        } else {
-            // Auto logic based on dates
-            if (presaleDate && releaseDate && today >= presaleDate && today < releaseDate) {
-                label = 'PREVENTA';
-            } else if (releaseDate) {
-                const daysSinceRelease = Math.floor((today.getTime() - releaseDate.getTime()) / (1000 * 60 * 60 * 24));
-                if (daysSinceRelease >= 0 && daysSinceRelease <= 14) {
+        if (releaseDate) {
+            const diffTime = releaseDate.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (hasShowtimes) {
+                if (diffDays > 0) {
+                    if (!presaleDate || today >= presaleDate) {
+                        label = 'PREVENTA';
+                    }
+                } else if (diffDays >= -7) {
                     label = 'ESTRENO';
                 }
             }
@@ -116,13 +122,18 @@ export async function load() {
         let videoStr = '2D';
         let langStr = 'ESPAÑOL';
         if (movieShows.length > 0) {
-            const fmt = movieShows[0].language_format.toUpperCase();
-            if (fmt.includes('ATMOS')) videoStr = 'ATMOS';
-            else if (fmt.includes('IMAX')) videoStr = 'IMAX';
-            else if (fmt.includes('4D')) videoStr = '4DX';
-            else if (fmt.includes('3D')) videoStr = '3D';
-            if (fmt.includes('SUB')) langStr = 'SUBTITULADO';
-            else if (fmt.includes('ESP')) langStr = 'ESPAÑOL';
+            const firstShow = movieShows[0];
+            const dim = firstShow.dimension;
+            const lang = firstShow.language;
+            
+            if (dim === '4DX') videoStr = '4DX';
+            else if (dim === 'IMAX') videoStr = 'IMAX';
+            else if (dim === '3D') videoStr = '3D';
+            else videoStr = '2D';
+            
+            if (lang === 'SUB') langStr = 'SUBTITULADO';
+            else if (lang === 'DUBBED') langStr = 'DOBLADA';
+            else langStr = 'ESPAÑOL';
         }
 
         const formattedMovie: Movie = {

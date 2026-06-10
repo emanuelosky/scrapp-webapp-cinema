@@ -25,7 +25,7 @@
 
 	let { data } = $props();
 	let comingSoonMovies = $derived(data.comingSoonMovies);
-	let activeDates = $derived(data.activeDates);
+	let activeDates = $derived(data.activeDates || []);
 	import type { Movie } from '$lib/types';
 	import { onMount } from 'svelte';
 	import { getLocalTimeZone, today, type DateValue } from '@internationalized/date';

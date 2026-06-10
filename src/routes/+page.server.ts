@@ -130,11 +130,16 @@ export async function load() {
             showtimes: formattedTimes.sort()
         };
 
-        // Categorize: nowPlaying if has active showtimes, else comingSoon
+        // Categorize: nowPlaying if has active showtimes or is already released, comingSoon if future release
+        const isFutureRelease = releaseDate && releaseDate > today;
+        const isPresale = label === 'PREVENTA';
+
         if (movieShows.length > 0) {
             nowPlaying.push(formattedMovie);
-        } else {
+        } else if (isPresale || isFutureRelease) {
             comingSoonMovies.push(formattedMovie);
+        } else {
+            nowPlaying.push(formattedMovie);
         }
     }
 

@@ -11,21 +11,36 @@
 	let scrollProgress = $state(0);
 	let isDraggingScrollbar = $state(false);
 	let scrollbarTrack = $state<HTMLElement | null>(null);
+	let canScroll = $state(false);
 
 	$effect(() => {
 		if (!api) return;
+		
+		const checkScroll = () => {
+			if (!api) return;
+			canScroll = api.canScrollNext() || api.canScrollPrev();
+		};
+		
 		const onScroll = () => {
 			if (!api) return;
 			let rawProg = api.scrollProgress();
 			let prog = ((rawProg % 1) + 1) % 1;
 			scrollProgress = prog * 100;
 		};
+		
 		api.on('scroll', onScroll);
 		api.on('reInit', onScroll);
+		api.on('reInit', checkScroll);
+		api.on('resize', checkScroll);
+		
 		onScroll(); // Set initial
+		checkScroll();
+
 		return () => {
 			api?.off('scroll', onScroll);
 			api?.off('reInit', onScroll);
+			api?.off('reInit', checkScroll);
+			api?.off('resize', checkScroll);
 		};
 	});
 
@@ -128,37 +143,41 @@
 		{/each}
 	</Carousel.Content>
 	
-	<div class="hidden md:flex absolute -left-12 -right-12 top-[40%] justify-between pointer-events-none">
-		<div class="pointer-events-auto">
-			<Carousel.Previous class="relative left-0 bg-white/5 backdrop-blur-md hover:bg-white hover:text-black text-white border-white/20 transition-all" />
+	{#if canScroll}
+		<div class="hidden md:flex absolute -left-12 -right-12 top-[40%] justify-between pointer-events-none">
+			<div class="pointer-events-auto">
+				<Carousel.Previous class="relative left-0 bg-white/5 backdrop-blur-md hover:bg-white hover:text-black text-white border-white/20 transition-all" />
+			</div>
+			<div class="pointer-events-auto">
+				<Carousel.Next class="relative right-0 bg-white/5 backdrop-blur-md hover:bg-white hover:text-black text-white border-white/20 transition-all" />
+			</div>
 		</div>
-		<div class="pointer-events-auto">
-			<Carousel.Next class="relative right-0 bg-white/5 backdrop-blur-md hover:bg-white hover:text-black text-white border-white/20 transition-all" />
-		</div>
-	</div>
+	{/if}
 </Carousel.Root>
 
-<div class="mt-8 md:mt-12 w-full flex flex-col items-center justify-center gap-4">
-	<div class="flex items-center gap-2 text-zinc-500 uppercase tracking-widest text-[10px] md:text-xs font-bold">
-		<MoveHorizontal class="size-4 animate-pulse" />
-		<span>Desliza para explorar</span>
-	</div>
-	
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div 
-		bind:this={scrollbarTrack}
-		onpointerdown={onPointerDown}
-		onpointermove={onPointerMove}
-		onpointerup={onPointerUp}
-		onpointercancel={onPointerUp}
-		class="w-full max-w-sm md:max-w-2xl h-2 bg-zinc-800 rounded-full relative cursor-grab touch-none {isDraggingScrollbar ? 'cursor-grabbing' : ''}"
-	>
+{#if canScroll}
+	<div class="mt-8 md:mt-12 w-full flex flex-col items-center justify-center gap-4">
+		<div class="flex items-center gap-2 text-zinc-500 uppercase tracking-widest text-[10px] md:text-xs font-bold">
+			<MoveHorizontal class="size-4 animate-pulse" />
+			<span>Desliza para explorar</span>
+		</div>
+		
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div 
-			class="absolute top-0 bottom-0 w-[20%] bg-gradient-to-r from-zinc-300 via-zinc-400 to-zinc-300 rounded-full transition-transform duration-75 ease-out origin-center {isDraggingScrollbar ? 'scale-y-[2.5] scale-x-105 shadow-[0_0_15px_rgba(212,212,216,0.8)]' : ''}" 
-			style="transform: translate3d({scrollProgress * 4}%, 0, 0)"
-		></div>
+			bind:this={scrollbarTrack}
+			onpointerdown={onPointerDown}
+			onpointermove={onPointerMove}
+			onpointerup={onPointerUp}
+			onpointercancel={onPointerUp}
+			class="w-full max-w-sm md:max-w-2xl h-2 bg-zinc-800 rounded-full relative cursor-grab touch-none {isDraggingScrollbar ? 'cursor-grabbing' : ''}"
+		>
+			<div 
+				class="absolute top-0 bottom-0 w-[20%] bg-gradient-to-r from-zinc-300 via-zinc-400 to-zinc-300 rounded-full transition-transform duration-75 ease-out origin-center {isDraggingScrollbar ? 'scale-y-[2.5] scale-x-105 shadow-[0_0_15px_rgba(212,212,216,0.8)]' : ''}" 
+				style="transform: translate3d({scrollProgress * 4}%, 0, 0)"
+			></div>
+		</div>
 	</div>
-</div>
+{/if}
 
 <style>
 	.ticket-shape {

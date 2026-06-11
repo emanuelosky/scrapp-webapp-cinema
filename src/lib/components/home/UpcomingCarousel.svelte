@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as Carousel from '$lib/components/ui/carousel';
 	import type { Movie } from '$lib/types';
+	import { Skeleton } from '$lib/components/ui/skeleton';
 
 	let { movies } = $props<{ movies: Movie[] }>();
 	
@@ -9,12 +10,14 @@
 	
 	let api = $state<CarouselAPI>();
 	let canScroll = $state(false);
+	let isLoopReady = $state(false);
 	let resumeTimeout: ReturnType<typeof setTimeout>;
 
 	const plugin = Autoplay({ delay: 3000, stopOnInteraction: true });
 
 	let safeMovies = $derived.by(() => {
 		if (!movies || movies.length === 0) return [];
+		if (movies.length <= 4) return movies; // Si caben en pantalla, no duplicamos
 		if (movies.length < 8) {
 			return [...movies, ...movies];
 		}
@@ -31,24 +34,40 @@
 		api.on('resize', checkScroll);
 		checkScroll();
 		
-		let loopTimeout = setTimeout(() => {
-			if (api) {
-				api.reInit({ loop: true });
-			}
-		}, 800);
+		let loopTimeout: ReturnType<typeof setTimeout>;
+		if (movies && movies.length > 4) {
+			loopTimeout = setTimeout(() => {
+				if (api) {
+					api.reInit({ loop: true });
+				}
+				isLoopReady = true;
+			}, 800);
+		} else {
+			isLoopReady = true;
+		}
 
 		const handleInteraction = () => {
-			plugin.stop();
+			if (api) {
+				const autoplay = api.plugins().autoplay;
+				if (autoplay) {
+					autoplay.stop();
+				}
+			}
 			clearTimeout(resumeTimeout);
 			resumeTimeout = setTimeout(() => {
-				plugin.play();
+				if (api) {
+					const autoplay = api.plugins().autoplay;
+					if (autoplay) {
+						autoplay.play();
+					}
+				}
 			}, 90000); // 1 min 30 seg
 		};
 
 		api.on('pointerDown', handleInteraction);
 
 		return () => {
-			clearTimeout(loopTimeout);
+			if (loopTimeout) clearTimeout(loopTimeout);
 			clearTimeout(resumeTimeout);
 			api?.off('reInit', checkScroll);
 			api?.off('resize', checkScroll);
@@ -69,36 +88,50 @@
 				<Carousel.Content class="-ml-2 md:-ml-4 {canScroll ? '' : 'justify-center'}">
 					{#each safeMovies as movie, i (movie.id + '-' + i)}
 						<Carousel.Item class="pl-2 md:pl-4 basis-[45%] sm:basis-[30%] md:basis-[22%] lg:basis-1/5">
-							<div role="button" tabindex="0" class="group relative w-full text-left outline-none">
-								<div class="relative w-full overflow-hidden rounded-none shadow-lg">
+							{#if !isLoopReady}
+								<div class="relative w-full aspect-[2/3] overflow-hidden bg-black">
 									{#if movie.poster}
 										<img
 											src={movie.poster}
-											alt={movie.title}
-											class="aspect-[2/3] w-full object-cover transition-all duration-500 group-hover:scale-105 group-hover:opacity-80"
+											alt=""
+											class="w-full h-full object-cover blur-sm scale-110 opacity-60 animate-pulse"
 										/>
 									{:else}
-										<div class="flex aspect-[2/3] w-full items-center justify-center bg-zinc-900 text-zinc-600 px-4">
-											<span class="font-display text-sm font-bold uppercase">{movie.title}</span>
-										</div>
+										<Skeleton class="w-full h-full rounded-none bg-zinc-800 animate-pulse" />
 									{/if}
-									
-									<div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-12 text-left transition-opacity duration-300 group-hover:opacity-0 z-20">
-										<h4 class="font-sans font-bold text-white uppercase leading-tight line-clamp-2 drop-shadow-md">{movie.title}</h4>
-									</div>
+								</div>
+							{:else}
+								<div role="button" tabindex="0" class="group relative w-full text-left outline-none animate-in fade-in duration-500">
+									<div class="relative w-full overflow-hidden rounded-none shadow-lg">
+										{#if movie.poster}
+											<img
+												src={movie.poster}
+												alt={movie.title}
+												class="aspect-[2/3] w-full object-cover transition-all duration-500 group-hover:scale-105 group-hover:opacity-80"
+											/>
+										{:else}
+											<div class="flex aspect-[2/3] w-full items-center justify-center bg-zinc-900 text-zinc-600 px-4">
+												<span class="font-display text-sm font-bold uppercase">{movie.title}</span>
+											</div>
+										{/if}
+										
+										<div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-12 text-left transition-opacity duration-300 group-hover:opacity-0 z-20">
+											<h4 class="font-sans font-bold text-white uppercase leading-tight line-clamp-2 drop-shadow-md">{movie.title}</h4>
+										</div>
 
-									<!-- Hover Overlay (AMC Style) -->
-									<div class="absolute inset-0 bg-gradient-to-t from-[#111] via-[#111]/80 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex flex-col justify-end p-4 text-center z-30 pointer-events-none group-hover:pointer-events-auto">
-										<div class="translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-											<h3 class="text-xl md:text-2xl font-black text-white tracking-tight mb-2 leading-tight drop-shadow-md">{movie.title}</h3>
-											<!-- En próximos estrenos ocultamos la duración, la clasificación y el botón de compra -->
-											<p class="text-zinc-400 text-xs md:text-sm font-bold mb-4 tracking-widest uppercase">
-												Estreno: {movie.releaseDate || 'Próximamente'}
-											</p>
+										<!-- Hover Overlay (AMC Style) -->
+										<div class="absolute inset-0 bg-gradient-to-t from-[#111] via-[#111]/80 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex flex-col justify-end p-4 text-center z-30 pointer-events-none group-hover:pointer-events-auto">
+											<div class="translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+												<h3 class="text-xl md:text-2xl font-black text-white tracking-tight mb-2 leading-tight drop-shadow-md">{movie.title}</h3>
+												<!-- En próximos estrenos ocultamos la duración, la clasificación y el botón de compra -->
+												<p class="text-zinc-400 text-xs md:text-sm font-bold mb-4 tracking-widest uppercase">
+													Estreno: {movie.releaseDate || 'Próximamente'}
+												</p>
+											</div>
 										</div>
 									</div>
 								</div>
-							</div>
+							{/if}
 						</Carousel.Item>
 					{/each}
 				</Carousel.Content>

@@ -48,8 +48,7 @@
 		return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 	}
 
-	function handleSeatClick(row: string, num: number) {
-		const seatId = `${row}${num}`;
+	function handleSeatClick(seatId: string) {
 		bookingState.toggleSeat(seatId);
 	}
 </script>
@@ -99,64 +98,35 @@
 
 		<!-- Col 3: Tickets -->
 		<div class="flex-[1.5] flex flex-col gap-0 px-0 xl:px-4 justify-center mt-2 xl:mt-0">
-			<!-- Adults -->
-			<div class="flex items-center border-b border-zinc-800 py-1.5">
-				<div class="flex-1 flex items-center justify-start">
-					<span class="text-xs font-bold text-white uppercase tracking-wider w-20">Adulto</span>
-				</div>
-				<div class="flex-1 flex items-center justify-center">
-					<span class="text-zinc-500 font-bold text-xs">$5.00</span>
-				</div>
-				<div class="flex-1 flex items-center justify-end gap-3">
-					<button class="size-6 rounded-full border border-zinc-600 flex items-center justify-center hover:border-white hover:text-white transition text-zinc-400" onclick={() => bookingState.adultTickets = Math.max(0, bookingState.adultTickets - 1)}><Minus class="size-3" /></button>
-					<span class="font-black text-lg w-4 text-center">{bookingState.adultTickets}</span>
-					<button class="size-6 rounded-full border border-zinc-600 flex items-center justify-center hover:border-white hover:text-white transition text-zinc-400" onclick={() => bookingState.adultTickets++}><Plus class="size-3" /></button>
-				</div>
-			</div>
-			<!-- Kids -->
-			<div class="flex items-center border-b border-zinc-800 py-1.5">
-				<div class="flex-1 flex items-center justify-start">
-					<div class="flex items-center gap-1">
-						<span class="text-xs font-bold text-white uppercase tracking-wider">Niños</span>
-						<div class="relative group flex items-center">
-							<Info class="size-3 text-zinc-500 hover:text-white cursor-help transition-colors" />
-							<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-zinc-900 border border-zinc-700 text-[10px] leading-tight text-zinc-300 rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-								Entrada de niños hasta los 14. Posiblemente se solicite su CI. Este descuento es válido hasta las 5:00pm.
-							</div>
+			{#if bookingState.tariffs.length === 0}
+				<div class="text-zinc-500 text-xs font-mono text-center py-2 animate-pulse">Cargando tarifas...</div>
+			{:else}
+				{#each bookingState.tariffs as tariff, i (tariff.id)}
+					<div class="flex items-center {i < bookingState.tariffs.length - 1 ? 'border-b border-zinc-800' : ''} py-1.5">
+						<div class="flex-1 flex items-center justify-start">
+							<span class="text-xs font-bold text-white uppercase tracking-wider w-24 truncate">{tariff.nombre}</span>
+						</div>
+						<div class="flex-1 flex items-center justify-center">
+							<span class="text-zinc-500 font-bold text-xs">${tariff.precio.toFixed(2)}</span>
+						</div>
+						<div class="flex-1 flex items-center justify-end gap-3">
+							<button 
+								class="size-6 rounded-full border border-zinc-600 flex items-center justify-center hover:border-white hover:text-white transition text-zinc-400" 
+								onclick={() => bookingState.ticketQuantities[tariff.id] = Math.max(0, (bookingState.ticketQuantities[tariff.id] || 0) - 1)}
+							>
+								<Minus class="size-3" />
+							</button>
+							<span class="font-black text-lg w-4 text-center">{bookingState.ticketQuantities[tariff.id] || 0}</span>
+							<button 
+								class="size-6 rounded-full border border-zinc-600 flex items-center justify-center hover:border-white hover:text-white transition text-zinc-400" 
+								onclick={() => bookingState.ticketQuantities[tariff.id] = (bookingState.ticketQuantities[tariff.id] || 0) + 1}
+							>
+								<Plus class="size-3" />
+							</button>
 						</div>
 					</div>
-				</div>
-				<div class="flex-1 flex items-center justify-center">
-					<span class="text-zinc-500 font-bold text-xs">$2.50</span>
-				</div>
-				<div class="flex-1 flex items-center justify-end gap-3">
-					<button class="size-6 rounded-full border border-zinc-600 flex items-center justify-center hover:border-white hover:text-white transition text-zinc-400" onclick={() => bookingState.childTickets = Math.max(0, bookingState.childTickets - 1)}><Minus class="size-3" /></button>
-					<span class="font-black text-lg w-4 text-center">{bookingState.childTickets}</span>
-					<button class="size-6 rounded-full border border-zinc-600 flex items-center justify-center hover:border-white hover:text-white transition text-zinc-400" onclick={() => bookingState.childTickets++}><Plus class="size-3" /></button>
-				</div>
-			</div>
-			<!-- Seniors -->
-			<div class="flex items-center py-1.5">
-				<div class="flex-1 flex items-center justify-start">
-					<div class="flex items-center gap-1">
-						<span class="text-xs font-bold text-white uppercase tracking-wider">Señores</span>
-						<div class="relative group flex items-center">
-							<Info class="size-3 text-zinc-500 hover:text-white cursor-help transition-colors" />
-							<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-zinc-900 border border-zinc-700 text-[10px] leading-tight text-zinc-300 rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-								Entrada para mayores de 60 años. Se solicitará documento de identidad en puerta.
-							</div>
-						</div>
-					</div>
-				</div>
-				<div class="flex-1 flex items-center justify-center">
-					<span class="text-zinc-500 font-bold text-xs">$2.50</span>
-				</div>
-				<div class="flex-1 flex items-center justify-end gap-3">
-					<button class="size-6 rounded-full border border-zinc-600 flex items-center justify-center hover:border-white hover:text-white transition text-zinc-400" onclick={() => bookingState.seniorTickets = Math.max(0, bookingState.seniorTickets - 1)}><Minus class="size-3" /></button>
-					<span class="font-black text-lg w-4 text-center">{bookingState.seniorTickets}</span>
-					<button class="size-6 rounded-full border border-zinc-600 flex items-center justify-center hover:border-white hover:text-white transition text-zinc-400" onclick={() => bookingState.seniorTickets++}><Plus class="size-3" /></button>
-				</div>
-			</div>
+				{/each}
+			{/if}
 		</div>
 	</header>
 
@@ -199,15 +169,19 @@
 								<!-- Butaca real -->
 								{@const isSelected = bookingState.selectedSeats.includes(cell.id)}
 								{@const isTaken = cell.status === 'taken'}
-								{@const isWheelchair = cell.id.startsWith('A') && (cell.label === '1' || cell.label === '20')}
+								{@const seatTypeUpper = (cell.seatType || 'GENERAL').toUpperCase()}
+								{@const isWheelchair = seatTypeUpper.includes('DISCAPACITA')}
+								{@const isSpecial = !seatTypeUpper.includes('GENERAL') && !seatTypeUpper.includes('BLOQUEADA') && !isWheelchair}
 								
 								<button 
 									class="group relative w-7 h-7 md:w-9 md:h-9 flex items-center justify-center transition-all duration-200 
 										{isTaken ? 'text-zinc-800 cursor-not-allowed opacity-40' : 
 										isSelected ? 'text-white scale-110 z-10 drop-shadow-[0_0_8px_rgba(255,255,255,0.6)]' : 
+										isSpecial ? 'text-purple-500 hover:text-purple-400 hover:scale-105' :
 										'text-zinc-600 hover:text-zinc-400 hover:scale-105'}"
 									disabled={isTaken}
-									onclick={() => handleSeatClick(cell.id.charAt(0), parseInt(cell.label))}
+									title={isSpecial ? cell.seatType : ''}
+									onclick={() => handleSeatClick(cell.id)}
 								>
 									{#if isWheelchair}
 										<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full p-1 opacity-80">
@@ -221,7 +195,7 @@
 									{/if}
 									{#if !isWheelchair}
 										<span class="absolute text-[7px] md:text-[9px] font-light tracking-tighter mt-[-4px] {isSelected ? 'text-black font-semibold' : (isTaken ? 'text-transparent' : 'text-white/70')} pointer-events-none transition-colors">
-											{cell.id}
+											{cell.label.split(':')[1] || cell.label}
 										</span>
 									{/if}
 								</button>

@@ -32,3 +32,8 @@ Para garantizar máxima seguridad y ahorro de costos:
 - **El Frontend B2C (SvelteKit):** Se alojará en un proveedor Edge/Estático como Vercel o Cloudflare Pages.
 - **Sin acceso a Base de Datos:** El frontend NO tendrá credenciales de Supabase ni accesos directos a la BD. 
 - **Comunicación REST:** Toda operación del usuario final pasará a través de la API expuesta por `scrapp-administrative-v2` (BFF/Admin layer), el cual validará peticiones, manejará la orquestación Mutex y se conectará al POS o a Supabase de forma segura.
+
+## 6. Auto-Failover y Enrutamiento Backend
+* Todas las comunicaciones hacia las APIs legacy (Boletera, Candy) operan detrs de una capa de Auto-Failover en scrapp-administrative-v2.
+* No debe haber APIs configuradas quemadas en el frontend de cinema; el BFF asume la responsabilidad del balanceo y la salud de la red.
+* El BFF administra la conmutacin automtica (Latencia, Pings en background) y reintenta antes de propagar errores 5xx al cliente webapp.

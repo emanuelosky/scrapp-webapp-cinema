@@ -275,33 +275,16 @@
 									onclick={() => history.back()}>Editar</button
 								>
 							</div>
-							{#if bookingState.adultTickets > 0}
-								<div class="flex flex-col gap-0.5">
-									<div class="flex justify-between text-sm font-bold">
-										<span>Entrada Adulto ({bookingState.adultTickets})</span>
-										<span>${(bookingState.adultTickets * 5).toFixed(2)}</span>
+							{#each bookingState.tariffs as tariff (tariff.id)}
+								{#if bookingState.ticketQuantities[tariff.id] > 0}
+									<div class="flex flex-col gap-0.5">
+										<div class="flex justify-between text-sm font-bold">
+											<span>Entrada {tariff.nombre} ({bookingState.ticketQuantities[tariff.id]})</span>
+											<span>${(bookingState.ticketQuantities[tariff.id] * tariff.precio).toFixed(2)}</span>
+										</div>
 									</div>
-									<span class="text-xs text-zinc-500 font-medium">Butacas: {bookingState.selectedSeats.slice(0, bookingState.adultTickets).join(', ')}</span>
-								</div>
-							{/if}
-							{#if bookingState.childTickets > 0}
-								<div class="flex flex-col gap-0.5">
-									<div class="flex justify-between text-sm font-bold">
-										<span>Entrada Niño ({bookingState.childTickets})</span>
-										<span>${(bookingState.childTickets * 2.5).toFixed(2)}</span>
-									</div>
-									<span class="text-xs text-zinc-500 font-medium">Butacas: {bookingState.selectedSeats.slice(bookingState.adultTickets, bookingState.adultTickets + bookingState.childTickets).join(', ')}</span>
-								</div>
-							{/if}
-							{#if bookingState.seniorTickets > 0}
-								<div class="flex flex-col gap-0.5">
-									<div class="flex justify-between text-sm font-bold">
-										<span>Entrada 3ra Edad ({bookingState.seniorTickets})</span>
-										<span>${(bookingState.seniorTickets * 2.5).toFixed(2)}</span>
-									</div>
-									<span class="text-xs text-zinc-500 font-medium">Butacas: {bookingState.selectedSeats.slice(bookingState.adultTickets + bookingState.childTickets).join(', ')}</span>
-								</div>
-							{/if}
+								{/if}
+							{/each}
 						</div>
 
 						<hr class="border-white/10" />

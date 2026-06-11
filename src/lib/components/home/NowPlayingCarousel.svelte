@@ -1,9 +1,11 @@
 <script lang="ts">
 	import type { CarouselAPI } from '$lib/components/ui/carousel/context.js';
 	import * as Carousel from '$lib/components/ui/carousel';
+	import { Skeleton } from '$lib/components/ui/skeleton';
 	import Ticket from '@lucide/svelte/icons/ticket';
 	import MoveHorizontal from '@lucide/svelte/icons/move-horizontal';
 	import type { Movie } from '$lib/types';
+	import AutoScroll from 'embla-carousel-auto-scroll';
 
 	let { movies, openMovieDetails } = $props<{ movies: Movie[], openMovieDetails: (m: Movie) => void }>();
 
@@ -12,9 +14,14 @@
 	let isDraggingScrollbar = $state(false);
 	let scrollbarTrack = $state<HTMLElement | null>(null);
 	let canScroll = $state(false);
+	let isLoopReady = $state(false);
+	let initialIdleTimeout: ReturnType<typeof setTimeout>;
+
+	const plugin = AutoScroll({ speed: 0.8, stopOnInteraction: true, playOnInit: false });
 
 	let safeMovies = $derived.by(() => {
 		if (!movies || movies.length === 0) return [];
+		if (movies.length <= 4) return movies; // Si caben en pantalla, no duplicamos
 		// Embla carousel glitches with loop: true if there are too few items. 
 		// We duplicate the array to ensure seamless infinite looping.
 		if (movies.length < 8) {
@@ -48,18 +55,50 @@
 
 		// Truco para evitar el bug de solapamiento de Embla: 
 		// activamos el loop en segundo plano después de que se dibujen las tarjetas
-		let loopTimeout = setTimeout(() => {
+		let loopTimeout: ReturnType<typeof setTimeout>;
+		if (movies && movies.length > 4) {
+			loopTimeout = setTimeout(() => {
+				if (api) {
+					api.reInit({ loop: true });
+				}
+				isLoopReady = true;
+			}, 800);
+		} else {
+			isLoopReady = true; // No necesitamos esperar si no hay loop
+		}
+
+		// AutoScroll ya inicia apagado gracias a playOnInit: false
+		
+		initialIdleTimeout = setTimeout(() => {
 			if (api) {
-				api.reInit({ loop: true });
+				const autoScroll = api.plugins().autoScroll;
+				if (autoScroll) {
+					autoScroll.play();
+				}
 			}
-		}, 800);
+		}, 90000); // 1 min 30 seg
+
+		const handleInteraction = () => {
+			// Si el usuario interactúa, detenemos el autoplay y cancelamos el inicio diferido
+			if (api) {
+				const autoScroll = api.plugins().autoScroll;
+				if (autoScroll) {
+					autoScroll.stop();
+				}
+			}
+			clearTimeout(initialIdleTimeout);
+		};
+
+		api.on('pointerDown', handleInteraction);
 
 		return () => {
-			clearTimeout(loopTimeout);
+			if (loopTimeout) clearTimeout(loopTimeout);
+			clearTimeout(initialIdleTimeout);
 			api?.off('scroll', onScroll);
 			api?.off('reInit', onScroll);
 			api?.off('reInit', checkScroll);
 			api?.off('resize', checkScroll);
+			api?.off('pointerDown', handleInteraction);
 		};
 	});
 
@@ -93,71 +132,85 @@
 	}
 </script>
 
-<Carousel.Root class="w-full relative" opts={{ align: 'start', loop: false }} setApi={(a) => api = a}>
+<Carousel.Root class="w-full relative" opts={{ align: 'start', loop: false }} plugins={[plugin]} setApi={(a) => api = a}>
 	<Carousel.Content class="-ml-4 py-4 {canScroll ? '' : 'justify-center'}">
 		{#each safeMovies as movie, i (movie.id + '-' + i)}
 			<Carousel.Item class="pl-4 basis-[55%] md:basis-[30%] lg:basis-[22%] xl:basis-[18%]">
-				<!-- svelte-ignore a11y_click_events_have_key_events -->
-				<div
-					role="button"
-					tabindex="0"
-					class="group relative flex w-full cursor-pointer flex-col text-center focus:outline-none"
-					onclick={() => openMovieDetails(movie)}
-				>
-					<div class="relative w-full overflow-hidden rounded-none shadow-lg transition-all duration-300 group-hover:shadow-[0_8px_40px_rgb(255,255,255,0.15)]">
-						{#if movie.label}
-							<div class="absolute top-4 left-[-4px] z-20 drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
-								<div class="ticket-shape relative flex items-center justify-center py-1.5 px-4 
-									{movie.label === 'PREVENTA' ? 'bg-gradient-to-r from-zinc-200 via-zinc-300 to-zinc-400' : 'bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-500'}">
-									<div class="absolute left-2.5 top-1 bottom-1 border-l-[1.5px] border-dashed border-black/30"></div>
-									<div class="absolute right-2.5 top-1 bottom-1 border-r-[1.5px] border-dashed border-black/30"></div>
-									
-									<Ticket class="size-3.5 mr-1.5 text-black ml-1 opacity-90" />
-									<span class="text-[10px] md:text-xs font-black text-black uppercase tracking-widest mr-1">
-										{movie.label}
-									</span>
-								</div>
-							</div>
-						{/if}
-						
+				{#if !isLoopReady}
+					<div class="relative w-full aspect-[2/3] overflow-hidden bg-black">
 						{#if movie.poster}
 							<img
 								src={movie.poster}
-								alt={movie.title}
-								class="aspect-[2/3] w-full object-cover transition-transform duration-500 group-hover:scale-105"
+								alt=""
+								class="w-full h-full object-cover blur-sm scale-110 opacity-60 animate-pulse"
 							/>
 						{:else}
-							<div class="flex aspect-[2/3] w-full items-center justify-center bg-zinc-900 text-zinc-600 px-4">
-								<span class="font-display text-sm font-bold uppercase">{movie.title}</span>
-							</div>
+							<Skeleton class="w-full h-full rounded-none bg-zinc-800 animate-pulse" />
 						{/if}
-
-						<div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-12 text-left transition-opacity duration-300 group-hover:opacity-0 z-20">
-							<h4 class="font-sans font-bold text-white uppercase leading-tight line-clamp-2 drop-shadow-md">{movie.title}</h4>
-						</div>
-
-						<!-- Hover Overlay (AMC Style) -->
-						<div class="absolute inset-0 bg-gradient-to-t from-[#111] via-[#111]/80 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex flex-col justify-end p-4 text-center z-30 pointer-events-none group-hover:pointer-events-auto">
-							<div class="translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-								<h3 class="text-xl md:text-2xl font-black text-white tracking-tight mb-2 leading-tight drop-shadow-md">{movie.title}</h3>
-								
-								<div class="flex items-center justify-center gap-3 text-zinc-300 text-[11px] md:text-xs font-semibold mb-2">
-									<span class="tracking-widest">{movie.duration || '2 HR 15 MIN'}</span>
-									<span class="w-px h-3 bg-zinc-500"></span>
-									<span class="tracking-widest">{movie.rating || 'B'}</span>
+					</div>
+				{:else}
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<div
+						role="button"
+						tabindex="0"
+						class="group relative flex w-full cursor-pointer flex-col text-center focus:outline-none animate-in fade-in duration-500"
+						onclick={() => openMovieDetails(movie)}
+					>
+						<div class="relative w-full overflow-hidden rounded-none shadow-lg transition-all duration-300 group-hover:shadow-[0_8px_40px_rgb(255,255,255,0.15)]">
+							{#if movie.label}
+								<div class="absolute top-4 left-[-4px] z-20 drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
+									<div class="ticket-shape relative flex items-center justify-center py-1.5 px-4 
+										{movie.label === 'PREVENTA' ? 'bg-gradient-to-r from-zinc-200 via-zinc-300 to-zinc-400' : 'bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-500'}">
+										<div class="absolute left-2.5 top-1 bottom-1 border-l-[1.5px] border-dashed border-black/30"></div>
+										<div class="absolute right-2.5 top-1 bottom-1 border-r-[1.5px] border-dashed border-black/30"></div>
+										
+										<Ticket class="size-3.5 mr-1.5 text-black ml-1 opacity-90" />
+										<span class="text-[10px] md:text-xs font-black text-black uppercase tracking-widest mr-1">
+											{movie.label}
+										</span>
+									</div>
 								</div>
-								
-								<p class="text-zinc-400 text-[10px] md:text-xs font-medium mb-4 tracking-wider uppercase">
-									Estreno {movie.releaseDate || '25 JUL 2026'}
-								</p>
-								
-								<button class="w-full bg-zinc-200 hover:bg-white text-black font-bold py-2.5 rounded-full transition-colors text-sm shadow-xl" onclick={(e) => { e.stopPropagation(); openMovieDetails(movie); }}>
-									Comprar Entradas
-								</button>
+							{/if}
+							
+							{#if movie.poster}
+								<img
+									src={movie.poster}
+									alt={movie.title}
+									class="aspect-[2/3] w-full object-cover transition-transform duration-500 group-hover:scale-105"
+								/>
+							{:else}
+								<div class="flex aspect-[2/3] w-full items-center justify-center bg-zinc-900 text-zinc-600 px-4">
+									<span class="font-display text-sm font-bold uppercase">{movie.title}</span>
+								</div>
+							{/if}
+
+							<div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-12 text-left transition-opacity duration-300 group-hover:opacity-0 z-20">
+								<h4 class="font-sans font-bold text-white uppercase leading-tight line-clamp-2 drop-shadow-md">{movie.title}</h4>
+							</div>
+
+							<!-- Hover Overlay (AMC Style) -->
+							<div class="absolute inset-0 bg-gradient-to-t from-[#111] via-[#111]/80 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex flex-col justify-end p-4 text-center z-30 pointer-events-none group-hover:pointer-events-auto">
+								<div class="translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+									<h3 class="text-xl md:text-2xl font-black text-white tracking-tight mb-2 leading-tight drop-shadow-md">{movie.title}</h3>
+									
+									<div class="flex items-center justify-center gap-3 text-zinc-300 text-[11px] md:text-xs font-semibold mb-2">
+										<span class="tracking-widest">{movie.duration || '2 HR 15 MIN'}</span>
+										<span class="w-px h-3 bg-zinc-500"></span>
+										<span class="tracking-widest">{movie.rating || 'B'}</span>
+									</div>
+									
+									<p class="text-zinc-400 text-[10px] md:text-xs font-medium mb-4 tracking-wider uppercase">
+										Estreno {movie.releaseDate || '25 JUL 2026'}
+									</p>
+									
+									<button class="w-full bg-zinc-200 hover:bg-white text-black font-bold py-2.5 rounded-full transition-colors text-sm shadow-xl" onclick={(e) => { e.stopPropagation(); openMovieDetails(movie); }}>
+										Comprar Entradas
+									</button>
+								</div>
 							</div>
 						</div>
 					</div>
-				</div>
+				{/if}
 			</Carousel.Item>
 		{/each}
 	</Carousel.Content>
@@ -175,7 +228,7 @@
 </Carousel.Root>
 
 {#if canScroll}
-	<div class="mt-8 md:mt-12 w-full flex flex-col items-center justify-center gap-4">
+	<div class="mt-8 md:mt-12 w-full flex flex-col items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500 fill-mode-both">
 		<div class="flex items-center gap-2 text-zinc-500 uppercase tracking-widest text-[10px] md:text-xs font-bold">
 			<MoveHorizontal class="size-4 animate-pulse" />
 			<span>Desliza para explorar</span>

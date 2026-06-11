@@ -25,7 +25,7 @@ export interface RawSeat {
 export type CFDCell = 
     | { type: 'empty' }
     | { type: 'row-label'; label: string }
-    | { type: 'seat'; id: string; label: string; status: 'free' | 'taken' | 'selected' };
+    | { type: 'seat'; id: string; label: string; status: 'free' | 'taken' | 'selected'; seatType?: string };
 
 export interface TaquillaResponse {
     maxFila: number;

@@ -8,14 +8,21 @@ export interface ConcessionItem {
 	quantity: number;
 }
 
+export interface TariffItem {
+	id: string;
+	nombre: string;
+	precio: number;
+}
+
 export class BookingState {
 	movie = $state<Movie | null>(null);
 	selectedDate = $state<string | null>(null);
 	selectedShowtime = $state<ShowtimeDetails | null>(null);
 	
-	adultTickets = $state(0);
-	childTickets = $state(0);
-	seniorTickets = $state(0);
+	// Dynamic Tariffs
+	tariffs = $state<TariffItem[]>([]);
+	defaultTariffsIds = $state<string[]>([]);
+	ticketQuantities = $state<Record<string, number>>({});
 	
 	selectedSeats = $state<string[]>([]);
 	matrix = $state<CFDCell[][]>([]);
@@ -31,11 +38,15 @@ export class BookingState {
 	isProcessing = $state(false);
 	
 	get totalTickets() {
-		return this.adultTickets + this.childTickets + this.seniorTickets;
+		return Object.values(this.ticketQuantities).reduce((a, b) => a + b, 0);
 	}
 	
 	get totalPrice() {
-		const ticketsTotal = (this.adultTickets * 5) + (this.childTickets * 2.5) + (this.seniorTickets * 2.5);
+		let ticketsTotal = 0;
+		for (const tariff of this.tariffs) {
+			const qty = this.ticketQuantities[tariff.id] || 0;
+			ticketsTotal += qty * tariff.precio;
+		}
 		const concessionsTotal = this.selectedConcessions.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 		return ticketsTotal + concessionsTotal;
 	}
@@ -51,12 +62,7 @@ export class BookingState {
 		this.selectedDate = date;
 		this.selectedShowtime = showtime;
 		// Reset state
-		this.adultTickets = 0;
-		this.childTickets = 0;
-		this.seniorTickets = 0;
-		this.childTickets = 0;
-		this.seniorTickets = 0;
-		this.seniorTickets = 0;
+		this.ticketQuantities = {};
 		this.selectedSeats = [];
 		this.selectedConcessions = [];
 		this.matrix = []; // We will load this async
@@ -98,6 +104,30 @@ export class BookingState {
 						const data = await res.json();
 						if (data.matrix) {
 							this.matrix = data.matrix;
+							
+							// Fetch tariffs after seats
+							try {
+								const tariffsRes = await fetch(`${API_BASE}/api/tarifas?showtimeId=${this.selectedShowtime.id}`);
+								if (tariffsRes.ok) {
+									const tariffsData = await tariffsRes.json();
+									if (tariffsData.success) {
+										const allowedIds = tariffsData.allowedTariffs || [];
+										const defaultIds = tariffsData.defaultTariffs || [];
+										const allTariffs = tariffsData.posTariffs || [];
+										this.defaultTariffsIds = defaultIds;
+										this.tariffs = allTariffs
+											.filter((t: Record<string, unknown>) => typeof t.id === 'string' && allowedIds.includes(t.id))
+											.map((t: Record<string, unknown>) => ({
+												id: t.id as string,
+												nombre: (t.nombre || '') as string,
+												precio: Number(t.precio || t.valor || t.monto || 0)
+											}));
+									}
+								}
+							} catch (e) {
+								console.error('Error fetching tariffs:', e);
+							}
+							
 							this.loadingMessage = '';
 							this.isProcessing = false;
 							return;
@@ -163,15 +193,27 @@ export class BookingState {
 			this.selectedSeats = this.selectedSeats.filter(s => s !== seatId);
 			// Auto decrement ticket when removing a seat
 			if (this.totalTickets > this.selectedSeats.length) {
-				if (this.adultTickets > 0) this.adultTickets--;
-				else if (this.childTickets > 0) this.childTickets--;
-				else if (this.seniorTickets > 0) this.seniorTickets--;
+				// Find a tariff that has > 0 quantity and decrement it
+				for (const tId of Object.keys(this.ticketQuantities)) {
+					if (this.ticketQuantities[tId] > 0) {
+						this.ticketQuantities[tId]--;
+						break;
+					}
+				}
 			}
 		} else {
-			this.selectedSeats.push(seatId);
-			// Auto increment adult ticket when adding a seat
-			if (this.totalTickets < this.selectedSeats.length) {
-				this.adultTickets++;
+			this.selectedSeats = [...this.selectedSeats, seatId];
+			// Auto increment first matching default tariff, or fallback to first available
+			if (this.totalTickets < this.selectedSeats.length && this.tariffs.length > 0) {
+				let targetTariffId = this.tariffs[0].id;
+				
+				// Buscamos si alguna de nuestras tarifas está marcada como predeterminada
+				const defaultTariff = this.tariffs.find(t => this.defaultTariffsIds.includes(t.id));
+				if (defaultTariff) {
+					targetTariffId = defaultTariff.id;
+				}
+
+				this.ticketQuantities[targetTariffId] = (this.ticketQuantities[targetTariffId] || 0) + 1;
 			}
 		}
 	}

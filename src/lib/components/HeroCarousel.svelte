@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { Movie } from '$lib/types';
-	import { onMount } from 'svelte';
 	import Ticket from '@lucide/svelte/icons/ticket';
 
 	let { movies = [] }: { movies: Movie[] } = $props();

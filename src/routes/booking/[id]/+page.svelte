@@ -8,6 +8,7 @@
 	import Minus from '@lucide/svelte/icons/minus';
 	import Info from '@lucide/svelte/icons/info';
 	import SeatIcon from '$lib/components/booking/SeatIcon.svelte';
+	import Loader2 from '@lucide/svelte/icons/loader-2';
 	import { page } from '$app/stores';
 
 	let id = $derived($page.params.id);
@@ -161,6 +162,15 @@
 
 	<!-- MAIN: SEAT MAP -->
 	<main class="flex-1 flex flex-col items-center overflow-x-auto p-8 relative">
+		
+		{#if bookingState.isProcessing}
+			<div class="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-4 animate-in fade-in duration-300">
+				<Loader2 class="size-12 text-amber-500 animate-spin" />
+				<p class="text-zinc-300 font-bold tracking-widest uppercase text-sm md:text-base animate-pulse text-center px-4">
+					{bookingState.loadingMessage || 'Procesando...'}
+				</p>
+			</div>
+		{/if}
 		
 		<!-- Screen Curve -->
 		<div class="w-full max-w-4xl flex flex-col items-center mb-16 mt-4 min-w-[600px]">

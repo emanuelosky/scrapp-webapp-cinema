@@ -69,25 +69,55 @@ export class BookingState {
 		this.isProcessing = false;
 	}
 
+	loadingMessage = $state('');
+
 	async loadSeats() {
 		if (!this.selectedShowtime || !this.selectedShowtime.id) return;
 		this.isProcessing = true;
+		this.loadingMessage = 'Conectando con el cine...';
 		try {
 			// Suponiendo que scrapp-administrative-v2 está corriendo en localhost:5173 en dev
 			// y en prod tiene otro dominio. Esto debería configurarse por .env o un proxy en svelte.config
 			// Para ahora usamos un path relativo si la API estuviera en el mismo dominio, pero 
 			// como están separados, usaremos la URL base de admin
-			const API_BASE = import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:5173';
-			const res = await fetch(`${API_BASE}/api/pos/fetch-seats/${this.selectedShowtime.id}`);
-			if (!res.ok) throw new Error('Error al cargar butacas');
-			const data = await res.json();
-			if (data.matrix) {
-				this.matrix = data.matrix;
+			const API_BASE = import.meta.env.VITE_ADMIN_API_URL || 'https://scrapp-backoffice.onrender.com';
+			const maxRetries = 15; // Unos 45-60 segundos de espera total
+			const delayMs = 4000;
+
+			for (let i = 0; i < maxRetries; i++) {
+				try {
+					if (i > 0) {
+						this.loadingMessage = 'Despertando el servidor del cine. Esto puede tomar hasta 50 segundos, por favor espera...';
+					}
+					
+					const res = await fetch(`${API_BASE}/api/pos/fetch-seats/${this.selectedShowtime.id}`);
+					
+					// Render a veces devuelve un HTML 502 Bad Gateway mientras despierta
+					const contentType = res.headers.get('content-type');
+					if (res.ok && contentType && contentType.includes('application/json')) {
+						const data = await res.json();
+						if (data.matrix) {
+							this.matrix = data.matrix;
+							this.loadingMessage = '';
+							this.isProcessing = false;
+							return;
+						}
+					}
+					
+					// Si no es OK o no es JSON (HTML de error de Render), lanzamos error para forzar el reintento
+					throw new Error('Servidor no disponible aún o en estado de suspensión (Render)');
+				} catch (error) {
+					console.log(`Intento ${i + 1} de ${maxRetries} fallido. Reintentando en ${delayMs}ms...`);
+					if (i === maxRetries - 1) {
+						console.error('Error fetching seats after retries:', error);
+						this.matrix = this.generateMockMatrix();
+						this.loadingMessage = 'Mostrando mapa simulado (Fallo de conexión)';
+						setTimeout(() => this.loadingMessage = '', 4000);
+					} else {
+						await new Promise(resolve => setTimeout(resolve, delayMs));
+					}
+				}
 			}
-		} catch (error) {
-			console.error('Error fetching seats:', error);
-			// Fallback o mostrar error
-			this.matrix = this.generateMockMatrix();
 		} finally {
 			this.isProcessing = false;
 		}

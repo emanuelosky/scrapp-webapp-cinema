@@ -8,6 +8,14 @@
 	let api = $state<CarouselAPI>();
 	let canScroll = $state(false);
 
+	let safeMovies = $derived.by(() => {
+		if (!movies || movies.length === 0) return [];
+		if (movies.length < 8) {
+			return [...movies, ...movies];
+		}
+		return movies;
+	});
+
 	$effect(() => {
 		if (!api) return;
 		const checkScroll = () => {
@@ -33,9 +41,9 @@
 		</div>
 
 		<section class="relative">
-			<Carousel.Root opts={{ align: 'start', loop: false }} setApi={(a) => api = a} class="w-full">
+			<Carousel.Root opts={{ align: 'start', loop: true }} setApi={(a) => api = a} class="w-full">
 				<Carousel.Content class="-ml-2 md:-ml-4 {canScroll ? '' : 'justify-center'}">
-					{#each movies as movie (movie.id)}
+					{#each safeMovies as movie, i (movie.id + '-' + i)}
 						<Carousel.Item class="pl-2 md:pl-4 basis-[45%] sm:basis-[30%] md:basis-[22%] lg:basis-1/5">
 							<div role="button" tabindex="0" class="group relative w-full text-left outline-none">
 								<div class="relative w-full overflow-hidden rounded-none shadow-lg">

@@ -13,6 +13,16 @@
 	let scrollbarTrack = $state<HTMLElement | null>(null);
 	let canScroll = $state(false);
 
+	let safeMovies = $derived.by(() => {
+		if (!movies || movies.length === 0) return [];
+		// Embla carousel glitches with loop: true if there are too few items. 
+		// We duplicate the array to ensure seamless infinite looping.
+		if (movies.length < 8) {
+			return [...movies, ...movies];
+		}
+		return movies;
+	});
+
 	$effect(() => {
 		if (!api) return;
 		
@@ -74,9 +84,9 @@
 	}
 </script>
 
-<Carousel.Root class="w-full relative" opts={{ align: 'start', loop: false }} setApi={(a) => api = a}>
+<Carousel.Root class="w-full relative" opts={{ align: 'start', loop: true }} setApi={(a) => api = a}>
 	<Carousel.Content class="-ml-4 py-4 {canScroll ? '' : 'justify-center'}">
-		{#each movies as movie (movie.id)}
+		{#each safeMovies as movie, i (movie.id + '-' + i)}
 			<Carousel.Item class="pl-4 basis-[55%] md:basis-[30%] lg:basis-[22%] xl:basis-[18%]">
 				<!-- svelte-ignore a11y_click_events_have_key_events -->
 				<div

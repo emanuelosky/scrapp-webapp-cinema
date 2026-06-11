@@ -74,7 +74,7 @@
 	}
 </script>
 
-<Carousel.Root class="w-full relative" opts={{ align: 'start', loop: true }} setApi={(a) => api = a}>
+<Carousel.Root class="w-full relative" opts={{ align: 'start', loop: false }} setApi={(a) => api = a}>
 	<Carousel.Content class="-ml-4 py-4 {canScroll ? '' : 'justify-center'}">
 		{#each movies as movie (movie.id)}
 			<Carousel.Item class="pl-4 basis-[55%] md:basis-[30%] lg:basis-[22%] xl:basis-[18%]">

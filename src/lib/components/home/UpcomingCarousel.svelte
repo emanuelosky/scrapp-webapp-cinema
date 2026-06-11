@@ -33,7 +33,7 @@
 		</div>
 
 		<section class="relative">
-			<Carousel.Root opts={{ align: 'start', loop: true }} setApi={(a) => api = a} class="w-full">
+			<Carousel.Root opts={{ align: 'start', loop: false }} setApi={(a) => api = a} class="w-full">
 				<Carousel.Content class="-ml-2 md:-ml-4 {canScroll ? '' : 'justify-center'}">
 					{#each movies as movie (movie.id)}
 						<Carousel.Item class="pl-2 md:pl-4 basis-[45%] sm:basis-[30%] md:basis-[22%] lg:basis-1/5">
@@ -59,20 +59,10 @@
 									<div class="absolute inset-0 bg-gradient-to-t from-[#111] via-[#111]/80 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex flex-col justify-end p-4 text-center z-30 pointer-events-none group-hover:pointer-events-auto">
 										<div class="translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
 											<h3 class="text-xl md:text-2xl font-black text-white tracking-tight mb-2 leading-tight drop-shadow-md">{movie.title}</h3>
-											
-											<div class="flex items-center justify-center gap-3 text-zinc-300 text-[11px] md:text-xs font-semibold mb-2">
-												<span class="tracking-widest">{movie.duration || '2 HR 15 MIN'}</span>
-												<span class="w-px h-3 bg-zinc-500"></span>
-												<span class="tracking-widest">{movie.rating || 'B'}</span>
-											</div>
-											
-											<p class="text-zinc-400 text-[10px] md:text-xs font-medium mb-4 tracking-wider uppercase">
-												Estreno {movie.releaseDate || '25 JUL 2026'}
+											<!-- En próximos estrenos ocultamos la duración, la clasificación y el botón de compra -->
+											<p class="text-zinc-400 text-xs md:text-sm font-bold mb-4 tracking-widest uppercase">
+												Estreno: {movie.releaseDate || 'Próximamente'}
 											</p>
-											
-											<button class="w-full bg-zinc-200 hover:bg-white text-black font-bold py-2.5 rounded-full transition-colors text-sm shadow-xl">
-												Comprar Entradas
-											</button>
 										</div>
 									</div>
 								</div>

@@ -2,6 +2,8 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import Clock from '@lucide/svelte/icons/clock';
 	import Calendar from '@lucide/svelte/icons/calendar';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import ChevronUp from '@lucide/svelte/icons/chevron-up';
 	import type { Movie, ShowtimeDetails } from '$lib/types';
 	import { bookingState } from '$lib/state/booking.svelte';
 	import { goto } from '$app/navigation';
@@ -12,6 +14,7 @@
 	let availableDates = $derived(movie?.showtimesByDate ? Object.keys(movie.showtimesByDate).sort() : []);
 	let selectedDate = $state<string | null>(null);
 	let selectedShowtime = $state<ShowtimeDetails | null>(null);
+	let isSynopsisExpanded = $state(false);
 
 	// Select first date automatically when movie changes
 	$effect(() => {
@@ -61,7 +64,7 @@
 <Dialog.Root bind:open>
 	<Dialog.Content class="sm:max-w-3xl md:max-w-4xl lg:max-w-5xl w-[95vw] bg-black border border-zinc-800 text-white p-0 overflow-hidden rounded-none shadow-2xl gap-0">
 		{#if movie}
-			<div class="flex flex-col md:flex-row h-full max-h-[90vh] overflow-y-auto">
+			<div class="flex flex-col md:flex-row h-[90vh] md:h-auto md:max-h-[90vh] overflow-hidden">
 				<!-- Left: Poster -->
 				<div class="md:w-[40%] relative border-r border-zinc-800">
 					<img src={movie.poster} alt={movie.title} class="w-full h-full object-cover min-h-[300px] md:min-h-full" />
@@ -69,9 +72,10 @@
 				</div>
 
 				<!-- Right: Details & Showtimes -->
-				<div class="md:w-[60%] p-6 md:p-10 flex flex-col">
-					<div class="mb-8">
-						<div class="flex items-center gap-3 mb-4">
+				<div class="md:w-[60%] flex flex-col h-full overflow-hidden">
+					<!-- Header -->
+					<div class="p-6 md:px-10 md:pt-10 pb-4 shrink-0">
+						<div class="flex flex-wrap items-center gap-3 mb-4">
 							{#if movie.label}
 								<span class="bg-zinc-200 text-black text-[10px] font-black px-2 py-0.5 uppercase tracking-widest">{movie.label}</span>
 							{/if}
@@ -94,56 +98,77 @@
 						</Dialog.Description>
 					</div>
 
-					<p class="text-zinc-300 text-sm leading-relaxed mb-8">
-						{movie.synopsis || 'Sin sinopsis disponible para esta película.'}
-					</p>
+					<div class="flex flex-col flex-1 overflow-hidden relative">
+						<!-- Synopsis -->
+						<div class="relative flex flex-col transition-all duration-300 border-b border-zinc-800 {isSynopsisExpanded ? 'flex-1' : 'h-24 md:h-32 shrink-0'}">
+							<div class="overflow-y-auto px-6 md:px-10 pb-6 custom-scrollbar h-full">
+								<p class="text-zinc-300 text-sm leading-relaxed pr-2">
+									{movie.synopsis || 'Sin sinopsis disponible para esta película.'}
+								</p>
+							</div>
+							
+							<!-- Toggle Button -->
+							<button 
+								onclick={() => isSynopsisExpanded = !isSynopsisExpanded}
+								class="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-zinc-900 border border-zinc-800 rounded-full p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 z-10 shadow-lg transition-transform hover:scale-110"
+								title={isSynopsisExpanded ? 'Colapsar sinopsis' : 'Expandir sinopsis'}
+							>
+								{#if isSynopsisExpanded}
+									<ChevronUp class="size-4" />
+								{:else}
+									<ChevronDown class="size-4" />
+								{/if}
+							</button>
+						</div>
 
-					<div class="w-full h-px bg-zinc-800 mb-8"></div>
+						<!-- Showtimes -->
+						<div class="flex-1 overflow-y-auto px-6 md:px-10 py-6 custom-scrollbar {isSynopsisExpanded ? 'opacity-30 pointer-events-none' : ''} transition-opacity duration-300">
+							<!-- Dates -->
+							<div class="mb-8 mt-2">
+								<h4 class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Calendar class="size-4" /> Selecciona la Fecha</h4>
+								<div class="flex flex-wrap gap-2">
+									{#each availableDates as date (date)}
+										<button 
+											class="px-5 py-2.5 text-xs font-bold border transition-colors {selectedDate === date ? 'bg-white text-black border-white shadow-md' : 'bg-transparent text-zinc-300 border-zinc-700 hover:border-zinc-400 hover:text-white'}"
+											onclick={() => { selectedDate = date; selectedShowtime = null; }}
+										>
+											{formatDateLabel(date)}
+										</button>
+									{/each}
+								</div>
+							</div>
 
-					<!-- Dates -->
-					<div class="mb-8">
-						<h4 class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Calendar class="size-4" /> Selecciona la Fecha</h4>
-						<div class="flex flex-wrap gap-2">
-							{#each availableDates as date (date)}
-								<button 
-									class="px-5 py-2.5 text-xs font-bold border transition-colors {selectedDate === date ? 'bg-white text-black border-white shadow-md' : 'bg-transparent text-zinc-300 border-zinc-700 hover:border-zinc-400 hover:text-white'}"
-									onclick={() => { selectedDate = date; selectedShowtime = null; }}
-								>
-									{formatDateLabel(date)}
-								</button>
-							{/each}
+							<!-- Showtimes Grouped by Format -->
+							<div class="mb-4">
+								<h4 class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Clock class="size-4" /> Horarios Disponibles</h4>
+								
+								{#if formatKeys.length === 0}
+									<p class="text-sm text-zinc-500 italic">No hay funciones disponibles para esta fecha.</p>
+								{:else}
+									<div class="flex flex-col gap-6">
+										{#each formatKeys as format (format)}
+											<div>
+												<h5 class="text-[10px] font-black tracking-[0.2em] text-zinc-400 uppercase mb-3 border-b border-zinc-800 pb-1">{format}</h5>
+												<div class="flex flex-wrap gap-3">
+													{#each groupedShowtimes[format] as st (st.id)}
+														<button 
+															class="px-8 py-3.5 text-sm font-bold border transition-all {selectedShowtime?.id === st.id ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)] scale-105' : 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-500 hover:bg-zinc-800 hover:text-white'}"
+															onclick={() => selectedShowtime = st}
+														>
+															{st.time}
+														</button>
+													{/each}
+												</div>
+											</div>
+										{/each}
+									</div>
+								{/if}
+							</div>
 						</div>
 					</div>
 
-					<!-- Showtimes Grouped by Format -->
-					<div class="mb-10">
-						<h4 class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Clock class="size-4" /> Horarios Disponibles</h4>
-						
-						{#if formatKeys.length === 0}
-							<p class="text-sm text-zinc-500 italic">No hay funciones disponibles para esta fecha.</p>
-						{:else}
-							<div class="flex flex-col gap-6">
-								{#each formatKeys as format (format)}
-									<div>
-										<h5 class="text-[10px] font-black tracking-[0.2em] text-zinc-400 uppercase mb-3 border-b border-zinc-800 pb-1">{format}</h5>
-										<div class="flex flex-wrap gap-3">
-											{#each groupedShowtimes[format] as st (st.id)}
-												<button 
-													class="px-8 py-3.5 text-sm font-bold border transition-all {selectedShowtime?.id === st.id ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)] scale-105' : 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-500 hover:bg-zinc-800 hover:text-white'}"
-													onclick={() => selectedShowtime = st}
-												>
-													{st.time}
-												</button>
-											{/each}
-										</div>
-									</div>
-								{/each}
-							</div>
-						{/if}
-					</div>
-
 					<!-- Footer Actions -->
-					<div class="mt-auto pt-4 flex gap-4">
+					<div class="mt-auto p-6 md:px-10 shrink-0 bg-black/80 backdrop-blur-sm border-t border-zinc-800">
 						<button 
 							class="w-full bg-zinc-200 hover:bg-white text-black font-black uppercase tracking-widest py-4 text-sm transition-colors border border-transparent shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
 							disabled={!selectedShowtime}
@@ -169,3 +194,19 @@
 		{/if}
 	</Dialog.Content>
 </Dialog.Root>
+
+<style>
+	.custom-scrollbar::-webkit-scrollbar {
+		width: 4px;
+	}
+	.custom-scrollbar::-webkit-scrollbar-track {
+		background: transparent;
+	}
+	.custom-scrollbar::-webkit-scrollbar-thumb {
+		background: #3f3f46;
+		border-radius: 10px;
+	}
+	.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+		background: #52525b;
+	}
+</style>

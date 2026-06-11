@@ -2,6 +2,7 @@ export interface ShowtimeDetails {
 	id: string; // pos_show_id
 	time: string; // "14:30 P.M."
 	format: string; // "SUBT 3D", "ESP 2D"
+	rawTime?: string; // "14:30:00"
 }
 
 export interface Movie {

@@ -28,7 +28,7 @@
 	let activeDates = $derived(data.activeDates || []);
 	import type { Movie } from '$lib/types';
 	import { onMount } from 'svelte';
-	import { today, type DateValue } from '@internationalized/date';
+	import { today, now, type DateValue } from '@internationalized/date';
 	import { APP_TIMEZONE } from '$lib/utils/timezone';
 
 	// Estado
@@ -51,15 +51,37 @@
 	});
 
 	let nowPlaying = $derived.by(() => {
+		const tzNow = now(APP_TIMEZONE);
+		const currentStr = `${tzNow.hour.toString().padStart(2, '0')}:${tzNow.minute.toString().padStart(2, '0')}:00`;
+		const todayStr = today(APP_TIMEZONE).toString();
+		
 		return data.nowPlaying
 			.map(movie => {
-				const dayShowtimes = movie.showtimesByDate?.[selectedDateStr] || [];
+				const rawDayShowtimes = movie.showtimesByDate?.[selectedDateStr] || [];
+				// Si estamos viendo la fecha de "hoy", filtramos las funciones que ya pasaron
+				const dayShowtimes = rawDayShowtimes.filter(s => {
+					if (selectedDateStr === todayStr && s.rawTime) {
+						return s.rawTime >= currentStr;
+					}
+					return true;
+				});
+
 				return {
 					...movie,
 					showtimes: dayShowtimes
 				};
 			})
 			.filter(movie => movie.showtimes.length > 0);
+	});
+
+	$effect(() => {
+		// Auto-switch to tomorrow if today has no upcoming showtimes
+		if (selectedDateTab === 'hoy' && nowPlaying.length === 0) {
+			// Check if 'hoy' originally had some showtimes that all passed, or if it was truly empty
+			// Actually, just checking if nowPlaying is empty on 'hoy' is enough to trigger the switch to 'manana'
+			// so the user sees something.
+			selectedDateTab = 'manana';
+		}
 	});
 	
 	let heroButtonTextIndex = $state(0);

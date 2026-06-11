@@ -58,7 +58,7 @@
 				<div class="flex justify-between gap-4">
 					<div>
 						<p class="mb-1 text-xs font-bold tracking-widest text-zinc-500 uppercase">Función</p>
-						<p class="text-white">{bookingState.selectedDate} • {bookingState.selectedTime}</p>
+						<p class="text-white">{bookingState.selectedDate} • {bookingState.selectedShowtime?.time}</p>
 					</div>
 					<div class="text-right">
 						<p class="mb-1 text-xs font-bold tracking-widest text-zinc-500 uppercase">Butacas</p>

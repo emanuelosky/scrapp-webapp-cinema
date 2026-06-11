@@ -2,17 +2,60 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import Clock from '@lucide/svelte/icons/clock';
 	import Calendar from '@lucide/svelte/icons/calendar';
-	import type { Movie } from '$lib/types';
+	import type { Movie, ShowtimeDetails } from '$lib/types';
 	import { bookingState } from '$lib/state/booking.svelte';
 	import { goto } from '$app/navigation';
+	import { SvelteDate } from 'svelte/reactivity';
 
 	let { open = $bindable(false), movie }: { open: boolean; movie: Movie | null } = $props();
 
-	const dates = ["Hoy, 7 Jun", "Sáb, 8 Jun", "Dom, 9 Jun", "Lun, 10 Jun"];
-	const showtimes = ["14:30", "16:45", "19:00", "21:30"];
+	let availableDates = $derived(movie?.showtimesByDate ? Object.keys(movie.showtimesByDate).sort() : []);
+	let selectedDate = $state<string | null>(null);
+	let selectedShowtime = $state<ShowtimeDetails | null>(null);
+
+	// Select first date automatically when movie changes
+	$effect(() => {
+		if (open && availableDates.length > 0 && (!selectedDate || !availableDates.includes(selectedDate))) {
+			selectedDate = availableDates[0];
+			selectedShowtime = null;
+		}
+	});
+
+	// Group showtimes by format for the selected date
+	let groupedShowtimes = $derived.by(() => {
+		if (!movie || !selectedDate || !movie.showtimesByDate) return {};
+		const shows = movie.showtimesByDate[selectedDate] || [];
+		const groups: Record<string, ShowtimeDetails[]> = {};
+		for (const s of shows) {
+			if (!groups[s.format]) groups[s.format] = [];
+			groups[s.format].push(s);
+		}
+		return groups;
+	});
 	
-	let selectedDate = $state(dates[0]);
-	let selectedTime = $state(showtimes[0]);
+	let formatKeys = $derived(Object.keys(groupedShowtimes).sort());
+
+	function formatDateLabel(dateStr: string) {
+		const d = new SvelteDate(dateStr + "T12:00:00");
+		const today = new SvelteDate();
+		today.setHours(12, 0, 0, 0);
+		
+		const diffTime = d.getTime() - today.getTime();
+		const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+		
+		const formatter = new Intl.DateTimeFormat('es-VE', { weekday: 'short', day: 'numeric', month: 'short' });
+		const formatted = formatter.format(d).replace(/\./g, '');
+		const parts = formatted.split(' ');
+		if (parts.length >= 3) {
+			parts[0] = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+			parts[2] = parts[2].charAt(0).toUpperCase() + parts[2].slice(1);
+		}
+		const finalString = parts.join(' ');
+		
+		if (diffDays === 0) return `Hoy, ${finalString}`;
+		if (diffDays === 1) return `Mañana, ${finalString}`;
+		return finalString;
+	}
 </script>
 
 <Dialog.Root bind:open>
@@ -61,46 +104,64 @@
 					<div class="mb-8">
 						<h4 class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Calendar class="size-4" /> Selecciona la Fecha</h4>
 						<div class="flex flex-wrap gap-2">
-							{#each dates as date (date)}
+							{#each availableDates as date (date)}
 								<button 
 									class="px-5 py-2.5 text-xs font-bold border transition-colors {selectedDate === date ? 'bg-white text-black border-white shadow-md' : 'bg-transparent text-zinc-300 border-zinc-700 hover:border-zinc-400 hover:text-white'}"
-									onclick={() => selectedDate = date}
+									onclick={() => { selectedDate = date; selectedShowtime = null; }}
 								>
-									{date}
+									{formatDateLabel(date)}
 								</button>
 							{/each}
 						</div>
 					</div>
 
-					<!-- Showtimes -->
+					<!-- Showtimes Grouped by Format -->
 					<div class="mb-10">
 						<h4 class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Clock class="size-4" /> Horarios Disponibles</h4>
-						<div class="flex flex-wrap gap-3">
-							{#each showtimes as time (time)}
-								<button 
-									class="px-8 py-3.5 text-sm font-bold border transition-colors {selectedTime === time ? 'bg-white text-black border-white shadow-md' : 'bg-transparent text-zinc-300 border-zinc-800 hover:border-zinc-500 hover:text-white'}"
-									onclick={() => selectedTime = time}
-								>
-									{time}
-								</button>
-							{/each}
-						</div>
+						
+						{#if formatKeys.length === 0}
+							<p class="text-sm text-zinc-500 italic">No hay funciones disponibles para esta fecha.</p>
+						{:else}
+							<div class="flex flex-col gap-6">
+								{#each formatKeys as format (format)}
+									<div>
+										<h5 class="text-[10px] font-black tracking-[0.2em] text-zinc-400 uppercase mb-3 border-b border-zinc-800 pb-1">{format}</h5>
+										<div class="flex flex-wrap gap-3">
+											{#each groupedShowtimes[format] as st (st.id)}
+												<button 
+													class="px-8 py-3.5 text-sm font-bold border transition-all {selectedShowtime?.id === st.id ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)] scale-105' : 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-500 hover:bg-zinc-800 hover:text-white'}"
+													onclick={() => selectedShowtime = st}
+												>
+													{st.time}
+												</button>
+											{/each}
+										</div>
+									</div>
+								{/each}
+							</div>
+						{/if}
 					</div>
 
 					<!-- Footer Actions -->
 					<div class="mt-auto pt-4 flex gap-4">
 						<button 
-							class="w-full bg-zinc-200 hover:bg-white text-black font-black uppercase tracking-widest py-4 text-sm transition-colors border border-transparent shadow-xl"
+							class="w-full bg-zinc-200 hover:bg-white text-black font-black uppercase tracking-widest py-4 text-sm transition-colors border border-transparent shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+							disabled={!selectedShowtime}
 							onclick={async () => {
-								if (movie) {
-									bookingState.startBooking(movie, selectedDate, selectedTime);
+								if (movie && selectedShowtime && selectedDate) {
+									// Pasa el pos_show_id embebido en selectedShowtime
+									bookingState.startBooking(movie, selectedDate, selectedShowtime);
 									open = false;
 									// eslint-disable-next-line @typescript-eslint/no-explicit-any
-								await goto(`/booking/${movie.id}` as any);
+									await goto(`/booking/${movie.id}` as any);
 								}
 							}}
 						>
-							Elegir Butacas
+							{#if selectedShowtime}
+								Elegir Butacas - {selectedShowtime.time}
+							{:else}
+								Selecciona un Horario
+							{/if}
 						</button>
 					</div>
 				</div>

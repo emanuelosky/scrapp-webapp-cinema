@@ -25,6 +25,8 @@
 			return;
 		}
 
+		await bookingState.loadSeats();
+
 		timerInterval = setInterval(() => {
 			now = new Date();
 			if (timeLeft > 0) {
@@ -66,8 +68,7 @@
 					<div class="flex items-center gap-2 text-[10px] md:text-xs font-bold text-zinc-400">
 						<span class="border border-zinc-700 px-1.5 py-0.5 rounded-sm">{bookingState.movie.rating || 'B'}</span>
 						<span>{bookingState.movie.duration || '2H 15M'}</span>
-						<span class="px-1.5 py-0.5 bg-zinc-800 rounded-sm text-zinc-300">2D</span>
-						<span class="px-1.5 py-0.5 bg-zinc-800 rounded-sm text-zinc-300">DOLBY ATMOS</span>
+						<span class="px-1.5 py-0.5 bg-zinc-800 rounded-sm text-zinc-300">{bookingState.selectedShowtime?.format || '2D ESP'}</span>
 					</div>
 				</div>
 			{/if}
@@ -77,7 +78,7 @@
 		<div class="flex-1 flex flex-col justify-center border-r-0 xl:border-r border-zinc-800 px-0 xl:px-4">
 			<div class="flex items-center justify-between text-[10px] md:text-xs mb-1.5">
 				<span class="font-bold text-zinc-500 uppercase tracking-widest">Función seleccionada:</span>
-				<span class="text-white font-bold uppercase tracking-tight">{bookingState.selectedDate} • {bookingState.selectedTime}</span>
+				<span class="text-white font-bold uppercase tracking-tight">{bookingState.selectedDate} • {bookingState.selectedShowtime?.time}</span>
 			</div>
 			<div class="flex items-center justify-between text-[10px] md:text-xs mb-1.5">
 				<span class="font-bold text-amber-500 uppercase tracking-widest">Fecha y hora:</span>

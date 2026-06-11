@@ -28,7 +28,8 @@
 	let activeDates = $derived(data.activeDates || []);
 	import type { Movie } from '$lib/types';
 	import { onMount } from 'svelte';
-	import { getLocalTimeZone, today, type DateValue } from '@internationalized/date';
+	import { today, type DateValue } from '@internationalized/date';
+	import { APP_TIMEZONE } from '$lib/utils/timezone';
 
 	// Estado
 	let isDialogOpen = $state(false);
@@ -42,7 +43,7 @@
 	let customDate = $state<DateValue | undefined>();
 
 	let selectedDateStr = $derived.by(() => {
-		const tz = getLocalTimeZone();
+		const tz = APP_TIMEZONE;
 		if (selectedDateTab === 'hoy') return today(tz).toString();
 		if (selectedDateTab === 'manana') return today(tz).add({ days: 1 }).toString();
 		if (customDate) return customDate.toString();

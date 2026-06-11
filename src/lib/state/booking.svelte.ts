@@ -1,4 +1,4 @@
-import type { Movie } from '$lib/types';
+import type { Movie, ShowtimeDetails } from '$lib/types';
 import type { CFDCell } from '$lib/utils/cfd';
 
 export interface ConcessionItem {
@@ -11,7 +11,7 @@ export interface ConcessionItem {
 export class BookingState {
 	movie = $state<Movie | null>(null);
 	selectedDate = $state<string | null>(null);
-	selectedTime = $state<string | null>(null);
+	selectedShowtime = $state<ShowtimeDetails | null>(null);
 	
 	adultTickets = $state(0);
 	childTickets = $state(0);
@@ -46,10 +46,10 @@ export class BookingState {
 		return this.totalTickets > 0 && this.selectedSeats.length === this.totalTickets;
 	}
 
-	startBooking(movie: Movie, date: string, time: string) {
+	startBooking(movie: Movie, date: string, showtime: ShowtimeDetails) {
 		this.movie = movie;
 		this.selectedDate = date;
-		this.selectedTime = time;
+		this.selectedShowtime = showtime;
 		// Reset state
 		this.adultTickets = 0;
 		this.childTickets = 0;
@@ -59,7 +59,7 @@ export class BookingState {
 		this.seniorTickets = 0;
 		this.selectedSeats = [];
 		this.selectedConcessions = [];
-		this.matrix = this.generateMockMatrix();
+		this.matrix = []; // We will load this async
 		
 		// Reset Checkout
 		this.customerName = '';
@@ -67,6 +67,30 @@ export class BookingState {
 		this.customerDocument = '';
 		this.paymentMethod = null;
 		this.isProcessing = false;
+	}
+
+	async loadSeats() {
+		if (!this.selectedShowtime || !this.selectedShowtime.id) return;
+		this.isProcessing = true;
+		try {
+			// Suponiendo que scrapp-administrative-v2 está corriendo en localhost:5174 en dev
+			// y en prod tiene otro dominio. Esto debería configurarse por .env o un proxy en svelte.config
+			// Para ahora usamos un path relativo si la API estuviera en el mismo dominio, pero 
+			// como están separados, usaremos la URL base de admin
+			const API_BASE = import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:5174';
+			const res = await fetch(`${API_BASE}/api/pos/fetch-seats/${this.selectedShowtime.id}`);
+			if (!res.ok) throw new Error('Error al cargar butacas');
+			const data = await res.json();
+			if (data.matrix) {
+				this.matrix = data.matrix;
+			}
+		} catch (error) {
+			console.error('Error fetching seats:', error);
+			// Fallback o mostrar error
+			this.matrix = this.generateMockMatrix();
+		} finally {
+			this.isProcessing = false;
+		}
 	}
 
 	generateMockMatrix(): CFDCell[][] {

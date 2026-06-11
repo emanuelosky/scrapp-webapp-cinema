@@ -1,12 +1,15 @@
 import { supabase } from '$lib/supabase';
-import type { Movie } from '$lib/types';
+import type { Movie, ShowtimeDetails } from '$lib/types';
+import { getTodayDateString, getCinemaToday } from '$lib/utils/timezone';
 
 interface Showtime {
+    id: string;
     movie_id: string;
     show_date: string;
     show_time: string;
     language: string;
     dimension: string;
+    pos_show_id: string;
 }
 
 export async function load() {
@@ -33,7 +36,7 @@ export async function load() {
     // 2. Fetch active showtimes (include show_date for filtering by date)
     const { data: showtimes, error: showtimesError } = await supabase
         .from('wbpp_showtimes')
-        .select('movie_id, show_date, show_time, language, dimension')
+        .select('id, movie_id, show_date, show_time, language, dimension, pos_show_id')
         .eq('is_active', true);
 
     if (showtimesError) {
@@ -52,7 +55,7 @@ export async function load() {
         }
     }
 
-    const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const todayStr = getTodayDateString();
 
     const nowPlaying: Movie[] = [];
     const comingSoonMovies: Movie[] = [];
@@ -63,7 +66,10 @@ export async function load() {
 
     for (const m of displayMovies) {
         const movieShows = showtimesByMovie[m.id] || [];
-        const showsByDateMap: Record<string, string[]> = {};
+        interface LocalShowtimeDetails extends ShowtimeDetails {
+            rawTime: string;
+        }
+        const showsByDateMap: Record<string, LocalShowtimeDetails[]> = {};
 
         // Populate showsByDateMap and activeDatesSet
         for (const s of movieShows) {
@@ -78,14 +84,35 @@ export async function load() {
             if (h === 0) h = 12;
             const timeStr = `${h.toString().padStart(2, '0')}:${mStr} ${ampm}`;
             
-            if (!showsByDateMap[s.show_date].includes(timeStr)) {
-                showsByDateMap[s.show_date].push(timeStr);
+            // Format language & dimension
+            let videoStr = '2D';
+            let langStr = 'ESP';
+            if (s.dimension === '4DX') videoStr = '4DX';
+            else if (s.dimension === 'IMAX') videoStr = 'IMAX';
+            else if (s.dimension === '3D') videoStr = '3D';
+            
+            if (s.language === 'SUB') langStr = 'SUBT';
+            else if (s.language === 'DUBBED') langStr = 'DOB';
+            
+            const formatStr = `${langStr} ${videoStr}`;
+
+            const showtimeDetails: LocalShowtimeDetails = {
+                id: s.pos_show_id || s.id, // pos_show_id es el id de la función en el POS legacy. Si falla usa el uuid.
+                time: timeStr,
+                format: formatStr,
+                rawTime: s.show_time // for sorting
+            };
+
+            // Avoid duplicates
+            const exists = showsByDateMap[s.show_date].find(x => x.id === showtimeDetails.id || (x.time === showtimeDetails.time && x.format === showtimeDetails.format));
+            if (!exists) {
+                showsByDateMap[s.show_date].push(showtimeDetails);
             }
             activeDatesSet.add(s.show_date);
         }
 
         for (const date in showsByDateMap) {
-            showsByDateMap[date].sort();
+            showsByDateMap[date].sort((a, b) => a.rawTime.localeCompare(b.rawTime));
         }
 
         // --- Compute label ---
@@ -96,8 +123,7 @@ export async function load() {
         
         const hasShowtimes = movieShows.length > 0;
         
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const today = getCinemaToday();
 
         if (releaseDate) {
             const diffTime = releaseDate.getTime() - today.getTime();
@@ -114,26 +140,16 @@ export async function load() {
             }
         }
 
-        // --- Collect today's showtimes only for fallback/default display ---
-        const todayShows = showsByDateMap[todayStr] || [];
-        const formattedTimes = todayShows.length > 0 ? todayShows : (Object.values(showsByDateMap)[0] || []);
-
-        // --- Parse format from POS (first available showtime) ---
-        let videoStr = '2D';
-        let langStr = 'ESPAÑOL';
+        // Parse legacy format for cards (using the first showtime's dimension/lang as primary)
+        let primaryVideo = '2D';
+        let primaryLang = 'ESPAÑOL';
         if (movieShows.length > 0) {
             const firstShow = movieShows[0];
-            const dim = firstShow.dimension;
-            const lang = firstShow.language;
-            
-            if (dim === '4DX') videoStr = '4DX';
-            else if (dim === 'IMAX') videoStr = 'IMAX';
-            else if (dim === '3D') videoStr = '3D';
-            else videoStr = '2D';
-            
-            if (lang === 'SUB') langStr = 'SUBTITULADO';
-            else if (lang === 'DUBBED') langStr = 'DOBLADA';
-            else langStr = 'ESPAÑOL';
+            if (firstShow.dimension === '4DX') primaryVideo = '4DX';
+            else if (firstShow.dimension === 'IMAX') primaryVideo = 'IMAX';
+            else if (firstShow.dimension === '3D') primaryVideo = '3D';
+            if (firstShow.language === 'SUB') primaryLang = 'SUBTITULADO';
+            else if (firstShow.language === 'DUBBED') primaryLang = 'DOBLADA';
         }
 
         const formattedMovie: Movie = {
@@ -147,11 +163,11 @@ export async function load() {
             label,
             releaseDate: m.release_date ?? undefined,
             formats: {
-                video: videoStr,
+                video: primaryVideo,
                 audio: 'ESTÁNDAR',
-                language: langStr
+                language: primaryLang
             },
-            showtimes: formattedTimes,
+            showtimes: (showsByDateMap[todayStr] || []).map(s => s.time), // Fallback legacy
             showtimesByDate: showsByDateMap
         };
 

@@ -73,11 +73,11 @@ export class BookingState {
 		if (!this.selectedShowtime || !this.selectedShowtime.id) return;
 		this.isProcessing = true;
 		try {
-			// Suponiendo que scrapp-administrative-v2 está corriendo en localhost:5174 en dev
+			// Suponiendo que scrapp-administrative-v2 está corriendo en localhost:5173 en dev
 			// y en prod tiene otro dominio. Esto debería configurarse por .env o un proxy en svelte.config
 			// Para ahora usamos un path relativo si la API estuviera en el mismo dominio, pero 
 			// como están separados, usaremos la URL base de admin
-			const API_BASE = import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:5174';
+			const API_BASE = import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:5173';
 			const res = await fetch(`${API_BASE}/api/pos/fetch-seats/${this.selectedShowtime.id}`);
 			if (!res.ok) throw new Error('Error al cargar butacas');
 			const data = await res.json();

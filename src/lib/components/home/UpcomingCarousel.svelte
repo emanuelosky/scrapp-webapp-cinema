@@ -4,9 +4,14 @@
 
 	let { movies } = $props<{ movies: Movie[] }>();
 	
+	import Autoplay from 'embla-carousel-autoplay';
 	import type { CarouselAPI } from '$lib/components/ui/carousel/context.js';
+	
 	let api = $state<CarouselAPI>();
 	let canScroll = $state(false);
+	let resumeTimeout: ReturnType<typeof setTimeout>;
+
+	const plugin = Autoplay({ delay: 3000, stopOnInteraction: true });
 
 	let safeMovies = $derived.by(() => {
 		if (!movies || movies.length === 0) return [];
@@ -32,10 +37,22 @@
 			}
 		}, 800);
 
+		const handleInteraction = () => {
+			plugin.stop();
+			clearTimeout(resumeTimeout);
+			resumeTimeout = setTimeout(() => {
+				plugin.play();
+			}, 90000); // 1 min 30 seg
+		};
+
+		api.on('pointerDown', handleInteraction);
+
 		return () => {
 			clearTimeout(loopTimeout);
+			clearTimeout(resumeTimeout);
 			api?.off('reInit', checkScroll);
 			api?.off('resize', checkScroll);
+			api?.off('pointerDown', handleInteraction);
 		};
 	});
 </script>
@@ -48,7 +65,7 @@
 		</div>
 
 		<section class="relative">
-			<Carousel.Root opts={{ align: 'start', loop: false }} setApi={(a) => api = a} class="w-full">
+			<Carousel.Root plugins={[plugin]} opts={{ align: 'start', loop: false }} setApi={(a) => api = a} class="w-full">
 				<Carousel.Content class="-ml-2 md:-ml-4 {canScroll ? '' : 'justify-center'}">
 					{#each safeMovies as movie, i (movie.id + '-' + i)}
 						<Carousel.Item class="pl-2 md:pl-4 basis-[45%] sm:basis-[30%] md:basis-[22%] lg:basis-1/5">

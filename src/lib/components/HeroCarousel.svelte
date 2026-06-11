@@ -7,9 +7,11 @@
 
 	let currentIndex = $state(0);
 
-	onMount(() => {
+	let interval: ReturnType<typeof setInterval>;
+	
+	$effect(() => {
 		if (movies.length <= 1) return;
-		const interval = setInterval(() => {
+		interval = setInterval(() => {
 			currentIndex = (currentIndex + 1) % movies.length;
 		}, 4000);
 		return () => clearInterval(interval);

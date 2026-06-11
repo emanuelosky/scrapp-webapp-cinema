@@ -64,7 +64,7 @@
 <Dialog.Root bind:open>
 	<Dialog.Content class="sm:max-w-3xl md:max-w-4xl lg:max-w-5xl w-[95vw] bg-black border border-zinc-800 text-white p-0 overflow-hidden rounded-none shadow-2xl gap-0">
 		{#if movie}
-			<div class="flex flex-col md:flex-row h-[90vh] md:h-auto md:max-h-[90vh] overflow-hidden">
+			<div class="flex flex-col md:flex-row h-[90vh] md:h-auto md:max-h-[90vh] overflow-y-auto md:overflow-hidden custom-scrollbar">
 				<!-- Left: Poster -->
 				<div class="md:w-[40%] relative border-r border-zinc-800">
 					<img src={movie.poster} alt={movie.title} class="w-full h-full object-cover min-h-[300px] md:min-h-full" />
@@ -72,7 +72,7 @@
 				</div>
 
 				<!-- Right: Details & Showtimes -->
-				<div class="md:w-[60%] flex flex-col h-full overflow-hidden">
+				<div class="md:w-[60%] flex flex-col md:h-full overflow-visible md:overflow-hidden">
 					<!-- Header -->
 					<div class="p-6 md:px-10 md:pt-10 pb-4 shrink-0">
 						<div class="flex flex-wrap items-center gap-3 mb-4">
@@ -98,10 +98,10 @@
 						</Dialog.Description>
 					</div>
 
-					<div class="flex flex-col flex-1 overflow-hidden relative">
+					<div class="flex flex-col md:flex-1 overflow-visible md:overflow-hidden relative">
 						<!-- Synopsis -->
-						<div class="relative flex flex-col transition-all duration-300 border-b border-zinc-800 {isSynopsisExpanded ? 'flex-1' : 'h-24 md:h-32 shrink-0'}">
-							<div class="overflow-y-auto px-6 md:px-10 pb-6 custom-scrollbar h-full">
+						<div class="relative flex flex-col transition-all duration-300 border-b border-zinc-800 {isSynopsisExpanded ? 'md:flex-1' : 'md:h-32 shrink-0'}">
+							<div class="overflow-y-visible md:overflow-y-auto px-6 md:px-10 pb-6 custom-scrollbar h-full">
 								<p class="text-zinc-300 text-sm leading-relaxed pr-2">
 									{movie.synopsis || 'Sin sinopsis disponible para esta película.'}
 								</p>
@@ -122,7 +122,7 @@
 						</div>
 
 						<!-- Showtimes -->
-						<div class="flex-1 overflow-y-auto px-6 md:px-10 py-6 custom-scrollbar {isSynopsisExpanded ? 'opacity-30 pointer-events-none' : ''} transition-opacity duration-300">
+						<div class="md:flex-1 overflow-y-visible md:overflow-y-auto px-6 md:px-10 py-6 custom-scrollbar {isSynopsisExpanded ? 'opacity-30 pointer-events-none' : ''} transition-opacity duration-300">
 							<!-- Dates -->
 							<div class="mb-8 mt-2">
 								<h4 class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Calendar class="size-4" /> Selecciona la Fecha</h4>
@@ -168,7 +168,7 @@
 					</div>
 
 					<!-- Footer Actions -->
-					<div class="mt-auto p-6 md:px-10 shrink-0 bg-black/80 backdrop-blur-sm border-t border-zinc-800">
+					<div class="md:mt-auto p-6 md:px-10 shrink-0 bg-black/80 backdrop-blur-sm border-t border-zinc-800 sticky bottom-0 z-20">
 						<button 
 							class="w-full bg-zinc-200 hover:bg-white text-black font-black uppercase tracking-widest py-4 text-sm transition-colors border border-transparent shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
 							disabled={!selectedShowtime}

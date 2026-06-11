@@ -26,7 +26,14 @@
 		api.on('resize', checkScroll);
 		checkScroll();
 		
+		let loopTimeout = setTimeout(() => {
+			if (api) {
+				api.reInit({ loop: true });
+			}
+		}, 800);
+
 		return () => {
+			clearTimeout(loopTimeout);
 			api?.off('reInit', checkScroll);
 			api?.off('resize', checkScroll);
 		};
@@ -41,7 +48,7 @@
 		</div>
 
 		<section class="relative">
-			<Carousel.Root opts={{ align: 'start', loop: true }} setApi={(a) => api = a} class="w-full">
+			<Carousel.Root opts={{ align: 'start', loop: false }} setApi={(a) => api = a} class="w-full">
 				<Carousel.Content class="-ml-2 md:-ml-4 {canScroll ? '' : 'justify-center'}">
 					{#each safeMovies as movie, i (movie.id + '-' + i)}
 						<Carousel.Item class="pl-2 md:pl-4 basis-[45%] sm:basis-[30%] md:basis-[22%] lg:basis-1/5">

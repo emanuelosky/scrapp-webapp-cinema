@@ -46,7 +46,16 @@
 		onScroll(); // Set initial
 		checkScroll();
 
+		// Truco para evitar el bug de solapamiento de Embla: 
+		// activamos el loop en segundo plano después de que se dibujen las tarjetas
+		let loopTimeout = setTimeout(() => {
+			if (api) {
+				api.reInit({ loop: true });
+			}
+		}, 800);
+
 		return () => {
+			clearTimeout(loopTimeout);
 			api?.off('scroll', onScroll);
 			api?.off('reInit', onScroll);
 			api?.off('reInit', checkScroll);
@@ -84,7 +93,7 @@
 	}
 </script>
 
-<Carousel.Root class="w-full relative" opts={{ align: 'start', loop: true }} setApi={(a) => api = a}>
+<Carousel.Root class="w-full relative" opts={{ align: 'start', loop: false }} setApi={(a) => api = a}>
 	<Carousel.Content class="-ml-4 py-4 {canScroll ? '' : 'justify-center'}">
 		{#each safeMovies as movie, i (movie.id + '-' + i)}
 			<Carousel.Item class="pl-4 basis-[55%] md:basis-[30%] lg:basis-[22%] xl:basis-[18%]">

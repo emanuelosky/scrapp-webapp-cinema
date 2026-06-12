@@ -1,5 +1,6 @@
 import type { Movie, ShowtimeDetails } from '$lib/types';
 import type { CFDCell } from '$lib/utils/cfd';
+import { browser } from '$app/environment';
 
 export interface ConcessionItem {
 	id: string;
@@ -21,6 +22,7 @@ export class BookingState {
 	
 	// Dynamic Tariffs
 	tariffs = $state<TariffItem[]>([]);
+	allPosTariffs = $state<TariffItem[]>([]);
 	defaultTariffsIds = $state<string[]>([]);
 	ticketQuantities = $state<Record<string, number>>({});
 	
@@ -73,6 +75,55 @@ export class BookingState {
 		this.customerDocument = '';
 		this.paymentMethod = null;
 		this.isProcessing = false;
+		
+		if (browser) {
+			localStorage.removeItem('scrapp_booking_state');
+		}
+	}
+
+	saveToLocalStorage() {
+		if (!browser) return;
+		try {
+			const state = {
+				selectedSeats: this.selectedSeats,
+				ticketQuantities: this.ticketQuantities,
+				selectedShowtimeId: this.selectedShowtime?.id,
+				movie: this.movie,
+				selectedDate: this.selectedDate,
+				selectedShowtime: this.selectedShowtime,
+				timestamp: Date.now()
+			};
+			localStorage.setItem('scrapp_booking_state', JSON.stringify(state));
+		} catch (e) {
+			console.error('Failed to save state:', e);
+		}
+	}
+
+	loadFromLocalStorage() {
+		if (!browser) return false;
+		try {
+			const stateStr = localStorage.getItem('scrapp_booking_state');
+			if (!stateStr) return false;
+			
+			const state = JSON.parse(stateStr);
+			
+			// Restaurar toda la sesión si existe y no ha caducado
+			if (state.movie && Date.now() - state.timestamp < 10 * 60 * 1000) {
+				this.movie = state.movie;
+				this.selectedDate = state.selectedDate;
+				this.selectedShowtime = state.selectedShowtime;
+				
+				// Si estamos restaurando en la misma función (o acaba de ser cargado)
+				if (state.selectedShowtimeId === this.selectedShowtime?.id) {
+					this.selectedSeats = state.selectedSeats || [];
+					this.ticketQuantities = state.ticketQuantities || {};
+				}
+				return true;
+			}
+		} catch (e) {
+			console.error('Failed to load state:', e);
+		}
+		return false;
 	}
 
 	loadingMessage = $state('');
@@ -105,6 +156,9 @@ export class BookingState {
 						if (data.matrix) {
 							this.matrix = data.matrix;
 							
+							// Check local storage for restored state
+							this.loadFromLocalStorage();
+							
 							// Fetch tariffs after seats
 							try {
 								const tariffsRes = await fetch(`${API_BASE}/api/tarifas?showtimeId=${this.selectedShowtime.id}`);
@@ -115,13 +169,12 @@ export class BookingState {
 										const defaultIds = tariffsData.defaultTariffs || [];
 										const allTariffs = tariffsData.posTariffs || [];
 										this.defaultTariffsIds = defaultIds;
-										this.tariffs = allTariffs
-											.filter((t: Record<string, unknown>) => typeof t.id === 'string' && allowedIds.includes(t.id))
-											.map((t: Record<string, unknown>) => ({
-												id: t.id as string,
-												nombre: (t.nombre || '') as string,
-												precio: Number(t.precio || t.valor || t.monto || 0)
-											}));
+										this.allPosTariffs = allTariffs.map((t: Record<string, unknown>) => ({
+											id: t.id as string,
+											nombre: (t.nombre || '') as string,
+											precio: Number(t.precio || t.valor || t.monto || 0)
+										}));
+										this.tariffs = this.allPosTariffs.filter(t => allowedIds.includes(t.id));
 									}
 								}
 							} catch (e) {
@@ -188,32 +241,63 @@ export class BookingState {
 		return m;
 	}
 
-	toggleSeat(seatId: string) {
+	toggleSeat(seatId: string, seatType: string = 'General', forceDisabledTariff: boolean = false) {
 		if (this.selectedSeats.includes(seatId)) {
 			this.selectedSeats = this.selectedSeats.filter(s => s !== seatId);
 			// Auto decrement ticket when removing a seat
 			if (this.totalTickets > this.selectedSeats.length) {
 				// Find a tariff that has > 0 quantity and decrement it
-				for (const tId of Object.keys(this.ticketQuantities)) {
-					if (this.ticketQuantities[tId] > 0) {
-						this.ticketQuantities[tId]--;
-						break;
+				// Try to decrement disabled tariff first if this was a disabled seat
+				let decremented = false;
+				if (seatType.toUpperCase().includes('DISCAPACITA')) {
+					for (const tId of Object.keys(this.ticketQuantities)) {
+						const tariffObj = this.tariffs.find(t => t.id === tId);
+						if (tariffObj && tariffObj.nombre.toUpperCase().includes('DISCAPACITA') && this.ticketQuantities[tId] > 0) {
+							this.ticketQuantities[tId]--;
+							decremented = true;
+							break;
+						}
+					}
+				}
+				
+				if (!decremented) {
+					for (const tId of Object.keys(this.ticketQuantities)) {
+						if (this.ticketQuantities[tId] > 0) {
+							this.ticketQuantities[tId]--;
+							break;
+						}
 					}
 				}
 			}
 		} else {
-			this.selectedSeats = [...this.selectedSeats, seatId];
-			// Auto increment first matching default tariff, or fallback to first available
-			if (this.totalTickets < this.selectedSeats.length && this.tariffs.length > 0) {
-				let targetTariffId = this.tariffs[0].id;
-				
-				// Buscamos si alguna de nuestras tarifas está marcada como predeterminada
-				const defaultTariff = this.tariffs.find(t => this.defaultTariffsIds.includes(t.id));
-				if (defaultTariff) {
-					targetTariffId = defaultTariff.id;
-				}
+			let targetTariffId: string | undefined = undefined;
 
-				this.ticketQuantities[targetTariffId] = (this.ticketQuantities[targetTariffId] || 0) + 1;
+			if (seatType.toUpperCase().includes('DISCAPACITA') && forceDisabledTariff) {
+				// Buscar la tarifa de discapacitados en allPosTariffs
+				const disabledTariff = this.allPosTariffs.find(t => t.nombre.toUpperCase().includes('DISCAPACITA'));
+				if (disabledTariff) {
+					// Si no esta en this.tariffs (lista permitida), la agregamos
+					if (!this.tariffs.find(t => t.id === disabledTariff.id)) {
+						this.tariffs = [...this.tariffs, disabledTariff];
+					}
+					targetTariffId = disabledTariff.id;
+				}
+			}
+
+			this.selectedSeats = [...this.selectedSeats, seatId];
+			
+			// Auto increment selected or default tariff
+			if (this.totalTickets < this.selectedSeats.length) {
+				if (!targetTariffId && this.tariffs.length > 0) {
+					targetTariffId = this.tariffs[0].id;
+					const defaultTariff = this.tariffs.find(t => this.defaultTariffsIds.includes(t.id));
+					if (defaultTariff) {
+						targetTariffId = defaultTariff.id;
+					}
+				}
+				if (targetTariffId) {
+					this.ticketQuantities[targetTariffId] = (this.ticketQuantities[targetTariffId] || 0) + 1;
+				}
 			}
 		}
 	}

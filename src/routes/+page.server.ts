@@ -10,6 +10,9 @@ interface Showtime {
     language: string;
     dimension: string;
     pos_show_id: string;
+    numero_funcion: string | null;
+    numero_sala: string | null;
+    room_name: string | null;
 }
 
 export async function load() {
@@ -36,7 +39,7 @@ export async function load() {
     // 2. Fetch active showtimes (include show_date for filtering by date)
     const { data: showtimes, error: showtimesError } = await supabase
         .from('wbpp_showtimes')
-        .select('id, movie_id, show_date, show_time, language, dimension, pos_show_id')
+        .select('id, movie_id, show_date, show_time, language, dimension, pos_show_id, numero_funcion, numero_sala, room_name')
         .eq('is_active', true);
 
     if (showtimesError) {
@@ -100,7 +103,9 @@ export async function load() {
                 id: s.pos_show_id || s.id, // pos_show_id es el id de la función en el POS legacy. Si falla usa el uuid.
                 time: timeStr,
                 format: formatStr,
-                rawTime: s.show_time // for sorting
+                rawTime: s.show_time, // for sorting
+                numero_funcion: s.numero_funcion ?? undefined,
+                numero_sala: s.numero_sala ?? undefined
             };
 
             // Avoid duplicates

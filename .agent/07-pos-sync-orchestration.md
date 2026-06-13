@@ -19,3 +19,10 @@ Durante la compra de boletos, el usuario seleccionará asientos para una `wbpp_s
 
 ## 3. Estado de Sincronización
 La web asume que las tablas siempre son la "fuente de la verdad" del momento. Las cancelaciones de sala, reasignación de películas o eliminación de horarios las realiza y administra Xelaris. La web app B2C únicamente debe preocuparse por refrescar la lectura de `wbpp_showtimes` (mediante websockets o refetch periódico) para evitar permitir compras en funciones que acaban de ser marcadas como `is_active = false`.
+
+## 4. B2C Checkout y Ghost Users Pool
+Para realizar operaciones de venta temporal (como bloquear butacas) directamente contra el POS heredado:
+1. El frontend web NO se comunica con el POS heredado directamente, sino que delega la orquestación a un endpoint intermedio (ej. `/api/kiosk/lock-seats`).
+2. El backend B2C utiliza un **Ghost User** prestado del Pool de `pos_ghost_users` de Supabase (gestionado por Xelaris).
+3. Este fantasma mantiene una cookie y un token válidos para la sesión del cliente mientras completa el pago.
+4. Si el cliente abandona la página o agota el tiempo (TTL 5 mins), el backend ejecuta un `DELETE` al POS para liberar los asientos. Si este proceso falla, el fantasma entra en estado `ORPHAN` para revisión administrativa.

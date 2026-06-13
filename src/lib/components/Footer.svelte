@@ -2,6 +2,7 @@
 <script lang="ts">
 	import Shield from '@lucide/svelte/icons/shield';
 	import FileText from '@lucide/svelte/icons/file-text';
+	import { bookingState } from '$lib/state/booking.svelte';
 </script>
 
 <footer class="w-full bg-[#000000] border-t border-white/5 pt-16 pb-8 px-4 z-10 relative">
@@ -68,13 +69,20 @@
 		</div>
 
 		<!-- Bottom bar -->
-		<div class="flex flex-col md:flex-row items-center justify-between gap-4 pt-8 border-t border-white/5">
+		<div class="flex flex-col md:flex-row items-center justify-between gap-4 pt-8 border-t border-white/5 relative">
 			<p class="text-zinc-600 text-xs">
 				&copy; {new Date().getFullYear()} Cinepic. Todos los derechos reservados.
 			</p>
 			<p class="text-zinc-600 text-xs flex items-center gap-1">
 				Powered by <span class="font-bold text-zinc-500 tracking-wider uppercase">Scrapp Enterprise</span>
 			</p>
+
+			{#if bookingState.ghostStatusCode || bookingState.ghostVentaId}
+			<!-- Ghost Session Indicator -->
+			<div class="absolute right-0 bottom-0 text-[9px] text-zinc-800 font-mono tracking-tighter opacity-50 select-text z-50 pointer-events-auto">
+				{bookingState.ghostStatusCode} {bookingState.ghostVentaId || ''}
+			</div>
+			{/if}
 		</div>
 	</div>
 </footer>

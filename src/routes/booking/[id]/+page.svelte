@@ -78,9 +78,37 @@
 		bookingState.loadSeats();
 
 		// JIT Pre-heating: Avisar al backend que un usuario está en la vista de butacas
-		// para que empiece a loguear/reservar Ghost Users en memoria si el pool está bajo.
 		const API_BASE = import.meta.env.VITE_ADMIN_API_URL || 'https://scrapp-backoffice.onrender.com';
 		fetch(`${API_BASE}/api/kiosk/ghost-pool/warmup`, { method: 'POST' }).catch(console.error);
+
+		// M-02 FIX: Liberar ghost session si el usuario cierra el tab/navega antes de pagar
+		// sendBeacon garantiza que el request llega incluso durante page unload
+		const handlePageHide = () => {
+			const ghostSession = sessionStorage.getItem('scrapp_ghost_session');
+			if (ghostSession) {
+				try {
+					const { ghostUsername } = JSON.parse(ghostSession);
+					if (ghostUsername) {
+						// navigator.sendBeacon es la única forma confiable de enviar datos en page unload
+						navigator.sendBeacon(
+							`${API_BASE}/api/kiosk/ghost-pool/release`,
+							JSON.stringify({ username: ghostUsername })
+						);
+						sessionStorage.removeItem('scrapp_ghost_session');
+					}
+				} catch {
+					// Silencioso — no queremos errores en page unload
+				}
+			}
+		};
+
+		window.addEventListener('pagehide', handlePageHide);
+		window.addEventListener('beforeunload', handlePageHide);
+
+		return () => {
+			window.removeEventListener('pagehide', handlePageHide);
+			window.removeEventListener('beforeunload', handlePageHide);
+		};
 	});
 
 	let id = $derived($page.params.id);
@@ -109,7 +137,7 @@
 	let currentTimeStr = $derived(currentDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }));
 
 	onMount(async () => {
-		// Intentar cargar sesión si no hay película en estado
+		// Segunda inicialización: carga asíncrona de butacas (garantiza DOM listo)
 		if (!bookingState.movie) {
 			bookingState.loadFromLocalStorage();
 		}
@@ -484,7 +512,7 @@
 		
 		<!-- Ghost User Status Indicator (Debug) -->
 		{#if bookingState.ghostStatusCode}
-			<div class="absolute bottom-1 right-2 text-[8px] md:text-[10px] text-zinc-600 opacity-50 font-mono tracking-tighter select-none pointer-events-none z-0">
+			<div class="absolute bottom-1 right-2 text-[10px] md:text-xs text-amber-500/80 font-mono tracking-tighter select-none pointer-events-none z-50 bg-black/50 px-2 py-0.5 rounded">
 				{bookingState.ghostStatusCode}
 			</div>
 		{/if}

@@ -39,6 +39,10 @@ export class BookingState {
 	paymentMethod = $state<'pago_movil' | 'zelle' | 'card' | null>(null);
 	isProcessing = $state(false);
 	
+	// Ghost User Status
+	ghostStatusCode = $state<string>(''); // G, G OK, etc.
+	ghostVentaId = $state<string | null>(null);
+	
 	get totalTickets() {
 		return Object.values(this.ticketQuantities).reduce((a, b) => a + b, 0);
 	}
@@ -75,6 +79,9 @@ export class BookingState {
 		this.customerDocument = '';
 		this.paymentMethod = null;
 		this.isProcessing = false;
+		
+		this.ghostStatusCode = '';
+		this.ghostVentaId = null;
 		
 		if (browser) {
 			localStorage.removeItem('scrapp_booking_state');
@@ -311,6 +318,49 @@ export class BookingState {
 			}
 		} else if (delta > 0) {
 			this.selectedConcessions.push({ id, name, price, quantity: delta });
+		}
+	}
+
+	async lockSeatsAndConfirm() {
+		this.isProcessing = true;
+		this.loadingMessage = 'Asegurando butacas...';
+		this.ghostStatusCode = 'G'; // Asignando Ghost User...
+
+		try {
+			const API_BASE = import.meta.env.VITE_ADMIN_API_URL || 'https://scrapp-backoffice.onrender.com';
+			
+			// Llamada real al backend para obtener un Ghost User del Pool y bloquear la venta
+			const response = await fetch(`${API_BASE}/api/kiosk/lock-seats`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					id_funcion: this.selectedShowtime?.id,         // pos_show_id = id_funcion del POS
+					numero_funcion: this.selectedShowtime?.numero_funcion || "1",
+					numero_sala: this.selectedShowtime?.numero_sala || "1",
+					butacas: this.selectedSeats
+				})
+			});
+
+			const data = await response.json();
+
+			if (!data.success) {
+				throw new Error(data.error || 'Fallo al bloquear butacas en el servidor');
+			}
+
+			// Éxito — actualizar estado y navegar a la siguiente pantalla
+			this.ghostStatusCode = `G OK - ${data.ventaTemporalId || 'N/A'} - B OK`;
+			this.ghostVentaId = data.ventaTemporalId || null;
+			
+			// Navegar a la ruta de tickets usando el id del movie (no el id del POS)
+			window.location.href = `/booking/${this.movie?.id}/tickets`;
+
+			return true;
+		} catch (e) {
+			console.error('Error al bloquear butacas:', e);
+			return false;
+		} finally {
+			this.isProcessing = false;
+			this.loadingMessage = '';
 		}
 	}
 }

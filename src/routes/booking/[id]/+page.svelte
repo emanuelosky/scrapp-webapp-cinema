@@ -76,6 +76,11 @@
 		}
 
 		bookingState.loadSeats();
+
+		// JIT Pre-heating: Avisar al backend que un usuario está en la vista de butacas
+		// para que empiece a loguear/reservar Ghost Users en memoria si el pool está bajo.
+		const API_BASE = import.meta.env.VITE_ADMIN_API_URL || 'https://scrapp-backoffice.onrender.com';
+		fetch(`${API_BASE}/api/kiosk/ghost-pool/warmup`, { method: 'POST' }).catch(console.error);
 	});
 
 	let id = $derived($page.params.id);
@@ -465,11 +470,23 @@
 
 			<button 
 				class="w-[85%] mx-auto md:w-auto md:mx-0 px-4 py-2 md:px-8 md:py-3 bg-amber-400 text-black text-[11px] md:text-base font-bold uppercase tracking-widest rounded-full hover:bg-amber-300 transition-colors shadow-[0_0_20px_rgba(251,191,36,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
-				disabled={!bookingState.canProceed}
-				onclick={() => goto(resolve('/concessions/[id]', { id: id || '' }))}
+				disabled={!bookingState.canProceed || bookingState.isProcessing}
+				onclick={async () => {
+					const success = await bookingState.lockSeatsAndConfirm();
+					if (success) {
+						goto(resolve('/concessions/[id]', { id: id || '' }));
+					}
+				}}
 			>
-				Confirmar Asientos
+				{bookingState.isProcessing ? 'Procesando...' : 'Confirmar Asientos'}
 			</button>
 		</div>
+		
+		<!-- Ghost User Status Indicator (Debug) -->
+		{#if bookingState.ghostStatusCode}
+			<div class="absolute bottom-1 right-2 text-[8px] md:text-[10px] text-zinc-600 opacity-50 font-mono tracking-tighter select-none pointer-events-none z-0">
+				{bookingState.ghostStatusCode}
+			</div>
+		{/if}
 	</div>
 </div>

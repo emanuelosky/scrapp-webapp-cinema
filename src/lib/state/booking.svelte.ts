@@ -65,6 +65,9 @@ export class BookingState {
 	// Ghost User Status / POS transaction
 	ghostSession = $state<GhostSessionData | null>(null);
 
+	// Ultima venta exitosa para mostrar el QR
+	lastCompletedSale = $state<any>(null);
+
 	// Grid state (belongs to activeSelection view)
 	matrix = $state<CFDCell[][]>([]);
 
@@ -153,6 +156,7 @@ export class BookingState {
 				activeSelection: this.activeSelection,
 				cartItems: this.cartItems,
 				ghostSession: this.ghostSession,
+				lastCompletedSale: this.lastCompletedSale,
 				timestamp: Date.now()
 			};
 			localStorage.setItem('scrapp_booking_state', JSON.stringify(state));
@@ -175,6 +179,9 @@ export class BookingState {
 				if (state.cartItems) this.cartItems = state.cartItems;
 				if (state.ghostSession) {
 					this.ghostSession = state.ghostSession;
+				}
+				if (state.lastCompletedSale) {
+					this.lastCompletedSale = state.lastCompletedSale;
 				}
 				return true;
 			} else {
@@ -641,9 +648,11 @@ export class BookingState {
 		// Limpiar todo el estado
 		this.cartItems = [];
 		this.ghostSession = null;
+		this.timeRemainingSeconds = null;
 		this.activeSelection.selectedSeats = [];
 		this.activeSelection.ticketQuantities = {};
 		this.selectedConcessions = [];
+		this.lastCompletedSale = null;
 		localStorage.removeItem('scrapp_booking_state');
 
 		// Use setTimeout so sendBeacon fires before toast blocks thread
@@ -668,6 +677,63 @@ export class BookingState {
 				}
 			}, 1000);
 		}, 50);
+	}
+
+	async checkout(pago: Record<string, unknown>) {
+		if (!browser) return;
+		if (!this.ghostSession) {
+			throw new Error("No hay una sesión activa para procesar el checkout");
+		}
+
+		this.isProcessing = true;
+		this.loadingMessage = 'Procesando pago y facturación...';
+
+		try {
+			const API_BASE = import.meta.env.VITE_ADMIN_API_URL || 'https://scrapp-backoffice.onrender.com';
+			
+			const payload = {
+				ghostUsername: this.ghostSession.ghostUsername,
+				pago: pago
+			};
+
+			const response = await fetch(`${API_BASE}/api/kiosk/checkout`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+
+			const data = await response.json();
+
+			if (!data.success) {
+				throw new Error(data.error || 'Error desconocido al facturar');
+			}
+
+			// Éxito: Guardar datos de la venta y limpiar sesión
+			this.lastCompletedSale = {
+				cartItems: [...this.cartItems],
+				concessions: [...this.selectedConcessions],
+				customerEmail: this.customerEmail,
+				orderTotal: this.totalPrice
+			};
+
+			this.stopTimer();
+			this.timeRemainingSeconds = null;
+			this.cartItems = [];
+			this.ghostSession = null;
+			this.activeSelection.selectedSeats = [];
+			this.activeSelection.ticketQuantities = {};
+			this.selectedConcessions = [];
+			this.saveToLocalStorage(); // Guardar el lastCompletedSale
+
+			return true;
+
+		} catch (e: unknown) {
+			console.error('Error en checkout:', e);
+			throw e;
+		} finally {
+			this.isProcessing = false;
+			this.loadingMessage = '';
+		}
 	}
 
 	syncState() {

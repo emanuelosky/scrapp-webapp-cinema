@@ -4,6 +4,7 @@
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import Clock from '@lucide/svelte/icons/clock';
 	import AlertCircle from '@lucide/svelte/icons/alert-circle';
+	import CheckCircle2 from '@lucide/svelte/icons/check-circle-2';
 	import { slide, fade } from 'svelte/transition';
 	import { page } from '$app/stores';
 
@@ -16,9 +17,9 @@
 		return `${m}:${s < 10 ? '0' : ''}${s}`;
 	};
 
-	let hasActiveCart = $derived(bookingState.timeRemainingSeconds !== null && bookingState.timeRemainingSeconds > 0);
+	let hasActiveCart = $derived(bookingState.cartItems.length > 0 || (bookingState.timeRemainingSeconds !== null && bookingState.timeRemainingSeconds > 0));
 	let isExpiringSoon = $derived(bookingState.timeRemainingSeconds !== null && bookingState.timeRemainingSeconds <= 60);
-
+	let hasLastSale = $derived(bookingState.lastCompletedSale !== null);
 
 </script>
 
@@ -195,5 +196,15 @@
 		</div>
 	{/if}
 	</div>
+</div>
+{:else if hasLastSale}
+<div class="relative flex items-center gap-2 md:gap-4">
+	<button 
+		class="relative flex items-center gap-3 transition-colors duration-200 hover:text-white group px-3 py-2 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20"
+		onclick={() => { window.location.href = '/checkout/success'; }}
+	>
+		<CheckCircle2 class="size-4 md:size-5" />
+		<span class="hidden md:inline text-xs font-bold uppercase tracking-widest whitespace-nowrap">Tu Última Venta</span>
+	</button>
 </div>
 {/if}

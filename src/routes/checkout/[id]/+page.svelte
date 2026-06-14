@@ -15,7 +15,6 @@
 	});
 
 	let isProcessing = $state(false);
-	let isSuccess = $state(false);
 
 	async function handlePayment() {
 		if (!bookingState.customerEmail || !bookingState.paymentMethod) {
@@ -24,62 +23,29 @@
 		}
 
 		isProcessing = true;
-		await new Promise((resolve) => setTimeout(resolve, 2500));
-		isProcessing = false;
-		isSuccess = true;
+		try {
+			// Mock del objeto de pago para pruebas (Pago Móvil / Pago en Bs a Tasa)
+			const mockPago = {
+				metodo: 44, // Asumiendo que 44 es Pago Móvil o un método en Bs
+				monto: bookingState.totalPrice * 582.68, // Bs a tasa actual
+				montoConversion: bookingState.totalPrice, // USD
+				tasaConversion: 582.68,
+				metodoVuelto: "23"
+			};
+
+			await bookingState.checkout(mockPago);
+			goto(resolve('/checkout/success'));
+		} catch (e: any) {
+			alert('Error en checkout: ' + e.message);
+		} finally {
+			isProcessing = false;
+		}
 	}
 
 	const EXCHANGE_RATE = 40.50; // Mock Tasa BCV
 	let orderTotal = $derived(bookingState.totalPrice);
 	let orderTotalBs = $derived(orderTotal * EXCHANGE_RATE);
 </script>
-
-{#if isSuccess}
-	<div class="flex min-h-screen items-center justify-center bg-black p-4">
-		<div
-			class="w-full max-w-md space-y-6 rounded-3xl border border-zinc-800 bg-zinc-900 p-8 text-center"
-		>
-			<div
-				class="mx-auto mb-6 flex size-20 items-center justify-center rounded-full bg-green-500/20 text-green-500"
-			>
-				<CheckCircle2 class="size-10" />
-			</div>
-			<h1 class="font-display text-3xl font-black text-white">¡Compra Exitosa!</h1>
-			<p class="text-zinc-400">
-				Hemos enviado tu boleto digital al correo <br />
-				<strong class="text-white">{bookingState.customerEmail}</strong>.
-			</p>
-
-			<div class="space-y-4 rounded-2xl border border-white/5 bg-black/50 p-6 text-left">
-				{#each bookingState.cartItems as item (item.showtimeId)}
-					<div class="border-b border-white/10 pb-4 last:border-0 last:pb-0">
-						<div>
-							<p class="mb-1 text-xs font-bold tracking-widest text-zinc-500 uppercase">Película</p>
-							<p class="text-lg font-medium text-white">{item.movieTitle}</p>
-						</div>
-						<div class="flex justify-between gap-4 mt-2">
-							<div>
-								<p class="mb-1 text-xs font-bold tracking-widest text-zinc-500 uppercase">Función</p>
-								<p class="text-white">{item.showtimeDate} • {item.showtimeTime}</p>
-							</div>
-							<div class="text-right">
-								<p class="mb-1 text-xs font-bold tracking-widest text-zinc-500 uppercase">Butacas</p>
-								<p class="font-bold text-amber-400">{item.seats.join(', ')}</p>
-							</div>
-						</div>
-					</div>
-				{/each}
-			</div>
-
-			<button
-				class="mt-8 h-14 w-full rounded-full bg-white font-bold tracking-widest text-black uppercase transition-colors hover:bg-zinc-200"
-				onclick={() => goto(resolve('/'))}
-			>
-				Volver al Inicio
-			</button>
-		</div>
-	</div>
-{:else}
 	<main class="min-h-screen bg-black pb-32 font-sans text-white">
 		<!-- Header minimalista tipo AMC -->
 		<header class="mx-auto flex max-w-5xl items-center gap-4 px-4 py-6">
@@ -339,4 +305,3 @@
 			</div>
 		</div>
 	</main>
-{/if}

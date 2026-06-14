@@ -4,6 +4,7 @@
 	import Calendar from '@lucide/svelte/icons/calendar';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import ChevronUp from '@lucide/svelte/icons/chevron-up';
+	import AlertCircle from '@lucide/svelte/icons/alert-circle';
 	import type { Movie, ShowtimeDetails } from '$lib/types';
 	import { bookingState } from '$lib/state/booking.svelte';
 	import { goto } from '$app/navigation';
@@ -15,6 +16,18 @@
 	let selectedDate = $state<string | null>(null);
 	let selectedShowtime = $state<ShowtimeDetails | null>(null);
 	let isSynopsisExpanded = $state(false);
+	let showConflictModal = $state(false);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let conflictingItem = $state<any>(null);
+
+	async function proceedToBooking() {
+		if (movie && selectedShowtime && selectedDate) {
+			bookingState.startBooking(movie, selectedDate, selectedShowtime);
+			open = false;
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			await goto(`/booking/${movie.id}` as any);
+		}
+	}
 
 	// Select first date automatically when movie changes
 	$effect(() => {
@@ -172,13 +185,15 @@
 						<button 
 							class="w-full bg-zinc-200 hover:bg-white text-black font-black uppercase tracking-widest py-4 text-sm transition-colors border border-transparent shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
 							disabled={!selectedShowtime}
-							onclick={async () => {
+							onclick={() => {
 								if (movie && selectedShowtime && selectedDate) {
-									// Pasa el pos_show_id embebido en selectedShowtime
-									bookingState.startBooking(movie, selectedDate, selectedShowtime);
-									open = false;
-									// eslint-disable-next-line @typescript-eslint/no-explicit-any
-									await goto(`/booking/${movie.id}` as any);
+									const existingItem = bookingState.cartItems.find(item => item.showtimeId === selectedShowtime!.id);
+									if (existingItem) {
+										conflictingItem = existingItem;
+										showConflictModal = true;
+									} else {
+										proceedToBooking();
+									}
 								}
 							}}
 						>
@@ -191,6 +206,61 @@
 					</div>
 				</div>
 			</div>
+		{/if}
+
+		{#if showConflictModal}
+		<div class="absolute inset-0 bg-black/95 backdrop-blur-md z-50 flex items-center justify-center p-6 animate-in fade-in duration-200">
+			<div class="bg-black border border-zinc-800 p-0 gap-0 max-w-sm w-full shadow-2xl flex flex-col text-center">
+				<div class="px-6 py-5 border-b border-zinc-800 flex flex-col items-center">
+					<div class="w-14 h-14 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-4 text-white">
+						<AlertCircle class="w-7 h-7" />
+					</div>
+					<h3 class="text-xl font-black text-white tracking-tight">Función en Carrito</h3>
+				</div>
+				<div class="p-6 flex flex-col gap-6">
+					<div>
+						<p class="text-zinc-400 text-sm mb-2">
+							Tienes elegidos estos asientos:
+						</p>
+						<span class="text-white font-mono font-bold text-lg inline-block">
+							{#each conflictingItem.seats as seat, i (seat)}
+								{@const parts = seat.split('-')}
+								{parts.length >= 2 ? `${parts[0]}:${parts[1]}` : seat}{i < conflictingItem.seats.length - 1 ? ', ' : ''}
+							{/each}
+						</span>
+					</div>
+					<p class="text-zinc-500 text-sm font-medium">¿Deseas borrar el carro actual para empezar de cero o piensas añadir más butacas a esta misma orden?</p>
+					
+					<div class="flex flex-col gap-3 w-full">
+						<button 
+							class="w-full bg-white hover:bg-zinc-200 text-black font-black uppercase tracking-widest py-4 text-sm transition-colors border border-transparent shadow-xl"
+							onclick={() => {
+								showConflictModal = false;
+								proceedToBooking();
+							}}
+						>
+							Añadir Butacas
+						</button>
+						<button 
+							class="w-full bg-zinc-900 border border-zinc-800 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 text-white font-bold uppercase tracking-widest py-3 text-sm transition-colors"
+							onclick={() => {
+								showConflictModal = false;
+								bookingState.expireSession();
+								proceedToBooking();
+							}}
+						>
+							Borrar Todo
+						</button>
+						<button 
+							class="text-zinc-500 text-xs uppercase tracking-widest hover:text-white font-bold"
+							onclick={() => showConflictModal = false}
+						>
+							Volver
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
 		{/if}
 	</Dialog.Content>
 </Dialog.Root>

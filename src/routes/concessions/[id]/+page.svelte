@@ -13,10 +13,13 @@
 	let id = $derived($page.params.id);
 
 	onMount(() => {
-		if (!bookingState.movie || bookingState.selectedSeats.length === 0) {
+		if (bookingState.cartItems.length === 0) {
 			goto(resolve('/'));
 		}
 	});
+
+	// If the user navigates back natively using browser history, intercept it if possible.
+	// We handle explicit "back" buttons by using goto(resolve('/')) instead of history.back().
 
 	const EXCHANGE_RATE = 40.50; // Mock Tasa BCV
 	let orderTotal = $derived(bookingState.totalPrice);
@@ -78,7 +81,7 @@
 	<header class="mx-auto flex max-w-5xl items-center gap-4 px-4 py-6">
 		<button
 			class="text-zinc-400 transition-colors hover:text-white"
-			onclick={() => history.back()}
+			onclick={() => goto(resolve('/'))}
 		>
 			<ArrowLeft class="size-6" />
 		</button>
@@ -148,24 +151,28 @@
 				<div class="sticky top-12 space-y-6">
 					<h2 class="mb-6 text-2xl font-bold tracking-tight">Detalles de la Orden</h2>
 
-					<!-- Tickets -->
-					<div class="space-y-3">
+					<!-- Tickets from all movies -->
+					<div class="space-y-4">
 						<div class="flex items-center justify-between text-xs tracking-widest text-zinc-500 uppercase">
 							<span>Entradas</span>
 							<button
 								class="font-bold tracking-normal text-[#00c0f3] capitalize hover:underline"
-								onclick={() => history.back()}
-							>Editar</button>
+								onclick={() => goto(resolve('/'))}
+							>Añadir más</button>
 						</div>
-						{#each bookingState.tariffs as tariff (tariff.id)}
-							{#if bookingState.ticketQuantities[tariff.id] > 0}
-								<div class="flex flex-col gap-0.5">
-									<div class="flex justify-between text-sm font-bold">
-										<span>Entrada {tariff.nombre} ({bookingState.ticketQuantities[tariff.id]})</span>
-										<span>${(bookingState.ticketQuantities[tariff.id] * tariff.precio).toFixed(2)}</span>
-									</div>
-								</div>
-							{/if}
+						
+						{#each bookingState.cartItems as item (item.showtimeId)}
+							<div class="flex flex-col gap-1.5 border-l-2 border-zinc-800 pl-3">
+								<span class="text-xs font-bold text-zinc-400 uppercase tracking-widest leading-none">{item.movieTitle}</span>
+								{#each item.tariffs as tariff}
+									{#if tariff.qty > 0}
+										<div class="flex justify-between text-sm font-bold">
+											<span class="text-zinc-300">Entrada {tariff.nombre} ({tariff.qty})</span>
+											<span>${(tariff.qty * tariff.precio).toFixed(2)}</span>
+										</div>
+									{/if}
+								{/each}
+							</div>
 						{/each}
 					</div>
 

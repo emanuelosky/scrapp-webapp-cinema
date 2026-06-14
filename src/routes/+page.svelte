@@ -22,6 +22,8 @@
 
 	import { cinemaState } from '$lib/state/cinema.svelte';
 	import Loader2 from '@lucide/svelte/icons/loader-2';
+	import ShoppingCartDropdown from '$lib/components/booking/ShoppingCartDropdown.svelte';
+	import { bookingState } from '$lib/state/booking.svelte';
 
 	let { data } = $props();
 	let comingSoonMovies = $derived(data.comingSoonMovies);
@@ -111,7 +113,7 @@
 	}
 </script>
 
-<div class="flex min-h-screen flex-col bg-black pb-20 font-sans text-zinc-50 overflow-x-hidden w-full relative">
+<div class="flex min-h-screen flex-col bg-black pb-20 font-sans text-zinc-50 overflow-clip w-full relative">
 	<!-- Sticky Header Group (Promo + Navbar) -->
 	<div class="sticky top-0 z-50 flex w-full flex-col">
 		<PromoBanner />
@@ -155,15 +157,15 @@
 						</div>
 					{/if}
 
-					<!-- Search Icon for screens < 1350px -->
+					<!-- Search Icon for screens < 1350px OR when Cart is active -->
 					{#if !isSearchOpen}
-						<button class="flex min-[1350px]:hidden text-zinc-400 hover:text-white transition-colors" onclick={() => isSearchOpen = true}>
+						<button class="flex min-[1350px]:hidden text-zinc-400 hover:text-white transition-colors {bookingState.timeRemainingSeconds !== null && bookingState.timeRemainingSeconds > 0 ? '!flex' : ''}" onclick={() => isSearchOpen = true}>
 							<Search class="size-4 md:size-5" />
 						</button>
 					{/if}
 
-					<!-- Full Search Bar for screens >= 1350px -->
-					<div class="relative hidden w-48 min-[1350px]:w-64 min-[1350px]:flex">
+					<!-- Full Search Bar for screens >= 1350px AND Cart is NOT active -->
+					<div class="relative hidden w-48 min-[1350px]:w-64 min-[1350px]:flex {bookingState.timeRemainingSeconds !== null && bookingState.timeRemainingSeconds > 0 ? '!hidden' : ''}">
 						<Search class="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-zinc-500" />
 						<Input
 							type="text"
@@ -173,8 +175,10 @@
 					</div>
 
 					<div
-						class="flex items-center text-[12px] lg:text-[15px] font-bold tracking-[0.05em] lg:tracking-[0.08em] text-zinc-300"
+						class="flex items-center text-[12px] lg:text-[15px] font-bold tracking-[0.05em] lg:tracking-[0.08em] text-zinc-300 gap-4"
 					>
+						<ShoppingCartDropdown />
+						<div class="h-6 w-px bg-white/10 hidden sm:block"></div>
 						<button class="flex items-center gap-1.5 transition-colors duration-200 hover:text-white"
 							><User class="size-4 md:size-5" /> <span class="hidden sm:inline">Iniciar Sesión</span></button
 						>

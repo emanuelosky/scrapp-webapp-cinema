@@ -9,7 +9,7 @@
 	import { resolve } from '$app/paths';
 
 	onMount(() => {
-		if (!bookingState.movie || bookingState.selectedSeats.length === 0) {
+		if (bookingState.cartItems.length === 0) {
 			goto(resolve('/'));
 		}
 	});
@@ -51,20 +51,24 @@
 			</p>
 
 			<div class="space-y-4 rounded-2xl border border-white/5 bg-black/50 p-6 text-left">
-				<div>
-					<p class="mb-1 text-xs font-bold tracking-widest text-zinc-500 uppercase">Película</p>
-					<p class="text-lg font-medium text-white">{bookingState.movie?.title}</p>
-				</div>
-				<div class="flex justify-between gap-4">
-					<div>
-						<p class="mb-1 text-xs font-bold tracking-widest text-zinc-500 uppercase">Función</p>
-						<p class="text-white">{bookingState.selectedDate} • {bookingState.selectedShowtime?.time}</p>
+				{#each bookingState.cartItems as item (item.showtimeId)}
+					<div class="border-b border-white/10 pb-4 last:border-0 last:pb-0">
+						<div>
+							<p class="mb-1 text-xs font-bold tracking-widest text-zinc-500 uppercase">Película</p>
+							<p class="text-lg font-medium text-white">{item.movieTitle}</p>
+						</div>
+						<div class="flex justify-between gap-4 mt-2">
+							<div>
+								<p class="mb-1 text-xs font-bold tracking-widest text-zinc-500 uppercase">Función</p>
+								<p class="text-white">{item.showtimeDate} • {item.showtimeTime}</p>
+							</div>
+							<div class="text-right">
+								<p class="mb-1 text-xs font-bold tracking-widest text-zinc-500 uppercase">Butacas</p>
+								<p class="font-bold text-amber-400">{item.seats.join(', ')}</p>
+							</div>
+						</div>
 					</div>
-					<div class="text-right">
-						<p class="mb-1 text-xs font-bold tracking-widest text-zinc-500 uppercase">Butacas</p>
-						<p class="font-bold text-amber-400">{bookingState.selectedSeats.join(', ')}</p>
-					</div>
-				</div>
+				{/each}
 			</div>
 
 			<button
@@ -81,7 +85,7 @@
 		<header class="mx-auto flex max-w-5xl items-center gap-4 px-4 py-6">
 			<button
 				class="text-zinc-400 transition-colors hover:text-white"
-				onclick={() => history.back()}
+				onclick={() => goto(resolve('/'))}
 			>
 				<ArrowLeft class="size-6" />
 			</button>

@@ -7,7 +7,6 @@
 	import Plus from '@lucide/svelte/icons/plus';
 	import Minus from '@lucide/svelte/icons/minus';
 	import Info from '@lucide/svelte/icons/info';
-	import X from '@lucide/svelte/icons/x';
 	import SeatIcon from '$lib/components/booking/SeatIcon.svelte';
 	import Loader2 from '@lucide/svelte/icons/loader-2';
 	import { page } from '$app/stores';
@@ -79,7 +78,16 @@
 
 		// JIT Pre-heating: Avisar al backend que un usuario está en la vista de butacas
 		const API_BASE = import.meta.env.VITE_ADMIN_API_URL || 'https://scrapp-backoffice.onrender.com';
-		fetch(`${API_BASE}/api/kiosk/ghost-pool/warmup`, { method: 'POST' }).catch(console.error);
+		fetch(`${API_BASE}/api/kiosk/ghost-pool/warmup`, { method: 'POST' })
+			.then(() => bookingState.fetchGhostStatus()) // Actualizar contador tras iniciar warmup
+			.catch(console.error);
+			
+		// Polling simple cada 30 segundos para actualizar el contador de ghosts mientras estén en la vista de butacas
+		const ghostInterval = setInterval(() => {
+			if (!bookingState.ghostStatusCode) {
+				bookingState.fetchGhostStatus();
+			}
+		}, 30000);
 
 		// M-02 FIX: Liberar ghost session si el usuario cierra el tab/navega antes de pagar
 		// sendBeacon garantiza que el request llega incluso durante page unload
@@ -108,6 +116,7 @@
 		return () => {
 			window.removeEventListener('pagehide', handlePageHide);
 			window.removeEventListener('beforeunload', handlePageHide);
+			clearInterval(ghostInterval);
 		};
 	});
 
@@ -125,13 +134,7 @@
 		return () => clearInterval(interval);
 	});
 
-	let timeLeft = $state(300); // 5 minutos en segundos
-	$effect(() => {
-		const interval = setInterval(() => {
-			timeLeft = Math.max(0, timeLeft - 1);
-		}, 1000);
-		return () => clearInterval(interval);
-	});
+	// The local timeLeft state has been removed. We now rely strictly on bookingState.timeRemainingSeconds.
 
 	let currentDateStr = $derived(currentDate.toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase());
 	let currentTimeStr = $derived(currentDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }));
@@ -224,37 +227,36 @@
 </svelte:head>
 
 <AlertDialog.Root bind:open={showDisabledPrompt}>
-	<AlertDialog.Content class="bg-black border border-zinc-800 text-white shadow-2xl rounded-3xl p-8 max-w-sm w-full flex flex-col items-center justify-center gap-6">
-		<div class="flex items-center justify-center w-24 h-24 bg-blue-500/10 text-blue-400 rounded-full mb-2">
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-14 h-14">
-				<circle cx="8" cy="12" r="4" />
-				<path d="M12 12h3" />
-				<path d="M15 12v-5h3" />
-				<path d="M11 6h-2" />
-			</svg>
+	<AlertDialog.Content class="bg-black border border-zinc-800 text-white shadow-2xl rounded-none p-0 gap-0 max-w-sm w-full flex flex-col items-center">
+		<div class="w-full px-6 py-5 border-b border-zinc-800 text-center flex flex-col items-center">
+			<div class="flex items-center justify-center w-14 h-14 bg-zinc-900 border border-zinc-800 text-white rounded-full mb-4">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-7 h-7">
+					<circle cx="8" cy="12" r="4" />
+					<path d="M12 12h3" />
+					<path d="M15 12v-5h3" />
+					<path d="M11 6h-2" />
+				</svg>
+			</div>
+			<h2 class="text-xl font-black text-white tracking-tight uppercase">Atención Especial</h2>
 		</div>
 		
-		<div class="flex flex-col items-center justify-center gap-3 w-full">
-			<h2 class="text-2xl font-black text-white text-center tracking-tight">
-				Espacio para<br/>Discapacitados
-			</h2>
-			
-			<p class="text-zinc-400 text-center text-sm md:text-base leading-relaxed px-2">
+		<div class="p-6 flex flex-col gap-6 w-full text-center">
+			<p class="text-zinc-400 text-sm leading-relaxed">
 				¿Deseas activar el espacio para discapacitados y agregar la tarifa correspondiente?
 			</p>
-		</div>
 
-		<div class="flex flex-row items-center justify-center gap-4 w-full mt-2">
-			<AlertDialog.Cancel class="bg-zinc-900 border border-zinc-800 hover:bg-red-950/30 hover:text-red-500 hover:border-red-900/50 text-zinc-400 transition-all rounded-full w-14 h-14 p-0 shrink-0 flex items-center justify-center m-0" onclick={() => { pendingDisabledSeatId = null; }}>
-				<X class="w-6 h-6" />
-			</AlertDialog.Cancel>
-			<AlertDialog.Action class="bg-blue-600 hover:bg-blue-500 text-white font-bold tracking-widest transition-all shadow-[0_0_15px_rgba(37,99,235,0.4)] hover:shadow-[0_0_25px_rgba(37,99,235,0.6)] rounded-full px-8 h-14 flex-1 m-0" onclick={() => {
-				if (pendingDisabledSeatId) {
-					bookingState.toggleSeat(pendingDisabledSeatId, 'DISCAPACITA', true);
-					pendingDisabledSeatId = null;
-				}
-				showDisabledPrompt = false;
-			}}>ACTIVAR</AlertDialog.Action>
+			<div class="flex flex-col gap-3 w-full">
+				<AlertDialog.Action class="w-full bg-white hover:bg-zinc-200 text-black font-black uppercase tracking-widest py-4 transition-all border border-transparent shadow-xl rounded-none m-0" onclick={() => {
+					if (pendingDisabledSeatId) {
+						bookingState.toggleSeat(pendingDisabledSeatId, 'DISCAPACITA', true);
+						pendingDisabledSeatId = null;
+					}
+					showDisabledPrompt = false;
+				}}>Activar</AlertDialog.Action>
+				<AlertDialog.Cancel class="w-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-white font-bold uppercase tracking-widest py-3 transition-colors rounded-none m-0" onclick={() => { pendingDisabledSeatId = null; }}>
+					Cancelar
+				</AlertDialog.Cancel>
+			</div>
 		</div>
 	</AlertDialog.Content>
 </AlertDialog.Root>
@@ -267,14 +269,14 @@
 			<a href={resolve('/')} class="p-1.5 md:p-2 bg-zinc-900 rounded-full hover:bg-zinc-800 transition text-zinc-400 hover:text-white shrink-0">
 				<ArrowLeft class="size-4 md:size-5" />
 			</a>
-			{#if bookingState.movie}
-				<img src={bookingState.movie.poster} alt="" class="h-16 w-10 md:h-24 md:w-16 object-cover rounded shadow-md shrink-0" />
+			{#if bookingState.activeSelection.movie}
+				<img src={bookingState.activeSelection.movie.poster} alt="" class="h-16 w-10 md:h-24 md:w-16 object-cover rounded shadow-md shrink-0" />
 				<div class="flex flex-col overflow-hidden">
-					<h1 class="font-black text-lg md:text-3xl uppercase tracking-tight leading-none mb-1 md:mb-1.5 truncate">{bookingState.movie.title}</h1>
+					<h1 class="font-black text-lg md:text-3xl uppercase tracking-tight leading-none mb-1 md:mb-1.5 truncate">{bookingState.activeSelection.movie.title}</h1>
 					<div class="flex items-center gap-1.5 md:gap-2 text-[9px] md:text-xs font-bold text-zinc-400">
-						<span class="border border-zinc-700 px-1 py-0.5 rounded-sm">{bookingState.movie.rating || 'B'}</span>
-						<span>{bookingState.movie.duration || '2H 15M'}</span>
-						<span class="px-1.5 py-0.5 bg-zinc-800 rounded-sm text-zinc-300">{bookingState.selectedShowtime?.format || '2D ESP'}</span>
+						<span class="border border-zinc-700 px-1 py-0.5 rounded-sm">{bookingState.activeSelection.movie.rating || 'B'}</span>
+						<span>{bookingState.activeSelection.movie.duration || '2H 15M'}</span>
+						<span class="px-1.5 py-0.5 bg-zinc-800 rounded-sm text-zinc-300">{bookingState.activeSelection.selectedShowtime?.format || '2D ESP'}</span>
 					</div>
 				</div>
 			{/if}
@@ -285,21 +287,27 @@
 			<div class="flex items-center justify-between text-[10px] md:text-xs mb-1 md:mb-1.5">
 				<span class="font-bold text-zinc-500 uppercase tracking-widest hidden md:inline">Función seleccionada:</span>
 				<span class="font-bold text-zinc-500 uppercase tracking-widest md:hidden">Función:</span>
-				<span class="text-white font-bold uppercase tracking-tight">{bookingState.selectedDate} • {bookingState.selectedShowtime?.time}</span>
+				<span class="text-white font-bold uppercase tracking-tight">{bookingState.activeSelection.selectedDate} • {bookingState.activeSelection.selectedShowtime?.time}</span>
 			</div>
 			<div class="hidden md:flex items-center justify-between text-[10px] md:text-xs mb-1.5">
 				<span class="font-bold text-amber-500 uppercase tracking-widest">Fecha y hora:</span>
 				<span class="font-bold text-amber-500 font-mono tracking-tighter">{currentDateStr} • {currentTimeStr}</span>
 			</div>
 			<div class="flex items-center justify-between mt-0.5 md:mt-1.5 border-t border-zinc-800/50 pt-1 md:pt-2">
-				<div class="flex items-center gap-1 relative group">
-					<span class="font-bold text-red-500/80 text-[10px] md:text-xs uppercase tracking-widest cursor-help">Tiempo restante:</span>
-					<Info class="size-3 text-red-500/60 hover:text-red-500 cursor-help transition-colors" />
-					<div class="absolute bottom-full left-0 mb-2 w-48 p-2 bg-zinc-900 border border-red-900/50 text-[10px] leading-tight text-red-200 rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-						Al expirar este tiempo se cancelará la venta.
+				{#if bookingState.timeRemainingSeconds !== null}
+					<div class="flex items-center gap-1 relative group">
+						<span class="font-bold text-red-500/80 text-[10px] md:text-xs uppercase tracking-widest cursor-help">Tiempo restante:</span>
+						<Info class="size-3 text-red-500/60 hover:text-red-500 cursor-help transition-colors" />
+						<div class="absolute bottom-full left-0 mb-2 w-48 p-2 bg-zinc-900 border border-red-900/50 text-[10px] leading-tight text-red-200 rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+							Al expirar este tiempo se cancelará la venta.
+						</div>
 					</div>
-				</div>
-				<span class="font-mono font-black text-red-500 text-base md:text-lg animate-pulse">{formatTime(timeLeft)}<span class="text-[9px] md:text-[10px] font-bold text-red-500/80 tracking-widest ml-1">MIN</span></span>
+					<span class="font-mono font-black text-red-500 text-base md:text-lg animate-pulse">{formatTime(bookingState.timeRemainingSeconds)}<span class="text-[9px] md:text-[10px] font-bold text-red-500/80 tracking-widest ml-1">{bookingState.timeRemainingSeconds < 60 ? 'SEGS' : 'MIN'}</span></span>
+				{:else}
+					<div class="flex items-center gap-1">
+						<span class="font-bold text-zinc-500 text-[10px] md:text-xs uppercase tracking-widest">Elige tus butacas</span>
+					</div>
+				{/if}
 			</div>
 		</div>
 
@@ -500,7 +508,7 @@
 				class="w-[85%] mx-auto md:w-auto md:mx-0 px-4 py-2 md:px-8 md:py-3 bg-amber-400 text-black text-[11px] md:text-base font-bold uppercase tracking-widest rounded-full hover:bg-amber-300 transition-colors shadow-[0_0_20px_rgba(251,191,36,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
 				disabled={!bookingState.canProceed || bookingState.isProcessing}
 				onclick={async () => {
-					const success = await bookingState.lockSeatsAndConfirm();
+					const success = await bookingState.addSelectionToCart();
 					if (success) {
 						goto(resolve('/concessions/[id]', { id: id || '' }));
 					}
@@ -510,11 +518,5 @@
 			</button>
 		</div>
 		
-		<!-- Ghost User Status Indicator (Debug) -->
-		{#if bookingState.ghostStatusCode}
-			<div class="absolute bottom-1 right-2 text-[10px] md:text-xs text-amber-500/80 font-mono tracking-tighter select-none pointer-events-none z-50 bg-black/50 px-2 py-0.5 rounded">
-				{bookingState.ghostStatusCode}
-			</div>
-		{/if}
 	</div>
 </div>

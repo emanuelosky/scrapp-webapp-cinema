@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { Button } from '$lib/components/ui/button';
+
 	import { Input } from '$lib/components/ui/input';
 	import Search from '@lucide/svelte/icons/search';
 	import User from '@lucide/svelte/icons/user';
 	import MapPin from '@lucide/svelte/icons/map-pin';
-	import Sparkles from '@lucide/svelte/icons/sparkles';
+
 	import X from '@lucide/svelte/icons/x';
 	import MovieDetailsDialog from '$lib/components/MovieDetailsDialog.svelte';
-	import HeroCarousel from '$lib/components/HeroCarousel.svelte';
+
 	import Footer from '$lib/components/Footer.svelte';
 	
 	// Home Components
@@ -15,10 +15,13 @@
 	import DateSelector from '$lib/components/home/DateSelector.svelte';
 	import NowPlayingCarousel from '$lib/components/home/NowPlayingCarousel.svelte';
 	import UpcomingCarousel from '$lib/components/home/UpcomingCarousel.svelte';
+	import HeroDesktop from '$lib/components/home/HeroDesktop.svelte';
+	import HeroMobile from '$lib/components/home/HeroMobile.svelte';
 	import HeroScrolly from '$lib/components/home/HeroScrolly.svelte';
 	import ScrollToTop from '$lib/components/home/ScrollToTop.svelte';
 	import ComingSoonDialog from '$lib/components/ComingSoonDialog.svelte';
 	import TheatreSelectorDialog from '$lib/components/TheatreSelectorDialog.svelte';
+	import BrutalistMegaMenu from '$lib/components/navigation/BrutalistMegaMenu.svelte';
 
 	import { cinemaState } from '$lib/state/cinema.svelte';
 	import Loader2 from '@lucide/svelte/icons/loader-2';
@@ -29,7 +32,7 @@
 	let comingSoonMovies = $derived(data.comingSoonMovies);
 	let activeDates = $derived(data.activeDates || []);
 	import type { Movie } from '$lib/types';
-	import { onMount } from 'svelte';
+
 	import { today, now, type DateValue } from '@internationalized/date';
 	import { APP_TIMEZONE } from '$lib/utils/timezone';
 
@@ -86,26 +89,7 @@
 		}
 	});
 	
-	let heroButtonTextIndex = $state(0);
-	const heroButtonTexts = [
-		{ text: '¿Todavía no sabes qué hacer?', duration: 30000, isLink: false },
-		{ text: '¡Compra tus entradas!', duration: 90000, isLink: true }
-	];
-	
-	onMount(() => {
-		let timeoutId: ReturnType<typeof setTimeout>;
-		
-		function cycleText() {
-			const current = heroButtonTexts[heroButtonTextIndex];
-			timeoutId = setTimeout(() => {
-				heroButtonTextIndex = (heroButtonTextIndex + 1) % heroButtonTexts.length;
-				cycleText();
-			}, current.duration);
-		}
-		
-		cycleText();
-		return () => clearTimeout(timeoutId);
-	});
+
 
 	function openMovieDetails(movie: Movie) {
 		selectedMovie = movie;
@@ -119,29 +103,22 @@
 		<PromoBanner />
 
 		<!-- Main Navbar -->
-		<header class="w-full border-b border-zinc-800 bg-black">
+		<header class="w-full border-b border-zinc-800 bg-black relative">
 		<div class="w-full px-4 md:px-8 lg:px-12">
 			<!-- Upper Nav -->
-			<div class="flex h-20 items-center justify-between">
-				<div class="flex items-center gap-4 lg:gap-8 overflow-hidden">
+			<div class="flex h-14 md:h-16 items-center justify-between static">
+				<div class="flex flex-1 min-w-0 items-center gap-4 lg:gap-8 overflow-hidden h-full">
 					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 					<a href="/" class="flex shrink-0 items-center transition-opacity hover:opacity-90" aria-label="Cinepic Logo">
 						<img src="/logo.svg" alt="Cinepic" class="h-6 md:h-7 lg:h-8 w-auto object-contain" />
 					</a>
-					<div class="hidden md:block h-6 w-px bg-gradient-to-b from-transparent via-zinc-800 to-transparent"></div>
-					<nav
-						class="flex flex-1 items-center gap-4 lg:gap-8 text-[11px] md:text-[13px] lg:text-[14px] font-bold tracking-[0.05em] whitespace-nowrap text-zinc-300 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-						style="-webkit-overflow-scrolling: touch;"
-					>
-						<button class="transition-colors duration-200 hover:text-white shrink-0">Ver Cartelera</button>
-						<button class="transition-colors duration-200 hover:text-white shrink-0">Combos</button>
-						<button class="transition-colors duration-200 hover:text-white shrink-0">Anúnciate</button>
-						<button class="transition-colors duration-200 hover:text-white shrink-0">Trabaja con nosotros</button>
-						<button class="transition-colors duration-200 hover:text-white shrink-0">Contacto</button>
-					</nav>
+					<div class="h-6 w-px bg-zinc-800 shrink-0 mx-2 md:mx-4"></div>
+					<div class="h-full flex flex-1 items-center min-w-0">
+						<BrutalistMegaMenu movies={nowPlaying} comingSoon={comingSoonMovies} openModal={openMovieDetails} />
+					</div>
 				</div>
 
-				<div class="flex items-center gap-4 md:gap-6 pl-4 border-l border-white/10 ml-2">
+				<div class="flex items-center gap-4 md:gap-6 pl-4 border-l border-zinc-800 ml-2">
 					<!-- Mobile Pill (only when isSearchOpen is true) -->
 					{#if isSearchOpen}
 						<div class="relative w-40 md:w-48 flex min-[1350px]:hidden animate-in fade-in slide-in-from-right-4 duration-300">
@@ -178,17 +155,27 @@
 						class="flex items-center text-[12px] lg:text-[15px] font-bold tracking-[0.05em] lg:tracking-[0.08em] text-zinc-300 gap-4"
 					>
 						<ShoppingCartDropdown />
-						<div class="h-6 w-px bg-white/10 hidden sm:block"></div>
-						<button class="flex items-center gap-1.5 transition-colors duration-200 hover:text-white"
-							><User class="size-4 md:size-5" /> <span class="hidden sm:inline">Iniciar Sesión</span></button
-						>
+						<!-- Separador -->
+						<div class="h-5 w-px bg-zinc-800 hidden lg:block"></div>
+
+						<!-- Usuario / Auth -->
+						<div class="flex items-center gap-3 md:gap-4 lg:pr-2">
+							<button class="flex items-center gap-1.5 text-zinc-300 hover:text-white transition-colors group" aria-label="Entrar">
+								<User class="size-5 group-hover:scale-110 transition-transform" />
+								<span class="text-[14px] md:text-[15px] font-bold hidden lg:block pt-[2px]">Entrar</span>
+							</button>
+							<span class="text-zinc-800 hidden lg:block">|</span>
+							<button class="text-[14px] md:text-[15px] font-bold text-zinc-300 hover:text-white transition-colors hidden lg:block pt-[2px]">
+								Crear Cuenta
+							</button>
+						</div>
 					</div>
 				</div>
 			</div>
 
 			<!-- Lower Nav (Sub-menu) -->
 			<div
-				class="flex h-10 items-center justify-between border-t border-zinc-900 text-[10px] md:text-xs font-semibold text-zinc-400"
+				class="flex h-10 items-center justify-between border-t border-zinc-800 text-[10px] md:text-xs font-semibold text-zinc-400"
 			>
 				<button class="flex items-center gap-2 group transition-colors focus:outline-none" onclick={() => isTheatreSelectorOpen = true}>
 					<MapPin class="shrink-0 size-3 md:size-3.5 {cinemaState.selectedCinema ? 'text-zinc-300 group-hover:text-white' : 'text-zinc-400 group-hover:text-white'}" />
@@ -215,95 +202,8 @@
 	<section class="hero-banner relative flex w-full items-center overflow-hidden py-4 lg:py-6">
 		<div class="pointer-events-none absolute inset-y-0 right-0 w-full lg:w-1/2 z-20" style="background: radial-gradient(circle at 100% 0%, rgba(0,0,0,0.9) 0%, transparent 50%), radial-gradient(circle at 100% 100%, rgba(0,0,0,0.9) 0%, transparent 50%);"></div>
 
-		<!-- Desktop Layout (hidden on mobile, visible on sm and up) -->
-		<div class="relative z-10 container mx-auto hidden sm:flex w-full flex-row items-center justify-between gap-6 lg:gap-12 px-4 lg:px-12">
-			<!-- Desktop Left Content -->
-			<div class="mt-8 flex flex-1 min-w-0 flex-col items-center text-center lg:mt-0">
-				<img
-					src="/logo.svg"
-					alt="Cinepic Logo"
-					class="mx-auto mb-4 h-16 md:h-20 w-auto object-contain drop-shadow-2xl lg:h-24"
-				/>
-
-				<h2
-					class="mb-4 font-display text-4xl leading-none font-black tracking-tight text-white uppercase drop-shadow-2xl md:text-5xl lg:text-[3rem] xl:text-[3.5rem]"
-				>
-					{cinemaState.selectedCinema || 'Sambil Candelaria'}
-				</h2>
-
-				<div class="mx-auto mb-8 flex w-full max-w-sm items-center justify-center gap-3 text-sm text-white/90 md:text-base lg:max-w-md">
-					<MapPin class="size-5 shrink-0 text-amber-500" />
-					<span
-						class="truncate"
-						title="Centro Comercial Sambil, Av. Andrés Bello, La Candelaria, Caracas 1010"
-						>C.C. Sambil La Candelaria, Caracas</span
-					>
-					<div class="h-5 w-px shrink-0 bg-white/30"></div>
-					<a
-						href="https://www.google.com/maps/search/?api=1&query=Sambil+La+Candelaria+Caracas"
-						target="_blank"
-						rel="external"
-						class="font-bold whitespace-nowrap text-amber-400 underline-offset-4 transition-colors hover:text-amber-300 hover:underline"
-					>
-						Ver Maps
-					</a>
-				</div>
-
-				<div class="flex w-full flex-row flex-wrap items-center justify-center gap-4">
-					<Button
-						class="flex h-12 w-auto items-center justify-center rounded-full bg-white/5 backdrop-blur-md border border-white/10 px-8 text-sm font-bold text-white/90 shadow-xl transition-all duration-300 hover:scale-105 hover:bg-white/10 hover:border-white/30 hover:text-white md:text-base tracking-wide"
-					>
-						Comprar Entradas
-					</Button>
-					<Button
-						class="flex h-12 w-auto items-center justify-center rounded-full bg-white/5 backdrop-blur-md border border-white/10 px-8 text-sm font-bold text-white/90 shadow-xl transition-all duration-300 hover:scale-105 hover:bg-white/10 hover:border-white/30 hover:text-white md:text-base tracking-wide"
-					>
-						Ver Combos
-					</Button>
-				</div>
-			</div>
-
-			<!-- Desktop Divider & Carousel -->
-			<div class="mx-4 hidden h-[200px] xl:h-[280px] w-1 rounded-full bg-gradient-to-b from-transparent via-amber-600/60 to-transparent xl:block xl:mx-8"></div>
-			<div class="relative mt-0 flex h-full w-full flex-1 shrink-0 flex-col items-center justify-center lg:pr-4">
-				<HeroCarousel movies={nowPlaying} />
-			</div>
-		</div>
-
-		<!-- Mobile Layout (visible on mobile, hidden on sm and up) -->
-		<div class="relative z-10 container mx-auto flex sm:hidden w-full flex-col items-center justify-center px-2 py-4 gap-4">
-			<img
-				src="/logo.svg"
-				alt="Cinepic Logo"
-				class="mx-auto h-20 w-auto object-contain drop-shadow-2xl"
-			/>
-
-			<h2
-				class="font-display text-2xl leading-tight font-black tracking-widest text-white uppercase drop-shadow-2xl text-center"
-			>
-				{cinemaState.selectedCinema ? `SEDE ${cinemaState.selectedCinema}` : 'SEDE SAMBIL CANDELARIA'}
-			</h2>
-
-			<div class="relative flex h-10 w-full items-center justify-center overflow-hidden mt-2">
-				{#key heroButtonTextIndex}
-					<div class="absolute animate-in slide-in-from-bottom-2 fade-in duration-500 flex items-center gap-2">
-						<Sparkles class="size-3 text-white drop-shadow-md" />
-						{#if heroButtonTexts[heroButtonTextIndex].isLink}
-							<button class="font-black tracking-widest uppercase text-xs border-b border-white hover:border-white/50 pb-0.5 transition-colors group cursor-pointer">
-								<span class="text-white drop-shadow-md group-hover:opacity-80 transition-all">
-									{heroButtonTexts[heroButtonTextIndex].text}
-								</span>
-							</button>
-						{:else}
-							<span class="font-black tracking-widest text-white uppercase text-xs drop-shadow-md">
-								{heroButtonTexts[heroButtonTextIndex].text}
-							</span>
-						{/if}
-						<Sparkles class="size-3 text-white drop-shadow-md" />
-					</div>
-				{/key}
-			</div>
-		</div>
+		<HeroDesktop {nowPlaying} />
+		<HeroMobile />
 	</section>
 
 	<section class="w-full mt-12 px-4 md:px-8 lg:px-12">
@@ -330,12 +230,14 @@
 
 <style>
 	.hero-banner {
-		background: radial-gradient(circle at 75% 55%, #ea580c 0%, #7c2d12 35%, #09090b 80%);
+		background: radial-gradient(circle at 75% 55%, rgba(180,83,9,0.15) 0%, rgba(0,0,0,1) 40%);
 	}
 
 	@media (max-width: 1024px) {
 		.hero-banner {
-			background: radial-gradient(circle at 50% 50%, #ea580c 0%, #7c2d12 40%, #09090b 90%);
+			background: radial-gradient(circle at 50% 50%, rgba(180,83,9,0.1) 0%, rgba(0,0,0,1) 50%);
 		}
 	}
 </style>
+
+

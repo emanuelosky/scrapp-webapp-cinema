@@ -12,8 +12,8 @@
 </script>
 
 <Dialog.Root bind:open>
-	<Dialog.Content class="sm:max-w-[500px] bg-black border border-zinc-800 rounded-none shadow-2xl p-0 gap-0">
-		<div class="px-6 py-5 border-b border-zinc-800">
+	<Dialog.Content class="sm:max-w-[500px] bg-black border-none rounded-none shadow-2xl p-0 gap-0">
+		<div class="px-6 py-5">
 			<Dialog.Title class="text-xl md:text-2xl font-black text-white tracking-tight">Buscar un cine</Dialog.Title>
 		</div>
 
@@ -48,13 +48,13 @@
 			<div class="mt-4 flex flex-col gap-2">
 				<h4 class="text-zinc-600 text-[11px] font-bold uppercase tracking-widest mb-1">Cines Disponibles</h4>
 				
-				<button class="flex flex-col text-left py-4 border-b border-zinc-900 hover:bg-zinc-900/30 transition-colors px-2 group"
+				<button class="flex flex-col text-left py-4 hover:bg-zinc-900/30 transition-colors px-2 group"
 					onclick={() => { cinemaState.selectedCinema = 'Sambil Candelaria'; open = false; }}>
 					<span class="text-white font-bold text-lg group-hover:text-amber-400 transition-colors">CINEPIC</span>
 					<span class="text-zinc-500 text-sm mt-1">Sambil Candelaria, Caracas</span>
 				</button>
 
-				<button class="flex flex-col text-left py-4 border-b border-zinc-900 transition-colors px-2 cursor-default opacity-50"
+				<button class="flex flex-col text-left py-4 transition-colors px-2 cursor-default opacity-50"
 					onclick={(e) => { e.preventDefault(); }}>
 					<span class="text-white font-bold text-lg">CINEPIC VVIP</span>
 					<span class="text-zinc-500 text-sm mt-1">Centro Lido, Caracas (Próximamente)</span>

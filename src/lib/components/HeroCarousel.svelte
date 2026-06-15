@@ -2,9 +2,7 @@
 	import type { Movie } from '$lib/types';
 	import Ticket from '@lucide/svelte/icons/ticket';
 
-	let { movies = [] }: { movies: Movie[] } = $props();
-
-	let currentIndex = $state(0);
+	let { movies = [], currentIndex = $bindable(0) }: { movies: Movie[], currentIndex?: number } = $props();
 
 	let interval: ReturnType<typeof setInterval>;
 	

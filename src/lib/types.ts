@@ -11,6 +11,7 @@ export interface Movie {
 	id: string | number;
 	title: string;
 	poster: string;
+	banner?: string;
 	label?: string;
 	rating?: string;
 	formats?: {
@@ -24,4 +25,17 @@ export interface Movie {
 	duration?: string;
 	synopsis?: string;
 	genres?: string;
+}
+
+export interface PromoBanner {
+	id: string;
+	name: string;
+	message: string;
+	bg_color_class: string;
+	text_color_class: string;
+	icon: string;
+	is_active: boolean;
+	days_of_week: number[];
+	start_time: string;
+	end_time: string;
 }

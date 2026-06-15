@@ -5,8 +5,8 @@
 </script>
 
 <Dialog.Root bind:open>
-	<Dialog.Content class="sm:max-w-sm bg-black border border-zinc-800 shadow-2xl rounded-none p-0 gap-0">
-		<div class="px-6 py-5 border-b border-zinc-800 text-center">
+	<Dialog.Content class="sm:max-w-sm bg-black border-none shadow-2xl rounded-none p-0 gap-0">
+		<div class="px-6 py-5 text-center">
 			<Dialog.Title class="text-xl font-black text-white tracking-tight uppercase">Oops</Dialog.Title>
 		</div>
 		<div class="p-6 flex flex-col gap-6 text-center">

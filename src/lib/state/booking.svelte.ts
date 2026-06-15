@@ -1,162 +1,84 @@
-import type { Movie, ShowtimeDetails } from '$lib/types';
-import type { CFDCell } from '$lib/utils/cfd';
 import { browser } from '$app/environment';
 import { SvelteDate } from 'svelte/reactivity';
 import { toast } from 'svelte-sonner';
+import { API_BASE } from '$lib/utils/api';
+import type { Movie, ShowtimeDetails } from '$lib/types';
+import type { CartItem } from './booking.types';
 
-export interface ConcessionItem {
-	id: string;
-	name: string;
-	price: number;
-	quantity: number;
-}
-
-export interface TariffItem {
-	id: string;
-	nombre: string;        // Nombre limpio: "COMPLETO"
-	serie: string;         // Prefijo del POS: "G1" — requerido por ventaTemporal como serie_tarifa
-	precio: number;
-}
-
-export interface CartItem {
-	showtimeId: string;
-	movieTitle: string;
-	moviePoster: string;
-	showtimeDate: string;
-	showtimeTime: string;
-	seats: string[];
-	tariffs: { nombre: string; precio: number; qty: number }[];
-	subtotal: number;
-}
-
-export interface GhostSessionData {
-	ventaTemporalId: string;
-	ghostUsername: string;
-	lockedAt: string;
-}
-
-export interface ActiveSelection {
-	movie: Movie | null;
-	selectedDate: string | null;
-	selectedShowtime: ShowtimeDetails | null;
-	tariffs: TariffItem[];
-	allPosTariffs: TariffItem[];
-	defaultTariffsIds: string[];
-	ticketQuantities: Record<string, number>;
-	selectedSeats: string[];
-}
+import { cartState } from './cart.svelte';
+import { ghostSessionState } from './ghostSession.svelte';
+import { seatMapState } from './seatMap.svelte';
 
 export class BookingState {
-	// "In Progress" selection
-	activeSelection = $state<ActiveSelection>({
-		movie: null,
-		selectedDate: null,
-		selectedShowtime: null,
-		tariffs: [],
-		allPosTariffs: [],
-		defaultTariffsIds: [],
-		ticketQuantities: {},
-		selectedSeats: []
-	});
+	get activeSelection() { return seatMapState.activeSelection; }
+	get cartItems() { return cartState.cartItems; }
+	get ghostSession() { return ghostSessionState.ghostSession; }
+	get lastCompletedSale() { return cartState.lastCompletedSale; }
+	set lastCompletedSale(val) { cartState.lastCompletedSale = val; }
+	
+	get matrix() { return seatMapState.matrix; }
+	get selectedConcessions() { return cartState.selectedConcessions; }
 
-	// Confirmed cart items in POS
-	cartItems = $state<CartItem[]>([]);
+	get customerName() { return cartState.customerName; }
+	set customerName(val) { cartState.customerName = val; }
+	get customerEmail() { return cartState.customerEmail; }
+	set customerEmail(val) { cartState.customerEmail = val; }
+	get customerDocument() { return cartState.customerDocument; }
+	set customerDocument(val) { cartState.customerDocument = val; }
+	get paymentMethod() { return cartState.paymentMethod; }
+	set paymentMethod(val) { cartState.paymentMethod = val; }
+	
+	get movie() { return seatMapState.activeSelection.movie; }
+	get selectedDate() { return seatMapState.activeSelection.selectedDate; }
+	get selectedShowtime() { return seatMapState.activeSelection.selectedShowtime; }
+	get selectedSeats() { return seatMapState.activeSelection.selectedSeats; }
+	get tariffs() { return seatMapState.activeSelection.tariffs; }
+	get ticketQuantities() { return seatMapState.activeSelection.ticketQuantities; }
+	get allPosTariffs() { return seatMapState.activeSelection.allPosTariffs; }
+	get defaultTariffsIds() { return seatMapState.activeSelection.defaultTariffsIds; }
 
-	// Ghost User Status / POS transaction
-	ghostSession = $state<GhostSessionData | null>(null);
+	get ghostVentaId() { return ghostSessionState.ghostVentaId; }
+	get ghostStatusCode() { return ghostSessionState.ghostStatusCode; }
+	get ghostAvailableCount() { return ghostSessionState.ghostAvailableCount; }
+	get timeRemainingSeconds() { return ghostSessionState.timeRemainingSeconds; }
+	get showExtensionModal() { return ghostSessionState.showExtensionModal; }
+	set showExtensionModal(val: boolean) { ghostSessionState.showExtensionModal = val; }
 
-	// Ultima venta exitosa para mostrar el QR
-	lastCompletedSale = $state<any>(null);
-
-	// Grid state (belongs to activeSelection view)
-	matrix = $state<CFDCell[][]>([]);
-
-	// Concessions State
-	selectedConcessions = $state<ConcessionItem[]>([]);
-
-	// Checkout State
-	customerName = $state('');
-	customerEmail = $state('');
-	customerDocument = $state('');
-	paymentMethod = $state<'pago_movil' | 'zelle' | 'card' | null>(null);
-	isProcessing = $state(false);
-
-	// Inactivity & Session Recovery
-	ghostAvailableCount = $state<number | null>(null);
-	lastSyncTimestamp = $state<number>(0);
-	retentionTimeMinutes = $state<number>(5); // default fallback
-	timeRemainingSeconds = $state<number | null>(null);
-	showExtensionModal = $state<boolean>(false);
-	private timerInterval: ReturnType<typeof setInterval> | null = null;
+	get totalTickets() { return seatMapState.totalTickets; }
+	get activeSelectionPrice() { return seatMapState.activeSelectionPrice; }
+	get totalPrice() { return cartState.totalPrice + seatMapState.activeSelectionPrice; }
+	get canProceed() { return seatMapState.canProceed; }
+	get isProcessing() { return seatMapState.isProcessing; }
+	get loadingMessage() { return seatMapState.loadingMessage; }
 
 	constructor() {
 		if (browser) {
 			this.loadFromLocalStorage();
+			ghostSessionState.onExpireCallback = () => this.expireSession();
 		}
-	}
-
-	// --- Getters that map to activeSelection ---
-	get movie() { return this.activeSelection.movie; }
-	get selectedDate() { return this.activeSelection.selectedDate; }
-	get selectedShowtime() { return this.activeSelection.selectedShowtime; }
-	get selectedSeats() { return this.activeSelection.selectedSeats; }
-	get tariffs() { return this.activeSelection.tariffs; }
-	get ticketQuantities() { return this.activeSelection.ticketQuantities; }
-	get allPosTariffs() { return this.activeSelection.allPosTariffs; }
-	get defaultTariffsIds() { return this.activeSelection.defaultTariffsIds; }
-
-	// Legacy getter for backwards compatibility
-	get ghostVentaId() { return this.ghostSession?.ventaTemporalId || null; }
-	get ghostStatusCode() { return this.ghostSession ? 'G OK' : ''; }
-
-	get totalTickets() {
-		// Only from active selection (cart tickets are already locked)
-		return Object.values(this.activeSelection.ticketQuantities).reduce((a, b) => a + b, 0);
-	}
-
-	get activeSelectionPrice() {
-		let total = 0;
-		for (const tariff of this.activeSelection.tariffs) {
-			const qty = this.activeSelection.ticketQuantities[tariff.id] || 0;
-			total += qty * tariff.precio;
-		}
-		return total;
-	}
-
-	get totalPrice() {
-		const cartItemsTotal = this.cartItems.reduce((sum, item) => sum + item.subtotal, 0);
-		const concessionsTotal = this.selectedConcessions.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-		return cartItemsTotal + this.activeSelectionPrice + concessionsTotal;
-	}
-
-	get canProceed() {
-		return this.totalTickets > 0 && this.activeSelection.selectedSeats.length === this.totalTickets;
 	}
 
 	startBooking(movie: Movie, date: string, showtime: ShowtimeDetails) {
-		this.activeSelection = {
-			movie,
-			selectedDate: date,
-			selectedShowtime: showtime,
-			tariffs: [],
-			allPosTariffs: [],
-			defaultTariffsIds: [],
-			ticketQuantities: {},
-			selectedSeats: []
-		};
-		
-		this.matrix = []; // We will load this async
-		this.ghostAvailableCount = null;
+		seatMapState.startBooking(movie, date, showtime);
+		ghostSessionState.ghostAvailableCount = null;
+	}
+
+	toggleSeat(seatId: string, seatType: string = 'General', forceDisabledTariff: boolean = false) {
+		seatMapState.toggleSeat(seatId, seatType, forceDisabledTariff);
+	}
+
+	updateConcession(id: string, name: string, price: number, delta: number) {
+		cartState.updateConcession(id, name, price, delta);
 	}
 
 	saveToLocalStorage() {
 		if (!browser) return;
 		try {
 			const state = {
-				activeSelection: this.activeSelection,
-				cartItems: this.cartItems,
-				ghostSession: this.ghostSession,
-				lastCompletedSale: this.lastCompletedSale,
+				activeSelection: seatMapState.activeSelection,
+				cartItems: cartState.cartItems,
+				ghostSession: ghostSessionState.ghostSession,
+				lastCompletedSale: cartState.lastCompletedSale,
 				timestamp: Date.now()
 			};
 			localStorage.setItem('scrapp_booking_state', JSON.stringify(state));
@@ -173,19 +95,13 @@ export class BookingState {
 
 			const state = JSON.parse(stateStr);
 
-			// Restaurar toda la sesión si existe y no ha caducado
 			if (state.timestamp && Date.now() - state.timestamp < 15 * 60 * 1000) {
-				if (state.activeSelection) this.activeSelection = state.activeSelection;
-				if (state.cartItems) this.cartItems = state.cartItems;
-				if (state.ghostSession) {
-					this.ghostSession = state.ghostSession;
-				}
-				if (state.lastCompletedSale) {
-					this.lastCompletedSale = state.lastCompletedSale;
-				}
+				if (state.activeSelection) seatMapState.activeSelection = state.activeSelection;
+				if (state.cartItems) cartState.cartItems = state.cartItems;
+				if (state.ghostSession) ghostSessionState.ghostSession = state.ghostSession;
+				if (state.lastCompletedSale) cartState.lastCompletedSale = state.lastCompletedSale;
 				return true;
 			} else {
-				// Expirado
 				localStorage.removeItem('scrapp_booking_state');
 			}
 		} catch (e) {
@@ -194,85 +110,67 @@ export class BookingState {
 		return false;
 	}
 
-	loadingMessage = $state('');
-
 	async loadSeats() {
-		if (!this.selectedShowtime || !this.selectedShowtime.id) return;
-		this.isProcessing = true;
-		this.loadingMessage = 'Conectando con el cine...';
+		if (!seatMapState.activeSelection.selectedShowtime || !seatMapState.activeSelection.selectedShowtime.id) return;
+		seatMapState.isProcessing = true;
+		seatMapState.loadingMessage = 'Conectando con el cine...';
 		try {
-			// Suponiendo que scrapp-administrative-v2 está corriendo en localhost:5173 en dev
-			// y en prod tiene otro dominio. Esto debería configurarse por .env o un proxy en svelte.config
-			// Para ahora usamos un path relativo si la API estuviera en el mismo dominio, pero 
-			// como están separados, usaremos la URL base de admin
-			const API_BASE = import.meta.env.VITE_ADMIN_API_URL || 'https://scrapp-backoffice.onrender.com';
-			const maxRetries = 15; // Unos 45-60 segundos de espera total
+			const maxRetries = 15;
 			const delayMs = 4000;
 
 			for (let i = 0; i < maxRetries; i++) {
 				try {
-					if (i > 0) {
-						this.loadingMessage = 'Despertando el servidor del cine. Esto puede tomar hasta 50 segundos, por favor espera...';
-					}
+					if (i > 0) seatMapState.loadingMessage = 'Despertando el servidor del cine. Esto puede tomar hasta 50 segundos, por favor espera...';
 
-					// Fetch Kiosk Settings for retention time
 					try {
 						const settingsRes = await fetch(`${API_BASE}/api/kiosk/settings`);
 						if (settingsRes.ok) {
 							const { settings } = await settingsRes.json();
 							if (settings && settings.retention_time_minutes) {
-								this.retentionTimeMinutes = settings.retention_time_minutes;
+								ghostSessionState.retentionTimeMinutes = settings.retention_time_minutes;
 							}
 						}
-					} catch {
-						// Ignorar si falla la carga de settings, usamos default
-					}
+					} catch (e) { /* ignored */ }
 
-					const res = await fetch(`${API_BASE}/api/pos/fetch-seats/${this.selectedShowtime.id}`);
-
-					// Render a veces devuelve un HTML 502 Bad Gateway mientras despierta
+					const res = await fetch(`${API_BASE}/api/pos/fetch-seats/${seatMapState.activeSelection.selectedShowtime.id}`);
 					const contentType = res.headers.get('content-type');
 					if (res.ok && contentType && contentType.includes('application/json')) {
 						const data = await res.json();
 						if (data.matrix) {
-							this.matrix = data.matrix;
-							this.lastSyncTimestamp = Date.now();
-
-							// Check local storage for restored state
+							seatMapState.matrix = data.matrix;
+							seatMapState.lastSyncTimestamp = Date.now();
 							this.loadFromLocalStorage();
 
-							// Process tariffs from the integrated fetch-seats response if available,
-							// otherwise fallback to a separate API call.
 							if (data.tariffsData && data.tariffsData.success) {
 								const tariffsData = data.tariffsData;
 								const allowedIds = tariffsData.allowedTariffs || [];
 								const defaultIds = tariffsData.defaultTariffs || [];
 								const allTariffs = tariffsData.posTariffs || [];
-								this.activeSelection.defaultTariffsIds = defaultIds;
-								this.activeSelection.allPosTariffs = allTariffs.map((t: Record<string, unknown>) => ({
+								seatMapState.activeSelection.defaultTariffsIds = defaultIds;
+								seatMapState.activeSelection.allPosTariffs = allTariffs.map((t: Record<string, unknown>) => ({
 									id: t.id as string,
 									nombre: (t.nombre || '') as string,
 									serie: (t.serie || t.prefix || '') as string,
 									precio: Number(t.precio || t.valor || t.monto || 0)
 								}));
-								this.activeSelection.tariffs = this.activeSelection.allPosTariffs.filter(t => allowedIds.includes(t.id));
+								seatMapState.activeSelection.tariffs = seatMapState.activeSelection.allPosTariffs.filter(t => allowedIds.includes(t.id));
 							} else {
 								try {
-									const tariffsRes = await fetch(`${API_BASE}/api/tarifas?showtimeId=${this.selectedShowtime.id}`);
+									const tariffsRes = await fetch(`${API_BASE}/api/tarifas?showtimeId=${seatMapState.activeSelection.selectedShowtime.id}`);
 									if (tariffsRes.ok) {
 										const tariffsData = await tariffsRes.json();
 										if (tariffsData.success) {
 											const allowedIds = tariffsData.allowedTariffs || [];
 											const defaultIds = tariffsData.defaultTariffs || [];
 											const allTariffs = tariffsData.posTariffs || [];
-											this.activeSelection.defaultTariffsIds = defaultIds;
-											this.activeSelection.allPosTariffs = allTariffs.map((t: Record<string, unknown>) => ({
+											seatMapState.activeSelection.defaultTariffsIds = defaultIds;
+											seatMapState.activeSelection.allPosTariffs = allTariffs.map((t: Record<string, unknown>) => ({
 												id: t.id as string,
 												nombre: (t.nombre || '') as string,
 												serie: (t.serie || t.prefix || '') as string,
 												precio: Number(t.precio || t.valor || t.monto || 0)
 											}));
-											this.activeSelection.tariffs = this.activeSelection.allPosTariffs.filter(t => allowedIds.includes(t.id));
+											seatMapState.activeSelection.tariffs = seatMapState.activeSelection.allPosTariffs.filter(t => allowedIds.includes(t.id));
 										}
 									}
 								} catch (e) {
@@ -280,157 +178,37 @@ export class BookingState {
 								}
 							}
 
-							this.loadingMessage = '';
-							this.isProcessing = false;
+							seatMapState.loadingMessage = '';
+							seatMapState.isProcessing = false;
 							return;
 						}
 					}
-
-					// Si no es OK o no es JSON (HTML de error de Render), lanzamos error para forzar el reintento
-					throw new Error('Servidor no disponible aún o en estado de suspensión (Render)');
-				} catch (error) {
-					console.log(`Intento ${i + 1} de ${maxRetries} fallido. Reintentando en ${delayMs}ms...`);
+					throw new Error('Servidor no disponible aún');
+				} catch {
 					if (i === maxRetries - 1) {
-						console.error('Error fetching seats after retries:', error);
-						this.matrix = this.generateMockMatrix();
-						this.loadingMessage = 'Mostrando mapa simulado (Fallo de conexión)';
-						setTimeout(() => this.loadingMessage = '', 4000);
+						seatMapState.matrix = seatMapState.generateMockMatrix();
+						seatMapState.loadingMessage = 'Mostrando mapa simulado (Fallo de conexión)';
+						setTimeout(() => seatMapState.loadingMessage = '', 4000);
 					} else {
 						await new Promise(resolve => setTimeout(resolve, delayMs));
 					}
 				}
 			}
 		} finally {
-			this.isProcessing = false;
-		}
-	}
-
-	generateMockMatrix(): CFDCell[][] {
-		const m: CFDCell[][] = [];
-		const rowsCount = 16;
-		const colsCount = 20;
-
-		// Empty row 0 for padding
-		const row0: CFDCell[] = [];
-		for (let j = 0; j <= colsCount; j++) row0.push({ type: 'empty' });
-		m.push(row0);
-
-		for (let i = 1; i <= rowsCount; i++) {
-			const rowName = String.fromCharCode(64 + i);
-			const r: CFDCell[] = [];
-			r.push({ type: 'row-label', label: rowName });
-
-			for (let j = 1; j <= colsCount; j++) {
-				// Create an aisle at columns 6 and 15
-				if (j === 6 || j === 15) {
-					r.push({ type: 'empty' });
-				} else {
-					// Some fake disabled/taken seats
-					const isTaken = (i % 3 === 0 && j % 4 === 0);
-					r.push({
-						type: 'seat',
-						id: `${rowName}${j}`,
-						label: `${j}`,
-						status: isTaken ? 'taken' : 'free'
-					});
-				}
-			}
-			m.push(r);
-		}
-		return m;
-	}
-
-	toggleSeat(seatId: string, seatType: string = 'General', forceDisabledTariff: boolean = false) {
-		if (this.activeSelection.selectedSeats.includes(seatId)) {
-			this.activeSelection.selectedSeats = this.activeSelection.selectedSeats.filter(s => s !== seatId);
-			// Auto decrement ticket when removing a seat
-			if (this.totalTickets > this.activeSelection.selectedSeats.length) {
-				// Find a tariff that has > 0 quantity and decrement it
-				// Try to decrement disabled tariff first if this was a disabled seat
-				let decremented = false;
-				if (seatType.toUpperCase().includes('DISCAPACITA')) {
-					for (const tId of Object.keys(this.activeSelection.ticketQuantities)) {
-						const tariffObj = this.activeSelection.tariffs.find(t => t.id === tId);
-						if (tariffObj && tariffObj.nombre.toUpperCase().includes('DISCAPACITA') && this.activeSelection.ticketQuantities[tId] > 0) {
-							this.activeSelection.ticketQuantities[tId]--;
-							decremented = true;
-							break;
-						}
-					}
-				}
-
-				if (!decremented) {
-					for (const tId of Object.keys(this.activeSelection.ticketQuantities)) {
-						if (this.activeSelection.ticketQuantities[tId] > 0) {
-							this.activeSelection.ticketQuantities[tId]--;
-							break;
-						}
-					}
-				}
-			}
-		} else {
-			let targetTariffId: string | undefined = undefined;
-
-			if (seatType.toUpperCase().includes('DISCAPACITA') && forceDisabledTariff) {
-				// Buscar la tarifa de discapacitados en allPosTariffs
-				const disabledTariff = this.activeSelection.allPosTariffs.find(t => t.nombre.toUpperCase().includes('DISCAPACITA'));
-				if (disabledTariff) {
-					// Si no esta en this.tariffs (lista permitida), la agregamos
-					if (!this.activeSelection.tariffs.find(t => t.id === disabledTariff.id)) {
-						this.activeSelection.tariffs = [...this.activeSelection.tariffs, disabledTariff];
-					}
-					targetTariffId = disabledTariff.id;
-				}
-			}
-
-			this.activeSelection.selectedSeats = [...this.activeSelection.selectedSeats, seatId];
-
-			// Auto increment selected or default tariff
-			if (this.totalTickets < this.activeSelection.selectedSeats.length) {
-				if (!targetTariffId && this.activeSelection.tariffs.length > 0) {
-					targetTariffId = this.activeSelection.tariffs[0].id;
-					const defaultTariff = this.activeSelection.tariffs.find(t => this.activeSelection.defaultTariffsIds.includes(t.id));
-					if (defaultTariff) {
-						targetTariffId = defaultTariff.id;
-					}
-				}
-				if (targetTariffId) {
-					this.activeSelection.ticketQuantities[targetTariffId] = (this.activeSelection.ticketQuantities[targetTariffId] || 0) + 1;
-				}
-			}
-		}
-	}
-
-	updateConcession(id: string, name: string, price: number, delta: number) {
-		const existing = this.selectedConcessions.find(c => c.id === id);
-		if (existing) {
-			existing.quantity += delta;
-			if (existing.quantity <= 0) {
-				this.selectedConcessions = this.selectedConcessions.filter(c => c.id !== id);
-			}
-		} else if (delta > 0) {
-			this.selectedConcessions.push({ id, name, price, quantity: delta });
+			seatMapState.isProcessing = false;
 		}
 	}
 
 	async addSelectionToCart() {
-		this.isProcessing = true;
-		this.loadingMessage = 'Añadiendo butacas al carrito...';
+		seatMapState.isProcessing = true;
+		seatMapState.loadingMessage = 'Añadiendo butacas al carrito...';
 
 		try {
-			const API_BASE = import.meta.env.VITE_ADMIN_API_URL || 'https://scrapp-backoffice.onrender.com';
+			const seatsQueue = [...seatMapState.activeSelection.selectedSeats];
+			const tarifaGroups: Record<string, unknown>[] = [];
 
-			const seatsQueue = [...this.activeSelection.selectedSeats];
-			const tarifaGroups: Array<{
-				id_tarifa: string;
-				serie_tarifa: string;
-				precio_tarifa: string;
-				cantidad_entradas: number;
-				butacas_elegidas: string[];
-			}> = [];
-
-			for (const tariff of this.activeSelection.tariffs) {
-				const qty = this.activeSelection.ticketQuantities[tariff.id] || 0;
+			for (const tariff of seatMapState.activeSelection.tariffs) {
+				const qty = seatMapState.activeSelection.ticketQuantities[tariff.id] || 0;
 				if (qty <= 0) continue;
 
 				tarifaGroups.push({
@@ -442,29 +220,22 @@ export class BookingState {
 				});
 			}
 
-			if (tarifaGroups.length === 0) {
-				throw new Error('No hay tarifas seleccionadas.');
-			}
+			if (tarifaGroups.length === 0) throw new Error('No hay tarifas seleccionadas.');
 
-			const numero_funcion = this.activeSelection.selectedShowtime?.numero_funcion;
-			const numero_sala = this.activeSelection.selectedShowtime?.numero_sala;
+			const numero_funcion = seatMapState.activeSelection.selectedShowtime?.numero_funcion;
+			const numero_sala = seatMapState.activeSelection.selectedShowtime?.numero_sala;
 
-			if (!numero_funcion || !numero_sala) {
-				throw new Error('Falta numero_funcion o numero_sala en la función seleccionada. Verifica que la sincronización de cartelera esté actualizada.');
-			}
+			if (!numero_funcion || !numero_sala) throw new Error('Falta numero_funcion o numero_sala');
 
-			// Payload para /api/kiosk/lock-seats
 			const payload: Record<string, unknown> = {
-				id_funcion: this.activeSelection.selectedShowtime?.id,
+				id_funcion: seatMapState.activeSelection.selectedShowtime?.id,
 				numero_funcion,
 				numero_sala,
 				tarifa_groups: tarifaGroups
 			};
 
-			// Si YA tenemos un fantasma, le decimos al backend que lo use para AÑADIR a la misma ventaTemporal
-			if (this.ghostSession) {
-				payload.existingGhostUsername = this.ghostSession.ghostUsername;
-				// No assignment needed, getter ghostStatusCode is derived from ghostSession.
+			if (ghostSessionState.ghostSession) {
+				payload.existingGhostUsername = ghostSessionState.ghostSession.ghostUsername;
 			}
 
 			const response = await fetch(`${API_BASE}/api/kiosk/lock-seats`, {
@@ -474,191 +245,124 @@ export class BookingState {
 			});
 
 			const data = await response.json();
-
-			if (!data.success) {
-				throw new Error(data.error || 'Fallo al bloquear butacas en el servidor');
-			}
+			if (!data.success) throw new Error(data.error || 'Fallo al bloquear butacas en el servidor');
 
 			const lockedAtStr = new SvelteDate().toISOString();
 
-			// Si fue la primera selección, inicializamos la sesión fantasma y el timer
-			if (!this.ghostSession) {
-				this.ghostSession = {
+			if (!ghostSessionState.ghostSession) {
+				ghostSessionState.ghostSession = {
 					ventaTemporalId: data.ventaTemporalId,
 					ghostUsername: data.ghostUsername,
 					lockedAt: lockedAtStr
 				};
-				this.startTimer(lockedAtStr);
+				ghostSessionState.startTimer(lockedAtStr);
 			} else {
-				// Actualizamos el timer con cada adición
-				this.ghostSession.lockedAt = lockedAtStr;
-				this.startTimer(lockedAtStr);
+				ghostSessionState.ghostSession.lockedAt = lockedAtStr;
+				ghostSessionState.startTimer(lockedAtStr);
 			}
 
-			// Agrupamos las tarifas para el CartItem
-			const itemTariffs = this.activeSelection.tariffs.filter(t => this.activeSelection.ticketQuantities[t.id] > 0).map(t => ({
+			const itemTariffs = seatMapState.activeSelection.tariffs.filter(t => seatMapState.activeSelection.ticketQuantities[t.id] > 0).map(t => ({
 				nombre: t.nombre,
 				precio: t.precio,
-				qty: this.activeSelection.ticketQuantities[t.id]
+				qty: seatMapState.activeSelection.ticketQuantities[t.id]
 			}));
 
-			// Mover de activeSelection a cartItems
-			const existingItemIndex = this.cartItems.findIndex(item => item.showtimeId === this.activeSelection.selectedShowtime!.id);
+			const existingItemIndex = cartState.cartItems.findIndex(item => item.showtimeId === seatMapState.activeSelection.selectedShowtime!.id);
 
 			if (existingItemIndex >= 0) {
-				const existingItem = this.cartItems[existingItemIndex];
-				
-				// Merge seats
-				existingItem.seats = [...existingItem.seats, ...this.activeSelection.selectedSeats];
-				existingItem.subtotal += this.activeSelectionPrice;
+				const existingItem = cartState.cartItems[existingItemIndex];
+				existingItem.seats = [...existingItem.seats, ...seatMapState.activeSelection.selectedSeats];
+				existingItem.subtotal += seatMapState.activeSelectionPrice;
 
-				// Merge tariffs
 				for (const t of itemTariffs) {
 					const existingTariff = existingItem.tariffs.find(et => et.nombre === t.nombre);
-					if (existingTariff) {
-						existingTariff.qty += t.qty;
-					} else {
-						existingItem.tariffs.push(t);
-					}
+					if (existingTariff) existingTariff.qty += t.qty;
+					else existingItem.tariffs.push(t);
 				}
-				
-				// Forzar reactividad de Svelte 5
-				this.cartItems[existingItemIndex] = existingItem;
+				cartState.cartItems[existingItemIndex] = existingItem;
 			} else {
 				const newItem: CartItem = {
-					showtimeId: this.activeSelection.selectedShowtime!.id,
-					movieTitle: this.activeSelection.movie?.title || 'Película',
-					moviePoster: this.activeSelection.movie?.poster || '',
-					showtimeDate: this.activeSelection.selectedDate || '',
-					showtimeTime: this.activeSelection.selectedShowtime!.time,
-					seats: [...this.activeSelection.selectedSeats],
+					showtimeId: seatMapState.activeSelection.selectedShowtime!.id,
+					movieTitle: seatMapState.activeSelection.movie?.title || 'Película',
+					moviePoster: seatMapState.activeSelection.movie?.poster || '',
+					showtimeDate: seatMapState.activeSelection.selectedDate || '',
+					showtimeTime: seatMapState.activeSelection.selectedShowtime!.time,
+					seats: [...seatMapState.activeSelection.selectedSeats],
 					tariffs: itemTariffs,
-					subtotal: this.activeSelectionPrice
+					subtotal: seatMapState.activeSelectionPrice
 				};
-
-				this.cartItems = [...this.cartItems, newItem];
+				cartState.cartItems = [...cartState.cartItems, newItem];
 			}
 
-			// Limpiar activeSelection (dejar solo lo básico o nada)
-			this.activeSelection.selectedSeats = [];
-			this.activeSelection.ticketQuantities = {};
-
+			seatMapState.activeSelection.selectedSeats = [];
+			seatMapState.activeSelection.ticketQuantities = {};
 			this.saveToLocalStorage();
-
 			return true;
 		} catch (e) {
 			console.error('Error al bloquear butacas:', e);
 			return false;
 		} finally {
-			this.isProcessing = false;
-			this.loadingMessage = '';
+			seatMapState.isProcessing = false;
+			seatMapState.loadingMessage = '';
 		}
 	}
 
-	async fetchGhostStatus() {
+	async checkout(pago: unknown) {
 		if (!browser) return;
-		try {
-			const API_BASE = import.meta.env.VITE_ADMIN_API_URL || 'https://scrapp-backoffice.onrender.com';
-			const res = await fetch(`${API_BASE}/api/kiosk/ghost-pool/status`);
-			if (res.ok) {
-				const data = await res.json();
-				if (data.success) {
-					this.ghostAvailableCount = data.availablePreHeated;
-				}
-			}
-		} catch {
-			// Silencioso
-		}
-	}
+		if (!ghostSessionState.ghostSession) throw new Error("No hay una sesión activa");
 
-	// ── RECOVERY & TIMEOUT LOGIC ──
-
-	startTimer(lockedAtStr: string) {
-		if (!browser) return;
-		this.stopTimer();
-
-		const lockedAt = new SvelteDate(lockedAtStr).getTime();
-		const retentionMs = this.retentionTimeMinutes * 60 * 1000;
-
-		this.timerInterval = setInterval(() => {
-			const now = Date.now();
-			const elapsed = now - lockedAt;
-			const remaining = Math.max(0, retentionMs - elapsed);
-			this.timeRemainingSeconds = Math.floor(remaining / 1000);
-
-			if (this.timeRemainingSeconds <= 60 && this.timeRemainingSeconds > 0) {
-				if (!this.showExtensionModal) this.showExtensionModal = true;
-			} else if (this.timeRemainingSeconds === 0) {
-				this.expireSession();
-			}
-		}, 1000);
-	}
-
-	stopTimer() {
-		if (this.timerInterval) {
-			clearInterval(this.timerInterval);
-			this.timerInterval = null;
-		}
-	}
-
-	async extendSession() {
-		if (!browser) return;
-		if (!this.ghostSession) return;
+		seatMapState.isProcessing = true;
+		seatMapState.loadingMessage = 'Procesando pago y facturación...';
 
 		try {
-			const ghostUsername = this.ghostSession.ghostUsername;
-			const API_BASE = import.meta.env.VITE_ADMIN_API_URL || 'https://scrapp-backoffice.onrender.com';
-			const res = await fetch(`${API_BASE}/api/kiosk/ghost-pool/extend`, {
+			const payload = {
+				ghostUsername: ghostSessionState.ghostSession.ghostUsername,
+				pago: pago
+			};
+
+			const response = await fetch(`${API_BASE}/api/kiosk/checkout`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ username: ghostUsername })
+				body: JSON.stringify(payload)
 			});
 
-			if (res.ok) {
-				// Actualizar el lockedAt localmente
-				const newLockedAt = new SvelteDate().toISOString();
-				this.ghostSession.lockedAt = newLockedAt;
-				this.saveToLocalStorage();
+			const data = await response.json();
+			if (!data.success) throw new Error(data.error || 'Error desconocido al facturar');
 
-				this.showExtensionModal = false;
-				this.startTimer(newLockedAt);
-			} else {
-				console.error('No se pudo extender el tiempo.');
-			}
+			cartState.lastCompletedSale = {
+				cartItems: [...cartState.cartItems],
+				concessions: [...cartState.selectedConcessions],
+				customerEmail: cartState.customerEmail,
+				orderTotal: cartState.totalPrice
+			};
+
+			ghostSessionState.releaseGhost();
+			cartState.clear();
+			seatMapState.activeSelection.selectedSeats = [];
+			seatMapState.activeSelection.ticketQuantities = {};
+			this.saveToLocalStorage();
+
+			return true;
 		} catch (e) {
-			console.error('Error extendiendo sesión:', e);
+			console.error('Error en checkout:', e);
+			throw e;
+		} finally {
+			seatMapState.isProcessing = false;
+			seatMapState.loadingMessage = '';
 		}
 	}
 
 	expireSession() {
 		if (!browser) return;
-		this.stopTimer();
-		this.showExtensionModal = false;
-
-		if (this.ghostSession) {
-			try {
-				const ghostUsername = this.ghostSession.ghostUsername;
-				const API_BASE = import.meta.env.VITE_ADMIN_API_URL || 'https://scrapp-backoffice.onrender.com';
-				navigator.sendBeacon(`${API_BASE}/api/kiosk/ghost-pool/release`, JSON.stringify({ username: ghostUsername }));
-			} catch {
-				// Omitir errores durante limpieza
-			}
-		}
-
-		// Limpiar todo el estado
-		this.cartItems = [];
-		this.ghostSession = null;
-		this.timeRemainingSeconds = null;
-		this.activeSelection.selectedSeats = [];
-		this.activeSelection.ticketQuantities = {};
-		this.selectedConcessions = [];
-		this.lastCompletedSale = null;
+		ghostSessionState.releaseGhost();
+		cartState.clear();
+		seatMapState.activeSelection.selectedSeats = [];
+		seatMapState.activeSelection.ticketQuantities = {};
 		localStorage.removeItem('scrapp_booking_state');
 
-		// Use setTimeout so sendBeacon fires before toast blocks thread
 		setTimeout(() => {
 			let secondsLeft = 10;
-			const toastId = toast.error(`Tu tiempo para completar la reserva expiró. El carrito ha sido vaciado. Volviendo al inicio en ${secondsLeft}s...`, {
+			const toastId = toast.error(`Tu tiempo expiró. El carrito se ha vaciado. Volviendo al inicio en ${secondsLeft}s...`, {
 				duration: 10000,
 				onAutoClose: () => { window.location.href = '/'; },
 				onDismiss: () => { window.location.href = '/'; }
@@ -670,7 +374,7 @@ export class BookingState {
 					clearInterval(interval);
 					window.location.href = '/';
 				} else {
-					toast.error(`Tu tiempo para completar la reserva expiró. El carrito ha sido vaciado. Volviendo al inicio en ${secondsLeft}s...`, {
+					toast.error(`Tu tiempo expiró. El carrito se ha vaciado. Volviendo al inicio en ${secondsLeft}s...`, {
 						id: toastId,
 						duration: 10000,
 					});
@@ -679,94 +383,33 @@ export class BookingState {
 		}, 50);
 	}
 
-	async checkout(pago: Record<string, unknown>) {
+	syncState() {
 		if (!browser) return;
-		if (!this.ghostSession) {
-			throw new Error("No hay una sesión activa para procesar el checkout");
-		}
+		this.loadFromLocalStorage();
 
-		this.isProcessing = true;
-		this.loadingMessage = 'Procesando pago y facturación...';
+		if (ghostSessionState.ghostSession) {
+			try {
+				const { lockedAt } = ghostSessionState.ghostSession;
+				const elapsed = Date.now() - new SvelteDate(lockedAt).getTime();
+				const retentionMs = ghostSessionState.retentionTimeMinutes * 60 * 1000;
 
-		try {
-			const API_BASE = import.meta.env.VITE_ADMIN_API_URL || 'https://scrapp-backoffice.onrender.com';
-			
-			const payload = {
-				ghostUsername: this.ghostSession.ghostUsername,
-				pago: pago
-			};
-
-			const response = await fetch(`${API_BASE}/api/kiosk/checkout`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(payload)
-			});
-
-			const data = await response.json();
-
-			if (!data.success) {
-				throw new Error(data.error || 'Error desconocido al facturar');
+				if (elapsed >= retentionMs) this.expireSession();
+				else ghostSessionState.startTimer(lockedAt);
+			} catch (e) { /* ignored */ }
+		} else {
+			if (seatMapState.activeSelection.selectedShowtime && seatMapState.lastSyncTimestamp > 0) {
+				const elapsed = Date.now() - seatMapState.lastSyncTimestamp;
+				if (elapsed > 2 * 60 * 1000) this.loadSeats();
 			}
-
-			// Éxito: Guardar datos de la venta y limpiar sesión
-			this.lastCompletedSale = {
-				cartItems: [...this.cartItems],
-				concessions: [...this.selectedConcessions],
-				customerEmail: this.customerEmail,
-				orderTotal: this.totalPrice
-			};
-
-			this.stopTimer();
-			this.timeRemainingSeconds = null;
-			this.cartItems = [];
-			this.ghostSession = null;
-			this.activeSelection.selectedSeats = [];
-			this.activeSelection.ticketQuantities = {};
-			this.selectedConcessions = [];
-			this.saveToLocalStorage(); // Guardar el lastCompletedSale
-
-			return true;
-
-		} catch (e: unknown) {
-			console.error('Error en checkout:', e);
-			throw e;
-		} finally {
-			this.isProcessing = false;
-			this.loadingMessage = '';
 		}
 	}
 
-	syncState() {
-		if (!browser) return;
+	fetchGhostStatus() {
+		return ghostSessionState.fetchGhostStatus();
+	}
 
-		// Intentamos cargar de localStorage primero (esto restaura cartItems y ghostSession)
-		this.loadFromLocalStorage();
-
-		if (this.ghostSession) {
-			try {
-				const { lockedAt } = this.ghostSession;
-				const elapsed = Date.now() - new SvelteDate(lockedAt).getTime();
-				const retentionMs = this.retentionTimeMinutes * 60 * 1000;
-
-				if (elapsed >= retentionMs) {
-					this.expireSession();
-				} else {
-					// Restaurar timer en caso de reload de pestaña
-					if (!this.timerInterval) this.startTimer(lockedAt);
-				}
-			} catch {
-				// Estado corrupto, ignorar silenciosamente
-			}
-		} else {
-			// Solo mirando -> refresco silencioso si pasó mucho tiempo (2 min)
-			if (this.activeSelection.selectedShowtime && this.lastSyncTimestamp > 0) {
-				const elapsed = Date.now() - this.lastSyncTimestamp;
-				if (elapsed > 2 * 60 * 1000) {
-					console.log('[BookingState] Sesión inactiva reanudada. Refrescando butacas...');
-					this.loadSeats();
-				}
-			}
-		}
+	extendSession() {
+		return ghostSessionState.extendSession();
 	}
 }
 

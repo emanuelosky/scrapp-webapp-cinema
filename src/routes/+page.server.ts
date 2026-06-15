@@ -125,22 +125,24 @@ export async function load() {
         
         const releaseDate = m.release_date ? new Date(m.release_date + 'T00:00:00') : null;
         const presaleDate = m.presale_date ? new Date(m.presale_date + 'T00:00:00') : null;
-        
         const hasShowtimes = movieShows.length > 0;
-        
         const today = getCinemaToday();
 
-        if (releaseDate) {
-            const diffTime = releaseDate.getTime() - today.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            if (hasShowtimes) {
-                if (diffDays > 0) {
-                    if (!presaleDate || today >= presaleDate) {
-                        label = 'PREVENTA';
+        if (m.genres && Array.isArray(m.genres) && m.genres.includes('EVENTO')) {
+            label = 'EVENTO';
+        } else {
+            if (releaseDate) {
+                const diffTime = releaseDate.getTime() - today.getTime();
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                if (hasShowtimes) {
+                    if (diffDays > 0) {
+                        if (!presaleDate || today >= presaleDate) {
+                            label = 'PREVENTA';
+                        }
+                    } else if (diffDays >= -7) {
+                        label = 'ESTRENO';
                     }
-                } else if (diffDays >= -7) {
-                    label = 'ESTRENO';
                 }
             }
         }
@@ -161,6 +163,7 @@ export async function load() {
             id: m.id,
             title: m.title,
             poster: m.poster_url || '/placeholder.png',
+            banner: m.banner_url || undefined,
             synopsis: m.synopsis,
             duration: m.duration_mins ? `${Math.floor(m.duration_mins / 60)} HR ${String(m.duration_mins % 60).padStart(2, '0')} MIN` : undefined,
             genres: m.genres,
@@ -196,6 +199,13 @@ export async function load() {
         return 2;
     };
     nowPlaying.sort((a, b) => labelRank(a.label) - labelRank(b.label));
+
+    // Sort comingSoonMovies by releaseDate ascending
+    comingSoonMovies.sort((a, b) => {
+        if (!a.releaseDate) return 1;
+        if (!b.releaseDate) return -1;
+        return new Date(a.releaseDate).getTime() - new Date(b.releaseDate).getTime();
+    });
 
     const activeDates = Array.from(activeDatesSet).sort();
 

@@ -160,7 +160,7 @@
 							{#if movie.label}
 								<div class="absolute top-4 left-[-4px] z-20 drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
 									<div class="ticket-shape relative flex items-center justify-center py-1.5 px-4 
-										{movie.label === 'PREVENTA' ? 'bg-gradient-to-r from-zinc-200 via-zinc-300 to-zinc-400' : 'bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-500'}">
+										{movie.label === 'PREVENTA' ? 'bg-gradient-to-r from-zinc-200 via-zinc-300 to-zinc-400' : 'bg-gradient-to-r from-white via-zinc-100 to-zinc-200'}">
 										<div class="absolute left-2.5 top-1 bottom-1 border-l-[1.5px] border-dashed border-black/30"></div>
 										<div class="absolute right-2.5 top-1 bottom-1 border-r-[1.5px] border-dashed border-black/30"></div>
 										

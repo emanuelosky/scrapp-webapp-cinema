@@ -12,7 +12,16 @@
 
 	let { open = $bindable(false), movie }: { open: boolean; movie: Movie | null } = $props();
 
-	let availableDates = $derived(movie?.showtimesByDate ? Object.keys(movie.showtimesByDate).sort() : []);
+	let availableDates = $derived.by(() => {
+		if (!movie?.showtimesByDate) return [];
+		const today = new SvelteDate();
+		today.setHours(0, 0, 0, 0);
+
+		return Object.keys(movie.showtimesByDate).filter(dateStr => {
+			const d = new SvelteDate(dateStr + "T00:00:00");
+			return d.getTime() >= today.getTime();
+		}).sort();
+	});
 	let selectedDate = $state<string | null>(null);
 	let selectedShowtime = $state<ShowtimeDetails | null>(null);
 	let isSynopsisExpanded = $state(false);
@@ -42,7 +51,30 @@
 		if (!movie || !selectedDate || !movie.showtimesByDate) return {};
 		const shows = movie.showtimesByDate[selectedDate] || [];
 		const groups: Record<string, ShowtimeDetails[]> = {};
+		
+		const now = new SvelteDate();
+		const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+		const isToday = selectedDate === todayStr;
+		const currentTotalMins = now.getHours() * 60 + now.getMinutes();
+
 		for (const s of shows) {
+			if (isToday) {
+				const match = s.time.match(/(\d+):(\d+)\s*(A\.M\.|P\.M\.)/i);
+				if (match) {
+					let h = parseInt(match[1]);
+					const m = parseInt(match[2]);
+					const ampm = match[3].toUpperCase();
+					
+					if (ampm === 'P.M.' && h < 12) h += 12;
+					if (ampm === 'A.M.' && h === 12) h = 0;
+					
+					const showTotalMins = h * 60 + m;
+					if (currentTotalMins - showTotalMins > 30) {
+						continue; // Hide if started more than 30 mins ago
+					}
+				}
+			}
+
 			if (!groups[s.format]) groups[s.format] = [];
 			groups[s.format].push(s);
 		}
@@ -75,19 +107,25 @@
 </script>
 
 <Dialog.Root bind:open>
-	<Dialog.Content class="sm:max-w-3xl md:max-w-4xl lg:max-w-5xl w-[95vw] bg-black border border-zinc-800 text-white p-0 overflow-hidden rounded-none shadow-2xl gap-0">
+	<Dialog.Content class="sm:max-w-3xl md:max-w-4xl lg:max-w-5xl w-[95vw] bg-black border-none text-white p-0 overflow-hidden rounded-none shadow-2xl gap-0">
 		{#if movie}
 			<div class="flex flex-col md:flex-row h-[90vh] md:h-auto md:max-h-[90vh] overflow-y-auto md:overflow-hidden custom-scrollbar">
 				<!-- Left: Poster -->
-				<div class="md:w-[40%] relative border-r border-zinc-800">
+				<div class="md:w-[40%] relative">
 					<img src={movie.poster} alt={movie.title} class="w-full h-full object-cover min-h-[300px] md:min-h-full" />
 					<div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent md:hidden"></div>
 				</div>
 
 				<!-- Right: Details & Showtimes -->
-				<div class="md:w-[60%] flex flex-col md:h-full overflow-visible md:overflow-hidden">
+				<div class="md:w-[60%] flex flex-col md:h-full overflow-visible md:overflow-hidden relative">
+					<!-- Blurred Background Layer -->
+					<div class="absolute inset-0 z-0 overflow-hidden">
+						<img src={movie.poster} class="w-full h-full object-cover blur-[80px] opacity-40 scale-110" alt="" />
+						<div class="absolute inset-0 bg-black/90"></div>
+					</div>
+
 					<!-- Header -->
-					<div class="p-6 md:px-10 md:pt-10 pb-4 shrink-0">
+					<div class="relative z-10 p-6 md:px-10 md:pt-10 pb-4 shrink-0">
 						<div class="flex flex-wrap items-center gap-3 mb-4">
 							{#if movie.label}
 								<span class="bg-zinc-200 text-black text-[10px] font-black px-2 py-0.5 uppercase tracking-widest">{movie.label}</span>
@@ -111,9 +149,9 @@
 						</Dialog.Description>
 					</div>
 
-					<div class="flex flex-col md:flex-1 overflow-visible md:overflow-hidden relative">
+					<div class="flex flex-col md:flex-1 overflow-visible md:overflow-hidden relative z-10">
 						<!-- Synopsis -->
-						<div class="relative flex flex-col transition-all duration-300 border-b border-zinc-800 {isSynopsisExpanded ? 'md:flex-1' : 'md:h-32 shrink-0'}">
+						<div class="relative flex flex-col transition-all duration-300 {isSynopsisExpanded ? 'md:flex-1' : 'md:h-32 shrink-0'}">
 							<div class="overflow-y-visible md:overflow-y-auto px-6 md:px-10 pb-6 custom-scrollbar h-full">
 								<p class="text-zinc-300 text-sm leading-relaxed pr-2">
 									{movie.synopsis || 'Sin sinopsis disponible para esta película.'}
@@ -123,7 +161,7 @@
 							<!-- Toggle Button -->
 							<button 
 								onclick={() => isSynopsisExpanded = !isSynopsisExpanded}
-								class="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-zinc-900 border border-zinc-800 rounded-full p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 z-10 shadow-lg transition-transform hover:scale-110"
+								class="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-zinc-900 border-none rounded-full p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 z-10 shadow-lg transition-transform hover:scale-110"
 								title={isSynopsisExpanded ? 'Colapsar sinopsis' : 'Expandir sinopsis'}
 							>
 								{#if isSynopsisExpanded}
@@ -142,7 +180,7 @@
 								<div class="flex flex-wrap gap-2">
 									{#each availableDates as date (date)}
 										<button 
-											class="px-5 py-2.5 text-xs font-bold border transition-colors {selectedDate === date ? 'bg-white text-black border-white shadow-md' : 'bg-transparent text-zinc-300 border-zinc-700 hover:border-zinc-400 hover:text-white'}"
+											class="px-5 py-2.5 text-xs font-bold border rounded-full transition-colors {selectedDate === date ? 'bg-white text-black border-white shadow-md' : 'bg-transparent text-zinc-300 border-zinc-700 hover:border-zinc-400 hover:text-white'}"
 											onclick={() => { selectedDate = date; selectedShowtime = null; }}
 										>
 											{formatDateLabel(date)}
@@ -165,7 +203,7 @@
 												<div class="flex flex-wrap gap-3">
 													{#each groupedShowtimes[format] as st (st.id)}
 														<button 
-															class="px-8 py-3.5 text-sm font-bold border transition-all {selectedShowtime?.id === st.id ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)] scale-105' : 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-500 hover:bg-zinc-800 hover:text-white'}"
+															class="px-8 py-3.5 text-sm font-bold border rounded-full transition-all {selectedShowtime?.id === st.id ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)] scale-105' : 'bg-white/5 text-zinc-300 border-white/10 hover:border-white/30 hover:bg-white/10 hover:text-white'}"
 															onclick={() => selectedShowtime = st}
 														>
 															{st.time}
@@ -181,9 +219,9 @@
 					</div>
 
 					<!-- Footer Actions -->
-					<div class="md:mt-auto p-6 md:px-10 shrink-0 bg-black/80 backdrop-blur-sm border-t border-zinc-800 sticky bottom-0 z-20">
+					<div class="relative z-20 md:mt-auto p-6 md:px-10 shrink-0 bg-black/40 backdrop-blur-md sticky bottom-0">
 						<button 
-							class="w-full bg-zinc-200 hover:bg-white text-black font-black uppercase tracking-widest py-4 text-sm transition-colors border border-transparent shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+							class="w-full bg-zinc-200 hover:bg-white rounded-full text-black font-black uppercase tracking-widest py-4 text-sm transition-colors shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
 							disabled={!selectedShowtime}
 							onclick={() => {
 								if (movie && selectedShowtime && selectedDate) {
@@ -212,7 +250,7 @@
 		<div class="absolute inset-0 bg-black/95 backdrop-blur-md z-50 flex items-center justify-center p-6 animate-in fade-in duration-200">
 			<div class="bg-black border border-zinc-800 p-0 gap-0 max-w-sm w-full shadow-2xl flex flex-col text-center">
 				<div class="px-6 py-5 border-b border-zinc-800 flex flex-col items-center">
-					<div class="w-14 h-14 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-4 text-white">
+					<div class="w-14 h-14 rounded-full bg-zinc-900 border-none flex items-center justify-center mb-4 text-white">
 						<AlertCircle class="w-7 h-7" />
 					</div>
 					<h3 class="text-xl font-black text-white tracking-tight">Función en Carrito</h3>

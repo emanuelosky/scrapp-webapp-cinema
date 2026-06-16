@@ -111,16 +111,21 @@
 		{#if movie}
 			<div class="flex flex-col md:flex-row h-[90vh] md:h-auto md:max-h-[90vh] overflow-y-auto md:overflow-hidden custom-scrollbar">
 				<!-- Left: Poster -->
-				<div class="md:w-[40%] relative">
-					<img src={movie.poster} alt={movie.title} class="w-full h-full object-cover min-h-[300px] md:min-h-full" />
-					<div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent md:hidden"></div>
+				<div class="md:w-[40%] h-[250px] md:h-auto relative shrink-0 bg-black">
+					<!-- Mobile Image (Banner preferred) -->
+					<img src={movie.banner || movie.poster} alt={movie.title} class="w-full h-full object-cover md:hidden {movie.banner ? 'object-center' : 'object-top'}" />
+					<!-- Desktop Image (Poster strictly) -->
+					<img src={movie.poster} alt={movie.title} class="w-full h-full object-cover object-top hidden md:block min-h-full" />
+					<div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent md:hidden"></div>
+					<div class="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black via-black/80 to-transparent md:hidden"></div>
+					<div class="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/60 to-transparent md:hidden"></div>
 				</div>
 
 				<!-- Right: Details & Showtimes -->
 				<div class="md:w-[60%] flex flex-col md:h-full overflow-visible md:overflow-hidden relative">
 					<!-- Blurred Background Layer -->
 					<div class="absolute inset-0 z-0 overflow-hidden">
-						<img src={movie.poster} class="w-full h-full object-cover blur-[80px] opacity-40 scale-110" alt="" />
+						<img src={movie.banner || movie.poster} class="w-full h-full object-cover blur-[80px] opacity-40 scale-110" alt="" />
 						<div class="absolute inset-0 bg-black/90"></div>
 					</div>
 
@@ -151,9 +156,9 @@
 
 					<div class="flex flex-col md:flex-1 overflow-visible md:overflow-hidden relative z-10">
 						<!-- Synopsis -->
-						<div class="relative flex flex-col transition-all duration-300 {isSynopsisExpanded ? 'md:flex-1' : 'md:h-32 shrink-0'}">
-							<div class="overflow-y-visible md:overflow-y-auto px-6 md:px-10 pb-6 custom-scrollbar h-full">
-								<p class="text-zinc-300 text-sm leading-relaxed pr-2">
+						<div class="relative flex flex-col transition-all duration-300">
+							<div class="px-6 md:px-10 pb-4">
+								<p class="text-zinc-300 text-sm leading-relaxed {isSynopsisExpanded ? '' : 'line-clamp-3 md:line-clamp-5'} transition-all">
 									{movie.synopsis || 'Sin sinopsis disponible para esta película.'}
 								</p>
 							</div>
@@ -161,7 +166,7 @@
 							<!-- Toggle Button -->
 							<button 
 								onclick={() => isSynopsisExpanded = !isSynopsisExpanded}
-								class="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-zinc-900 border-none rounded-full p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 z-10 shadow-lg transition-transform hover:scale-110"
+								class="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-zinc-900 border-none rounded-full p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 z-10 shadow-lg transition-transform hover:scale-110"
 								title={isSynopsisExpanded ? 'Colapsar sinopsis' : 'Expandir sinopsis'}
 							>
 								{#if isSynopsisExpanded}

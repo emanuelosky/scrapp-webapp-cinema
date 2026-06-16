@@ -163,7 +163,7 @@ export async function load() {
             id: m.id,
             title: m.title,
             poster: m.poster_url || '/placeholder.png',
-            banner: m.banner_url || undefined,
+            banner: m.backdrop_url || undefined,
             synopsis: m.synopsis,
             duration: m.duration_mins ? `${Math.floor(m.duration_mins / 60)} HR ${String(m.duration_mins % 60).padStart(2, '0')} MIN` : undefined,
             genres: m.genres,

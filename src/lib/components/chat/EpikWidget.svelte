@@ -259,27 +259,6 @@
 						<!-- Interactive Action Chips & Buttons (Rendered once tool is completed) -->
 						{#each tools as tp (tp.id)}
 							{#if tp.state === 'result'}
-								<!-- Open Modal / Booking Suggestion -->
-								{#if tp.toolName === 'open_modal' && tp.result?.payload}
-									{#if tp.result.type === 'movie_details'}
-										<button
-											onclick={() => chatState.triggerAction('movie_details', tp.result?.payload)}
-											class="flex items-center gap-2 px-3 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-yellow-400 text-yellow-300 text-xs font-bold uppercase tracking-wider rounded-sm transition-all shadow-md"
-										>
-											<Ticket class="size-3.5 text-yellow-400" />
-											<span>🎟️ Ver Horarios y Funciones</span>
-										</button>
-									{:else if tp.result.type === 'booking'}
-										<button
-											onclick={() => chatState.triggerAction('booking', tp.result?.payload)}
-											class="flex items-center gap-2 px-3 py-2 bg-zinc-900 hover:bg-emerald-950/40 border border-zinc-700 hover:border-emerald-500 text-emerald-300 text-xs font-bold uppercase tracking-wider rounded-sm transition-all shadow-md"
-										>
-											<Film class="size-3.5 text-emerald-400" />
-											<span>💺 Escoger Butacas Directamente</span>
-										</button>
-									{/if}
-								{/if}
-
 								<!-- Direct Showtimes Pill List -->
 								{#if tp.toolName === 'get_showtimes' && tp.result?.shows_for_date && tp.result.shows_for_date.length > 0}
 									<div class="flex flex-col gap-1.5 w-full mt-1 bg-zinc-900/60 border border-white/5 p-2.5 rounded-sm">
@@ -306,7 +285,7 @@
 									<div class="flex flex-wrap gap-1.5 mt-1">
 										{#each tp.result.movies.slice(0, 4) as movie (movie.id)}
 											<button
-												onclick={() => chatState.triggerAction('movie_details', { movieId: movie.id, movieTitle: movie.title })}
+												onclick={() => chatState.triggerAction('booking', { movieId: movie.id, movieTitle: movie.title })}
 												class="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-yellow-500 text-zinc-300 hover:text-yellow-300 rounded-sm transition-all"
 											>
 												<Film class="size-3 text-zinc-400" />

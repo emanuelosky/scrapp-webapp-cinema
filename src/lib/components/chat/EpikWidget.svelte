@@ -2,6 +2,7 @@
 	import { chatState } from '$lib/state/chat.svelte';
 	import X from '@lucide/svelte/icons/x';
 	import Send from '@lucide/svelte/icons/send';
+	import Square from '@lucide/svelte/icons/square';
 	import { fade, fly, scale } from 'svelte/transition';
 	import { Chat } from '@ai-sdk/svelte';
 	import { DefaultChatTransport } from 'ai';
@@ -15,6 +16,7 @@
 
 	interface EpikToolResult {
 		type?: string;
+		action_triggered?: boolean;
 		payload?: Record<string, unknown>;
 		movies?: Array<{ id: string; title: string }>;
 		shows_for_date?: Array<{ id: string; time: string; format: string }>;
@@ -32,6 +34,14 @@
 		result?: EpikToolResult;
 	}
 
+	interface ExtractedTool {
+		toolName: string;
+		state: string;
+		result?: EpikToolResult;
+		args?: Record<string, unknown>;
+		id: string;
+	}
+
 	const chat = new Chat({
 		transport: new DefaultChatTransport({
 			api: (import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:5173') + '/api/chat',
@@ -44,19 +54,43 @@
 	let input = $state('');
 	let chatBodyEl = $state<HTMLElement | null>(null);
 
+	function extractToolInvocations(parts: unknown[]): ExtractedTool[] {
+		const list: ExtractedTool[] = [];
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		for (const part of (parts || []) as any[]) {
+			if (!part) continue;
+			if (part.type === 'tool-invocation' && part.toolInvocation) {
+				list.push({
+					toolName: part.toolInvocation.toolName,
+					state: part.toolInvocation.state,
+					result: part.toolInvocation.result,
+					args: part.toolInvocation.args,
+					id: part.toolInvocation.toolCallId || Math.random().toString()
+				});
+			} else if (typeof part.type === 'string' && part.type.startsWith('tool-')) {
+				const name = part.toolName || (part.type !== 'tool-invocation' ? part.type.replace('tool-', '') : '');
+				list.push({
+					toolName: name,
+					state: part.state || (part.result ? 'result' : 'call'),
+					result: part.result,
+					args: part.args,
+					id: part.toolCallId || Math.random().toString()
+				});
+			}
+		}
+		return list;
+	}
+
 	// Watch for Copilot tool invocations (open_modal, scroll_to)
 	$effect(() => {
 		const msgs = chat.messages;
 		if (msgs.length > 0) {
 			const lastMsg = msgs[msgs.length - 1];
 			if (lastMsg.role === 'assistant' && lastMsg.parts) {
-				for (const part of (lastMsg.parts as unknown as MessagePart[])) {
-					if (part.type?.startsWith('tool-') && part.state === 'result') {
-						if (part.toolName === 'open_modal' && part.result?.type) {
-							chatState.triggerAction(part.result.type, part.result.payload);
-						} else if (part.toolName === 'scroll_to_section' && part.result?.payload) {
-							chatState.triggerAction('scroll_to', part.result.payload);
-						}
+				const tools = extractToolInvocations(lastMsg.parts);
+				for (const tool of tools) {
+					if (tool.state === 'result' && tool.result?.action_triggered) {
+						chatState.triggerAction(tool.result.type || '', tool.result.payload);
 					}
 				}
 			}
@@ -73,6 +107,25 @@
 			}
 		}
 	});
+
+	function getActiveThinkingText(): string {
+		const msgs = chat.messages;
+		if (msgs.length > 0) {
+			const lastMsg = msgs[msgs.length - 1];
+			if (lastMsg.role === 'assistant' && lastMsg.parts) {
+				const tools = extractToolInvocations(lastMsg.parts);
+				const lastTool = tools[tools.length - 1];
+				if (lastTool) {
+					if (lastTool.toolName === 'get_movies') return 'Consultando cartelera de hoy en Sambil Candelaria...';
+					if (lastTool.toolName === 'get_showtimes') return 'Buscando funciones y horarios...';
+					if (lastTool.toolName === 'scroll_to_section') return 'Desplazando la pantalla a la cartelera...';
+					if (lastTool.toolName === 'open_modal') return 'Abriendo detalles en pantalla...';
+					if (lastTool.toolName === 'get_combos') return 'Consultando combos de cotufas...';
+				}
+			}
+		}
+		return 'EPIK está pensando...';
+	}
 
 	function sendMessage() {
 		const text = input.trim();
@@ -156,10 +209,7 @@
 					<img src="/favicon.png" alt="EPIK" class="w-5 h-5 object-contain" />
 				</div>
 				<div>
-					<div class="flex items-center gap-2">
-						<h3 class="font-display text-base font-bold tracking-widest text-white uppercase leading-none">EPIK</h3>
-						<span class="px-1.5 py-0.5 text-[9px] font-bold bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 rounded tracking-wider uppercase">AI CINE</span>
-					</div>
+					<h3 class="font-display text-base font-bold tracking-widest text-white uppercase leading-none">EPIK</h3>
 					<p class="text-[9px] text-zinc-400 tracking-wider uppercase font-semibold mt-0.5">Sambil Candelaria • Caracas</p>
 				</div>
 			</div>
@@ -185,7 +235,7 @@
 			{#each chat.messages as message (message.id)}
 				{@const parts = (message.parts ?? []) as unknown as MessagePart[]}
 				{@const textContent = parts.find((p) => p.type === 'text')?.text ?? ''}
-				{@const toolParts = parts.filter((p) => p.type?.startsWith('tool-'))}
+				{@const tools = extractToolInvocations(parts)}
 
 				<!-- User Message -->
 				{#if message.role === 'user'}
@@ -198,31 +248,7 @@
 				{:else}
 					<!-- Assistant Message -->
 					<div class="flex flex-col gap-2 max-w-[92%] items-start">
-						<!-- Thinking Badge (Gemini Web Style) -->
-						{#each toolParts as tp (tp.toolCallId ?? Math.random().toString())}
-							{#if tp.state !== 'result' || !textContent}
-								<div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900/90 border border-yellow-500/30 text-yellow-400 text-xs font-mono animate-pulse shadow-sm">
-									<Sparkles class="size-3.5 text-yellow-400 animate-spin" style="animation-duration: 3s;" />
-									<span class="text-[11px] font-medium tracking-wide">
-										{#if tp.toolName === 'get_movies'}
-											Consultando cartelera en Sambil Candelaria...
-										{:else if tp.toolName === 'get_showtimes'}
-											Buscando horarios y funciones...
-										{:else if tp.toolName === 'scroll_to_section'}
-											Desplazando la pantalla a la cartelera...
-										{:else if tp.toolName === 'open_modal'}
-											Abriendo panel interactivo...
-										{:else if tp.toolName === 'get_combos'}
-											Consultando combos de cotufas...
-										{:else}
-											Pensando respuesta...
-										{/if}
-									</span>
-								</div>
-							{/if}
-						{/each}
-
-						<!-- Text Content (Only if present) -->
+						<!-- Text Content -->
 						{#if textContent}
 							<div class="px-4 py-3 text-sm rounded-sm bg-zinc-900 border border-zinc-700 text-zinc-200 prose prose-invert prose-sm max-w-none leading-relaxed shadow-sm">
 								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -230,15 +256,15 @@
 							</div>
 						{/if}
 
-						<!-- Interactive Action Chips & Buttons -->
-						{#each toolParts as tp (tp.toolCallId ?? Math.random().toString())}
+						<!-- Interactive Action Chips & Buttons (Rendered once tool is completed) -->
+						{#each tools as tp (tp.id)}
 							{#if tp.state === 'result'}
 								<!-- Open Modal / Booking Suggestion -->
 								{#if tp.toolName === 'open_modal' && tp.result?.payload}
 									{#if tp.result.type === 'movie_details'}
 										<button
 											onclick={() => chatState.triggerAction('movie_details', tp.result?.payload)}
-											class="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 hover:from-yellow-500/30 hover:to-orange-500/30 border border-yellow-500/40 hover:border-yellow-400 text-yellow-300 text-xs font-bold uppercase tracking-wider rounded-sm transition-all shadow-md"
+											class="flex items-center gap-2 px-3 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-yellow-400 text-yellow-300 text-xs font-bold uppercase tracking-wider rounded-sm transition-all shadow-md"
 										>
 											<Ticket class="size-3.5 text-yellow-400" />
 											<span>🎟️ Ver Horarios y Funciones</span>
@@ -246,7 +272,7 @@
 									{:else if tp.result.type === 'booking'}
 										<button
 											onclick={() => chatState.triggerAction('booking', tp.result?.payload)}
-											class="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 border border-emerald-500/40 hover:border-emerald-400 text-emerald-300 text-xs font-bold uppercase tracking-wider rounded-sm transition-all shadow-md"
+											class="flex items-center gap-2 px-3 py-2 bg-zinc-900 hover:bg-emerald-950/40 border border-zinc-700 hover:border-emerald-500 text-emerald-300 text-xs font-bold uppercase tracking-wider rounded-sm transition-all shadow-md"
 										>
 											<Film class="size-3.5 text-emerald-400" />
 											<span>💺 Escoger Butacas Directamente</span>
@@ -281,7 +307,7 @@
 										{#each tp.result.movies.slice(0, 4) as movie (movie.id)}
 											<button
 												onclick={() => chatState.triggerAction('movie_details', { movieId: movie.id, movieTitle: movie.title })}
-												class="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-yellow-500/50 text-zinc-300 hover:text-yellow-300 rounded-sm transition-all"
+												class="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-yellow-500 text-zinc-300 hover:text-yellow-300 rounded-sm transition-all"
 											>
 												<Film class="size-3 text-zinc-400" />
 												<span>{movie.title}</span>
@@ -292,8 +318,8 @@
 
 								<!-- Combos Shortcut Button -->
 								{#if tp.toolName === 'get_combos'}
-									<div class="flex items-center gap-1.5 text-xs text-yellow-400/90 font-medium mt-1">
-										<Popcorn class="size-3.5" />
+									<div class="flex items-center gap-1.5 text-xs text-zinc-400 font-medium mt-1">
+										<Popcorn class="size-3.5 text-yellow-400" />
 										<span>Disponibles en el área de caramelería del cine</span>
 									</div>
 								{/if}
@@ -307,12 +333,11 @@
 				{/if}
 			{/each}
 
-			{#if isLoading && chat.messages.length > 0 && chat.messages[chat.messages.length - 1].role === 'user'}
-				<div class="flex flex-col items-start gap-1 max-w-[85%]">
-					<div class="flex items-center gap-2 px-3.5 py-2 rounded-full bg-zinc-900 border border-yellow-500/30 text-yellow-400 text-xs font-mono shadow-sm">
-						<Sparkles class="size-3.5 text-yellow-400 animate-spin" style="animation-duration: 2.5s;" />
-						<span class="text-[11px] font-medium tracking-wide">EPIK está pensando...</span>
-					</div>
+			<!-- Single, Subtle Thinking Indicator (Gemini Web Style + Brutalism) -->
+			{#if isLoading}
+				<div class="flex items-center gap-2 py-1 px-1 text-zinc-400 text-xs font-mono select-none w-fit animate-pulse">
+					<Sparkles class="size-3.5 text-yellow-400 animate-spin" style="animation-duration: 3s;" />
+					<span class="text-zinc-300 font-medium tracking-wide">{getActiveThinkingText()}</span>
 				</div>
 			{/if}
 
@@ -343,15 +368,29 @@
 					bind:value={input}
 					disabled={isLoading}
 					placeholder="ESCRÍBELE A EPIK..." 
-					class="w-full bg-zinc-900 border border-zinc-700 rounded-sm py-3 pl-4 pr-12 text-sm font-medium text-white placeholder:text-zinc-500 placeholder:tracking-widest placeholder:text-[10px] focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 transition-all uppercase disabled:opacity-50"
+					class="w-full bg-zinc-900 border border-zinc-700 rounded-sm py-3 pl-4 pr-12 text-sm font-medium text-white placeholder:text-zinc-500 placeholder:tracking-widest placeholder:text-[10px] focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 transition-all uppercase disabled:opacity-75"
 				/>
-				<button 
-					type="submit"
-					class="absolute right-2 p-2 rounded-sm bg-white text-black hover:bg-zinc-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-					disabled={!input.trim() || isLoading}
-				>
-					<Send class="size-4" />
-				</button>
+				{#if isLoading}
+					<button
+						type="button"
+						onclick={() => chat.stop()}
+						class="absolute right-2 p-2 rounded-sm bg-red-600 hover:bg-red-500 text-white transition-colors flex items-center justify-center shadow-md shadow-red-900/30"
+						title="Detener respuesta"
+						aria-label="Detener respuesta"
+					>
+						<Square class="size-4 fill-current" />
+					</button>
+				{:else}
+					<button 
+						type="submit"
+						class="absolute right-2 p-2 rounded-sm bg-white text-black hover:bg-zinc-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+						disabled={!input.trim()}
+						title="Enviar mensaje"
+						aria-label="Enviar mensaje"
+					>
+						<Send class="size-4" />
+					</button>
+				{/if}
 			</form>
 			<div class="text-center mt-3 flex items-center justify-center gap-2">
 				<span class="w-1.5 h-1.5 bg-red-500"></span>

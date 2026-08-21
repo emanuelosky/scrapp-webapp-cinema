@@ -104,9 +104,15 @@
 						 || comingSoonMovies.find(m => m.id === payload.movieId);
 				}
 				if (!found && payload.movieTitle) {
-					const titleQuery = payload.movieTitle.toLowerCase().trim();
-					found = nowPlaying.find(m => m.title.toLowerCase().includes(titleQuery))
-						 || comingSoonMovies.find(m => m.title.toLowerCase().includes(titleQuery));
+					const clean = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+					const qClean = clean(payload.movieTitle);
+					found = nowPlaying.find(m => {
+						const tClean = clean(m.title);
+						return tClean.includes(qClean) || qClean.includes(tClean);
+					}) || comingSoonMovies.find(m => {
+						const tClean = clean(m.title);
+						return tClean.includes(qClean) || qClean.includes(tClean);
+					});
 				}
 				if (found) {
 					openMovieDetails(found);

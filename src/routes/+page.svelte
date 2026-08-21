@@ -16,11 +16,11 @@
 	import HeroDesktop from '$lib/components/home/HeroDesktop.svelte';
 	import HeroMobile from '$lib/components/home/HeroMobile.svelte';
 	import HeroScrolly from '$lib/components/home/HeroScrolly.svelte';
-	import ScrollToTop from '$lib/components/home/ScrollToTop.svelte';
 	import ComingSoonDialog from '$lib/components/ComingSoonDialog.svelte';
 	import TheatreSelectorDialog from '$lib/components/TheatreSelectorDialog.svelte';
 	import BrutalistMegaMenu from '$lib/components/navigation/BrutalistMegaMenu.svelte';
 	import CommandPalette from '$lib/components/navigation/CommandPalette.svelte';
+	import { chatState } from '$lib/state/chat.svelte';
 
 	import { cinemaState } from '$lib/state/cinema.svelte';
 	import Loader2 from '@lucide/svelte/icons/loader-2';
@@ -78,6 +78,8 @@
 			.filter(movie => movie.showtimes.length > 0);
 	});
 
+	let isAnyModalOpen = $derived(isDialogOpen || isComingSoonOpen || isTheatreSelectorOpen || isCommandOpen);
+	
 	$effect(() => {
 		// Auto-switch to tomorrow if today has no upcoming showtimes
 		if (selectedDateTab === 'hoy' && nowPlaying.length === 0) {
@@ -89,6 +91,30 @@
 	});
 	
 
+	$effect(() => {
+		// Copilot Action Listener
+		if (chatState.pendingAction) {
+			const action = chatState.pendingAction;
+			if (action.type === 'movie_details' && action.payload && typeof action.payload === 'object') {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const payload = action.payload as any;
+				let found: Movie | undefined;
+				if (payload.movieId) {
+					found = nowPlaying.find(m => m.id === payload.movieId) 
+						 || comingSoonMovies.find(m => m.id === payload.movieId);
+				}
+				if (!found && payload.movieTitle) {
+					const titleQuery = payload.movieTitle.toLowerCase().trim();
+					found = nowPlaying.find(m => m.title.toLowerCase().includes(titleQuery))
+						 || comingSoonMovies.find(m => m.title.toLowerCase().includes(titleQuery));
+				}
+				if (found) {
+					openMovieDetails(found);
+				}
+			}
+			chatState.clearAction();
+		}
+	});
 
 	function openMovieDetails(movie: Movie) {
 		selectedMovie = movie;
@@ -197,7 +223,7 @@
 		<HeroMobile />
 	</section>
 
-	<section class="w-full mt-12 px-4 md:px-8 lg:px-12">
+	<section id="peliculas-en-este-cine" class="w-full mt-12 px-4 md:px-8 lg:px-12">
 		<div
 			class="mb-8 flex flex-col items-start justify-between border-b border-zinc-800 pb-4 md:flex-row md:items-center"
 		>
@@ -207,18 +233,17 @@
 			<DateSelector bind:selectedDateTab bind:customDate {activeDates} />
 		</div>
 
-		<NowPlayingCarousel movies={nowPlaying} {openMovieDetails} />
+		<NowPlayingCarousel movies={nowPlaying} {openMovieDetails} isPaused={isAnyModalOpen} />
 	</section>
 </div>
 
 <HeroScrolly />
-<UpcomingCarousel movies={comingSoonMovies} />
+<UpcomingCarousel movies={comingSoonMovies} isPaused={isAnyModalOpen} />
 <Footer />
 <MovieDetailsDialog bind:open={isDialogOpen} movie={selectedMovie} />
 <ComingSoonDialog bind:open={isComingSoonOpen} />
 <TheatreSelectorDialog bind:open={isTheatreSelectorOpen} />
 <CommandPalette bind:open={isCommandOpen} movies={[...nowPlaying, ...comingSoonMovies]} {openMovieDetails} />
-<ScrollToTop />
 
 <style>
 	.hero-banner {

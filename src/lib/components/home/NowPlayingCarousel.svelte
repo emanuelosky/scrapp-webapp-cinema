@@ -1,33 +1,29 @@
 <script lang="ts">
 	import type { CarouselAPI } from '$lib/components/ui/carousel/context.js';
 	import * as Carousel from '$lib/components/ui/carousel';
-	import { Skeleton } from '$lib/components/ui/skeleton';
+
 	import Ticket from '@lucide/svelte/icons/ticket';
 	import MoveHorizontal from '@lucide/svelte/icons/move-horizontal';
 	import type { Movie } from '$lib/types';
 	import AutoScroll from 'embla-carousel-auto-scroll';
 
-	let { movies, openMovieDetails } = $props<{ movies: Movie[], openMovieDetails: (m: Movie) => void }>();
+	let { movies, openMovieDetails, isPaused = false } = $props<{ movies: Movie[], openMovieDetails: (m: Movie) => void, isPaused?: boolean }>();
 
 	let api = $state<CarouselAPI>();
 	let scrollProgress = $state(0);
 	let isDraggingScrollbar = $state(false);
 	let scrollbarTrack = $state<HTMLElement | null>(null);
 	let canScroll = $state(false);
-	let isLoopReady = $state(false);
-	let initialIdleTimeout: ReturnType<typeof setTimeout>;
 
 	const plugin = AutoScroll({ speed: 0.8, stopOnInteraction: true, playOnInit: false });
 
 	let safeMovies = $derived.by(() => {
-		if (!movies || movies.length === 0) return [];
-		if (movies.length <= 4) return movies; // Si caben en pantalla, no duplicamos
-		// Embla carousel glitches with loop: true if there are too few items. 
-		// We duplicate the array to ensure seamless infinite looping.
-		if (movies.length < 8) {
-			return [...movies, ...movies];
+		if (movies.length === 0) return [];
+		let arr = [...movies];
+		while (arr.length < 12) {
+			arr = [...arr, ...movies];
 		}
-		return movies;
+		return arr;
 	});
 
 	$effect(() => {
@@ -53,53 +49,65 @@
 		onScroll(); // Set initial
 		checkScroll();
 
-		// Truco para evitar el bug de solapamiento de Embla: 
-		// activamos el loop en segundo plano después de que se dibujen las tarjetas
-		let loopTimeout: ReturnType<typeof setTimeout>;
-		if (movies && movies.length > 4) {
-			loopTimeout = setTimeout(() => {
-				if (api) {
-					api.reInit({ loop: true });
-				}
-				isLoopReady = true;
-			}, 800);
-		} else {
-			isLoopReady = true; // No necesitamos esperar si no hay loop
-		}
-
-		// AutoScroll ya inicia apagado gracias a playOnInit: false
-		
-		initialIdleTimeout = setTimeout(() => {
-			if (api) {
-				const autoScroll = api.plugins().autoScroll;
-				if (autoScroll) {
-					autoScroll.play();
-				}
+		// Truco para inicializar loop de forma segura sin glitchear Embla
+		let loopTimeout = setTimeout(() => {
+			if (!api) return;
+			try {
+				api.plugins().autoScroll?.stop();
+				api.reInit({ loop: true });
+			} catch (e) {
+				void e;
 			}
-		}, 90000); // 1 min 30 seg
+		}, 800);
+
+		let resumeTimeout: ReturnType<typeof setTimeout>;
+
+		const startAutoScroll = () => {
+			if (!api) return;
+			try {
+				api.plugins().autoScroll?.play();
+			} catch (e) {
+				void e;
+			}
+		};
 
 		const handleInteraction = () => {
-			// Si el usuario interactúa, detenemos el autoplay y cancelamos el inicio diferido
-			if (api) {
-				const autoScroll = api.plugins().autoScroll;
-				if (autoScroll) {
-					autoScroll.stop();
-				}
+			if (!api) return;
+			try {
+				api.plugins().autoScroll?.stop();
+			} catch (e) {
+				void e;
 			}
-			clearTimeout(initialIdleTimeout);
+			clearTimeout(resumeTimeout);
+			if (!isPaused) {
+				resumeTimeout = setTimeout(startAutoScroll, 40000); // 40 segs para reiniciar auto-scroll tras interactuar
+			}
 		};
 
 		api.on('pointerDown', handleInteraction);
+		// Inicio diferido de 40 segundos al cargar la página
+		if (!isPaused) {
+			resumeTimeout = setTimeout(startAutoScroll, 40000);
+		}
 
 		return () => {
-			if (loopTimeout) clearTimeout(loopTimeout);
-			clearTimeout(initialIdleTimeout);
+			clearTimeout(loopTimeout);
+			clearTimeout(resumeTimeout);
 			api?.off('scroll', onScroll);
 			api?.off('reInit', onScroll);
 			api?.off('reInit', checkScroll);
 			api?.off('resize', checkScroll);
 			api?.off('pointerDown', handleInteraction);
 		};
+	});
+
+	$effect(() => {
+		if (!api) return;
+		if (isPaused) {
+			try { api.plugins().autoScroll?.stop(); } catch (e) { void e; }
+		} else {
+			try { api.plugins().autoScroll?.play(); } catch (e) { void e; }
+		}
 	});
 
 	function onPointerDown(e: PointerEvent) {
@@ -136,19 +144,6 @@
 	<Carousel.Content class="-ml-4 py-4 {canScroll ? '' : 'justify-center'}">
 		{#each safeMovies as movie, i (movie.id + '-' + i)}
 			<Carousel.Item class="pl-4 basis-[55%] md:basis-[30%] lg:basis-[22%] xl:basis-[18%]">
-				{#if !isLoopReady}
-					<div class="relative w-full aspect-[2/3] overflow-hidden bg-black">
-						{#if movie.poster}
-							<img
-								src={movie.poster}
-								alt=""
-								class="w-full h-full object-cover blur-sm scale-110 opacity-60 animate-pulse"
-							/>
-						{:else}
-							<Skeleton class="w-full h-full rounded-none bg-zinc-800 animate-pulse" />
-						{/if}
-					</div>
-				{:else}
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
 					<div
 						role="button"
@@ -156,7 +151,14 @@
 						class="group relative flex w-full cursor-pointer flex-col text-center focus:outline-none animate-in fade-in duration-500"
 						onclick={() => openMovieDetails(movie)}
 					>
-						<div class="relative w-full overflow-hidden rounded-none shadow-lg transition-all duration-300 group-hover:shadow-[0_8px_40px_rgb(255,255,255,0.15)]">
+						<!-- Dynamic Hover Glow from Poster -->
+						{#if movie.poster}
+							<div class="absolute -inset-6 z-0 opacity-0 transition-all duration-700 group-hover:opacity-100 pointer-events-none">
+								<img src={movie.poster} alt="" class="w-full h-full object-cover blur-3xl opacity-70 scale-[1.5]" />
+							</div>
+						{/if}
+
+						<div class="relative z-10 group-hover:z-50 w-full overflow-hidden rounded-lg border border-transparent group-hover:border-white/10 shadow-lg transition-all duration-500 group-hover:scale-[1.03] group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.8)] bg-black">
 							{#if movie.label}
 								<div class="absolute top-4 left-[-4px] z-20 drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
 									<div class="ticket-shape relative flex items-center justify-center py-1.5 px-4 
@@ -184,8 +186,8 @@
 								</div>
 							{/if}
 
-							<div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-12 text-left transition-opacity duration-300 group-hover:opacity-0 z-20">
-								<h4 class="font-sans font-bold text-white uppercase leading-tight line-clamp-2 drop-shadow-md">{movie.title}</h4>
+							<div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-12 text-center transition-opacity duration-300 group-hover:opacity-0 z-20 flex flex-col items-center justify-end">
+								<h4 class="font-sans font-bold text-white uppercase leading-tight line-clamp-2 drop-shadow-md text-center">{movie.title}</h4>
 							</div>
 
 							<!-- Hover Overlay (AMC Style) -->
@@ -210,13 +212,12 @@
 							</div>
 						</div>
 					</div>
-				{/if}
 			</Carousel.Item>
 		{/each}
 	</Carousel.Content>
 	
 	{#if canScroll}
-		<div class="hidden md:flex absolute -left-12 -right-12 top-[40%] justify-between pointer-events-none">
+		<div class="hidden md:flex absolute -left-12 -right-12 top-[40%] justify-between pointer-events-none z-40">
 			<div class="pointer-events-auto">
 				<Carousel.Previous class="relative left-0 bg-white/5 backdrop-blur-md hover:bg-white hover:text-black text-white border-white/20 transition-all" />
 			</div>

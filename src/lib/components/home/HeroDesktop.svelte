@@ -9,6 +9,19 @@
 
 	let currentIndex = $state(0);
 	let activeMovie = $derived(nowPlaying && nowPlaying.length > 0 ? nowPlaying[currentIndex] : null);
+
+	function scrollToMovies() {
+		const element = document.getElementById('peliculas-en-este-cine');
+		if (element) {
+			const offset = 140; // Mayor margen para el sticky navbar
+			const elementPosition = element.getBoundingClientRect().top;
+			const offsetPosition = elementPosition + window.scrollY - offset;
+			window.scrollTo({
+				top: offsetPosition,
+				behavior: 'smooth'
+			});
+		}
+	}
 </script>
 
 <!-- Dynamic Blurred Background -->
@@ -55,6 +68,7 @@
 
 		<div class="flex w-full flex-row flex-wrap items-center justify-center gap-4">
 			<Button
+				onclick={scrollToMovies}
 				class="flex h-12 w-auto items-center justify-center rounded-full bg-white/5 backdrop-blur-md border border-white/10 px-8 text-sm font-bold text-white/90 shadow-xl transition-all duration-300 hover:scale-105 hover:bg-white/10 hover:border-white/30 hover:text-white md:text-base tracking-wide"
 			>
 				Comprar Entradas

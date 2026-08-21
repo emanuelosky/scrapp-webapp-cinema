@@ -5,6 +5,11 @@
 	import { browser } from '$app/environment';
 	import { bookingState } from '$lib/state/booking.svelte';
 	import SessionTimeoutModal from '$lib/components/booking/SessionTimeoutModal.svelte';
+	import EpikWidget from '$lib/components/chat/EpikWidget.svelte';
+	import ScrollToTop from '$lib/components/home/ScrollToTop.svelte';
+	import { chatState } from '$lib/state/chat.svelte';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 
 	let { children } = $props();
 
@@ -32,12 +37,63 @@
 	$effect(() => {
 		bookingState.saveToLocalStorage();
 	});
+
+	// Navegación y acciones globales disparadas por EPIK Chat
+	$effect(() => {
+		if (chatState.pendingAction) {
+			const action = chatState.pendingAction;
+			if (action.type === 'scroll_to' && action.payload && typeof action.payload === 'object') {
+				const payload = action.payload as { section?: string };
+				if (payload.section) {
+					chatState.clearAction();
+					if ($page.url.pathname !== '/') {
+						// eslint-disable-next-line svelte/no-navigation-without-resolve
+						goto('/').then(() => {
+							setTimeout(() => {
+								document.getElementById(payload.section!)?.scrollIntoView({ behavior: 'smooth' });
+							}, 350);
+						});
+					} else {
+						document.getElementById(payload.section)?.scrollIntoView({ behavior: 'smooth' });
+					}
+				}
+			} else if (action.type === 'booking' && action.payload && typeof action.payload === 'object') {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const payload = action.payload as any;
+				if (payload.movieId) {
+					chatState.clearAction();
+					chatState.close();
+					if (payload.showtime && payload.date) {
+						// Reserva directa con función preseleccionada
+						const movieObj = {
+							id: payload.movieId,
+							title: payload.movieTitle || 'Película',
+							genres: [],
+							poster_url: undefined,
+							synopsis: undefined
+						};
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						bookingState.startBooking(movieObj as any, payload.date, payload.showtime);
+					}
+					// eslint-disable-next-line svelte/no-navigation-without-resolve
+					goto(`/booking/${payload.movieId}`);
+				}
+			} else if (action.type === 'movie_details') {
+				if ($page.url.pathname !== '/') {
+					// eslint-disable-next-line svelte/no-navigation-without-resolve
+					goto('/');
+				}
+			}
+		}
+	});
 </script>
 
 <div class="relative min-h-screen bg-black font-sans text-zinc-50 antialiased">
 	<Toaster theme="dark" position="bottom-right" />
 	{@render children()}
 	<SessionTimeoutModal />
+	<ScrollToTop />
+	<EpikWidget />
 	{#if bookingState.ghostSession}
 		<div class="fixed bottom-1 right-1 text-[9px] md:text-[10px] text-zinc-700 font-mono tracking-tighter select-text z-[100] pointer-events-none" title="Sesión Ghost Activa">
 			G:{bookingState.ghostSession.ventaTemporalId}

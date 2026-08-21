@@ -1,27 +1,25 @@
 <script lang="ts">
 	import * as Carousel from '$lib/components/ui/carousel';
 	import type { Movie } from '$lib/types';
-	import { Skeleton } from '$lib/components/ui/skeleton';
 
-	let { movies } = $props<{ movies: Movie[] }>();
+
+	let { movies, isPaused = false } = $props<{ movies: Movie[], isPaused?: boolean }>();
 	
 	import Autoplay from 'embla-carousel-autoplay';
 	import type { CarouselAPI } from '$lib/components/ui/carousel/context.js';
 	
 	let api = $state<CarouselAPI>();
 	let canScroll = $state(false);
-	let isLoopReady = $state(false);
-	let resumeTimeout: ReturnType<typeof setTimeout>;
 
-	const plugin = Autoplay({ delay: 3000, stopOnInteraction: true });
+	const plugin = Autoplay({ delay: 3000, stopOnInteraction: true, playOnInit: false });
 
 	let safeMovies = $derived.by(() => {
 		if (!movies || movies.length === 0) return [];
-		if (movies.length <= 4) return movies; // Si caben en pantalla, no duplicamos
-		if (movies.length < 8) {
-			return [...movies, ...movies];
+		let arr = [...movies];
+		while (arr.length < 12) {
+			arr = [...arr, ...movies];
 		}
-		return movies;
+		return arr;
 	});
 
 	$effect(() => {
@@ -33,46 +31,63 @@
 		api.on('reInit', checkScroll);
 		api.on('resize', checkScroll);
 		checkScroll();
-		
-		let loopTimeout: ReturnType<typeof setTimeout>;
-		if (movies && movies.length > 4) {
-			loopTimeout = setTimeout(() => {
-				if (api) {
-					api.reInit({ loop: true });
-				}
-				isLoopReady = true;
-			}, 800);
-		} else {
-			isLoopReady = true;
-		}
+
+		// Truco para inicializar loop de forma segura sin glitchear Embla
+		let loopTimeout = setTimeout(() => {
+			if (!api) return;
+			try {
+				api.plugins().autoplay?.stop();
+				api.reInit({ loop: true });
+			} catch (e) {
+				void e;
+			}
+		}, 800);
+
+		let resumeTimeout: ReturnType<typeof setTimeout>;
+
+		const startAutoplay = () => {
+			if (!api) return;
+			try {
+				api.plugins().autoplay?.play();
+			} catch (e) {
+				void e;
+			}
+		};
 
 		const handleInteraction = () => {
-			if (api) {
-				const autoplay = api.plugins().autoplay;
-				if (autoplay) {
-					autoplay.stop();
-				}
+			if (!api) return;
+			try {
+				api.plugins().autoplay?.stop();
+			} catch (e) {
+				void e;
 			}
 			clearTimeout(resumeTimeout);
-			resumeTimeout = setTimeout(() => {
-				if (api) {
-					const autoplay = api.plugins().autoplay;
-					if (autoplay) {
-						autoplay.play();
-					}
-				}
-			}, 90000); // 1 min 30 seg
+			if (!isPaused) {
+				resumeTimeout = setTimeout(startAutoplay, 40000);
+			}
 		};
 
 		api.on('pointerDown', handleInteraction);
+		if (!isPaused) {
+			resumeTimeout = setTimeout(startAutoplay, 40000);
+		}
 
 		return () => {
-			if (loopTimeout) clearTimeout(loopTimeout);
+			clearTimeout(loopTimeout);
 			clearTimeout(resumeTimeout);
 			api?.off('reInit', checkScroll);
 			api?.off('resize', checkScroll);
 			api?.off('pointerDown', handleInteraction);
 		};
+	});
+
+	$effect(() => {
+		if (!api) return;
+		if (isPaused) {
+			try { api.plugins().autoplay?.stop(); } catch (e) { void e; }
+		} else {
+			try { api.plugins().autoplay?.play(); } catch (e) { void e; }
+		}
 	});
 </script>
 
@@ -88,21 +103,15 @@
 				<Carousel.Content class="-ml-2 md:-ml-4 {canScroll ? '' : 'justify-center'}">
 					{#each safeMovies as movie, i (movie.id + '-' + i)}
 						<Carousel.Item class="pl-2 md:pl-4 basis-[45%] sm:basis-[30%] md:basis-[22%] lg:basis-1/5">
-							{#if !isLoopReady}
-								<div class="relative w-full aspect-[2/3] overflow-hidden bg-black">
-									{#if movie.poster}
-										<img
-											src={movie.poster}
-											alt=""
-											class="w-full h-full object-cover blur-sm scale-110 opacity-60 animate-pulse"
-										/>
-									{:else}
-										<Skeleton class="w-full h-full rounded-none bg-zinc-800 animate-pulse" />
-									{/if}
-								</div>
-							{:else}
 								<div role="button" tabindex="0" class="group relative w-full text-left outline-none animate-in fade-in duration-500">
-									<div class="relative w-full overflow-hidden rounded-none shadow-lg">
+									<!-- Dynamic Hover Glow from Poster -->
+									{#if movie.poster}
+										<div class="absolute -inset-6 z-0 opacity-0 transition-all duration-700 group-hover:opacity-100 pointer-events-none">
+											<img src={movie.poster} alt="" class="w-full h-full object-cover blur-3xl opacity-70 scale-[1.5]" />
+										</div>
+									{/if}
+
+									<div class="relative z-10 group-hover:z-50 w-full overflow-hidden rounded-lg border border-transparent group-hover:border-white/10 shadow-lg transition-all duration-500 group-hover:scale-[1.03] group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.8)] bg-black">
 										{#if movie.poster}
 											<img
 												src={movie.poster}
@@ -115,8 +124,8 @@
 											</div>
 										{/if}
 										
-										<div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-12 text-left transition-opacity duration-300 group-hover:opacity-0 z-20">
-											<h4 class="font-sans font-bold text-white uppercase leading-tight line-clamp-2 drop-shadow-md">{movie.title}</h4>
+										<div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-12 text-center transition-opacity duration-300 group-hover:opacity-0 z-20 flex flex-col items-center justify-end">
+											<h4 class="font-sans font-bold text-white uppercase leading-tight line-clamp-2 drop-shadow-md text-center">{movie.title}</h4>
 										</div>
 
 										<!-- Hover Overlay (AMC Style) -->
@@ -131,13 +140,12 @@
 										</div>
 									</div>
 								</div>
-							{/if}
 						</Carousel.Item>
 					{/each}
 				</Carousel.Content>
 				
 				{#if canScroll}
-					<div class="hidden md:flex absolute -left-12 -right-12 top-[40%] justify-between pointer-events-none">
+					<div class="hidden md:flex absolute -left-12 -right-12 top-[40%] justify-between pointer-events-none z-40">
 						<div class="pointer-events-auto">
 							<Carousel.Previous class="relative left-0 bg-white/5 backdrop-blur-md hover:bg-white hover:text-black text-white border-white/20 transition-all" />
 						</div>

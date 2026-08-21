@@ -11,16 +11,20 @@
 	import { browser } from '$app/environment';
 	import Sparkles from '@lucide/svelte/icons/sparkles';
 	import Film from '@lucide/svelte/icons/film';
-	import Popcorn from '@lucide/svelte/icons/popcorn';
+
+	import AlertCircle from '@lucide/svelte/icons/alert-circle';
+	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 
 	interface EpikToolResult {
 		type?: string;
 		action_triggered?: boolean;
+		action_type?: string;
 		payload?: Record<string, unknown>;
 		movies?: Array<{ id: string; title: string; poster_url?: string }>;
 		shows_for_date?: Array<{ id: string; time: string; format: string; room: string }>;
 		movie?: string;
 		movieId?: string;
+		movieTitle?: string;
 		target_date?: string;
 		poster_url?: string;
 		rating?: string;
@@ -50,6 +54,9 @@
 			api: (import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:5173') + '/api/chat',
 			headers: {
 				'x-epik-secret': import.meta.env.VITE_EPIK_SECRET || 'scrapp_epik_secret_2026_dev'
+			},
+			body: {
+				get contextMovies() { return chatState.contextData; }
 			}
 		})
 	});
@@ -57,12 +64,27 @@
 	let input = $state('');
 	let chatBodyEl = $state<HTMLElement | null>(null);
 
-	function extractToolInvocations(parts: unknown[]): ExtractedTool[] {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	function extractToolInvocations(msg: any): ExtractedTool[] {
+		if (msg.toolInvocations && Array.isArray(msg.toolInvocations) && msg.toolInvocations.length > 0) {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			return msg.toolInvocations.map((t: any) => ({
+				toolName: t.toolName,
+				state: t.state,
+				result: t.result,
+				args: t.args,
+				id: t.toolCallId || Math.random().toString()
+			}));
+		}
+
 		const list: ExtractedTool[] = [];
+		const parts = msg.parts || [];
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		for (const part of (parts || []) as any[]) {
+		for (const part of parts as any[]) {
 			if (!part) continue;
+			console.debug('[EPIK Widget] part.type:', part.type, 'keys:', Object.keys(part));
 			if (part.type === 'tool-invocation' && part.toolInvocation) {
+				console.debug('[EPIK Widget] tool-invocation found:', part.toolInvocation.toolName, 'state:', part.toolInvocation.state, 'result:', JSON.stringify(part.toolInvocation.result));
 				list.push({
 					toolName: part.toolInvocation.toolName,
 					state: part.toolInvocation.state,
@@ -72,10 +94,17 @@
 				});
 			} else if (typeof part.type === 'string' && part.type.startsWith('tool-')) {
 				const name = part.toolName || (part.type !== 'tool-invocation' ? part.type.replace('tool-', '') : '');
+				
+				// Fix state and result extraction for stream text parts
+				const isFinished = part.type === 'tool-result' || part.type === 'tool-output-available' || part.state === 'output-available';
+				const extractedState = isFinished ? 'result' : (part.state || 'call');
+				const extractedResult = part.result || part.output || (part.toolInvocation ? part.toolInvocation.result : undefined);
+
+				console.debug('[EPIK Widget] tool-* part found:', name, 'state:', extractedState, 'result:', JSON.stringify(extractedResult));
 				list.push({
 					toolName: name,
-					state: part.state || (part.result ? 'result' : 'call'),
-					result: part.result,
+					state: extractedState,
+					result: extractedResult,
 					args: part.args,
 					id: part.toolCallId || Math.random().toString()
 				});
@@ -84,21 +113,80 @@
 		return list;
 	}
 
+	const processedActions: Record<string, boolean> = {};
+
 	// Watch for Copilot tool invocations (open_modal, scroll_to)
 	$effect(() => {
 		const msgs = chat.messages;
 		if (msgs.length > 0) {
 			const lastMsg = msgs[msgs.length - 1];
 			if (lastMsg.role === 'assistant' && lastMsg.parts) {
-				const tools = extractToolInvocations(lastMsg.parts);
+				const tools = extractToolInvocations(lastMsg);
+				
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const parts = (lastMsg.parts ?? []) as any[];
+				const textContent = parts.filter((p: MessagePart) => p.type === 'text').map((p: MessagePart) => p.text).join('\n');
+
 				for (const tool of tools) {
-					if (tool.state === 'result' && tool.result?.action_triggered) {
-						chatState.triggerAction(tool.result.type || '', tool.result.payload);
+					const alreadyProcessed = processedActions[tool.id];
+					if (tool.state === 'result' && tool.result?.action_triggered && !alreadyProcessed) {
+						processedActions[tool.id] = true;
+						const actionType = tool.result.action_type || tool.result.type || '';
+						const payload = tool.result.payload || tool.result;
+						console.log('🤖 [EpikWidget] Disparando acción automática:', actionType, payload);
+						chatState.triggerAction(actionType, payload);
+						minimizeWithBubble(textContent || (actionType === 'open_movie' ? 'Abriendo horarios...' : 'Navegando...'));
 					}
 				}
 			}
 		}
 	});
+
+	// Auto-trigger fallback: if AI SDK strips tool results, parse the action from the text output
+	$effect(() => {
+		const msgs = chat.messages;
+		if (msgs.length > 0 && !isLoading) {
+			const lastMsg = msgs[msgs.length - 1];
+			if (lastMsg.role === 'assistant') {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const parts = (lastMsg.parts ?? []) as any[];
+				const textContent = parts.filter((p) => p.type === 'text').map((p) => p.text).join('\n');
+
+				const movieMatch = textContent.match(/https:\/\/action\.epik\/movie_details\/([a-zA-Z0-9-]+)/);
+				if (movieMatch && movieMatch[1] && !processedActions[movieMatch[1]]) {
+					processedActions[movieMatch[1]] = true;
+					console.log('🤖 [EpikWidget] Disparando auto-acción por Regex Text:', movieMatch[1]);
+					chatState.triggerAction('movie_details', { movieId: movieMatch[1] });
+					minimizeWithBubble(textContent);
+				}
+				
+				const bookingMatch = textContent.match(/https:\/\/action\.epik\/booking\/([a-zA-Z0-9-]+)/);
+				if (bookingMatch && bookingMatch[1] && !processedActions[bookingMatch[1]]) {
+					processedActions[bookingMatch[1]] = true;
+					console.log('🤖 [EpikWidget] Disparando auto-acción de reserva por Regex Text:', bookingMatch[1]);
+					chatState.triggerAction('booking', { movieId: bookingMatch[1] });
+					minimizeWithBubble(textContent);
+				}
+			}
+		}
+	});
+
+	function minimizeWithBubble(rawText: string) {
+		// Minimizar chat
+		chatState.close();
+		
+		// Limpiar texto de enlaces Markdown técnicos para que el tooltip se vea natural
+		const cleanText = rawText.replace(/\[.*?\]\(https:\/\/action\.epik\/.*?\)/g, '').trim();
+		
+		if (cleanText) {
+			bubbleQuote = cleanText;
+			showBubble = true;
+			clearTimeout(bubbleTimer);
+			bubbleTimer = setTimeout(() => {
+				showBubble = false;
+			}, 8000);
+		}
+	}
 
 	// Auto-scroll to bottom smoothly
 	$effect(() => {
@@ -111,34 +199,71 @@
 		}
 	});
 
+	// Handle custom markdown action links (e.g. https://action.epik/movie_details/ID)
+	function handleChatClicks(e: MouseEvent) {
+		const target = e.target as HTMLElement;
+		const link = target.closest('a');
+		if (link && link.href) {
+			try {
+				const url = new URL(link.href);
+				if (url.hostname === 'action.epik') {
+					e.preventDefault();
+					const pathParts = url.pathname.split('/').filter(Boolean);
+					const actionType = pathParts[0];
+					const id = pathParts[1];
+					console.log('🔗 [EPIK Widget] Intercepted action link:', actionType, id);
+					
+					const messageEl = link.closest('.prose');
+					const text = messageEl ? messageEl.textContent || '¡Listo! Abriendo...' : '¡Listo! Abriendo...';
+
+					if (actionType === 'movie_details' && id) {
+						chatState.triggerAction('movie_details', { movieId: id, movieTitle: '' });
+						minimizeWithBubble(text);
+					} else if (actionType === 'booking' && id) {
+						chatState.triggerAction('booking', { movieId: id });
+						minimizeWithBubble(text);
+					}
+				}
+			} catch {
+				// Ignore invalid URLs
+			}
+		}
+	}
+
 	function getActiveThinkingText(): string {
 		const msgs = chat.messages;
 		if (msgs.length > 0) {
 			const lastMsg = msgs[msgs.length - 1];
 			if (lastMsg.role === 'assistant' && lastMsg.parts) {
-				const tools = extractToolInvocations(lastMsg.parts);
+				const tools = extractToolInvocations(lastMsg);
 				const lastTool = tools[tools.length - 1];
 				if (lastTool) {
 					if (lastTool.toolName === 'get_movies') return 'Consultando cartelera de hoy en Sambil Candelaria...';
 					if (lastTool.toolName === 'get_showtimes') return 'Buscando funciones y horarios...';
+					if (lastTool.toolName === 'open_movie_modal') return 'Abriendo detalles de la película...';
+					if (lastTool.toolName === 'open_seat_map') return 'Abriendo el selector de asientos...';
 					if (lastTool.toolName === 'scroll_to_section') return 'Desplazando la pantalla a la cartelera...';
 					if (lastTool.toolName === 'open_modal') return 'Abriendo detalles en pantalla...';
 					if (lastTool.toolName === 'get_combos') return 'Consultando combos de cotufas...';
 				}
 			}
 		}
-		return 'EPIK está pensando...';
+		return 'EPIK está pensando' + (loadingSeconds > 0 ? ` (${loadingSeconds}s)` : '...');
 	}
 
 	function sendMessage() {
 		const text = input.trim();
+		console.log('📤 [EPIK Client] Intentando enviar mensaje:', text, 'Estado actual:', chat.status);
 		if (!text || chat.status === 'streaming' || chat.status === 'submitted') return;
+		console.log('🚀 [EPIK Client] Enviando a:', (import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:5173') + '/api/chat');
 		chat.sendMessage({ role: 'user', parts: [{ type: 'text', text }] });
 		input = '';
 	}
 
 	function quickSend(text: string) {
+		console.log('📤 [EPIK Client] QuickSend:', text, 'Estado actual:', chat.status);
 		if (chat.status === 'streaming' || chat.status === 'submitted') return;
+		console.log('🚀 [EPIK Client] Enviando a:', (import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:5173') + '/api/chat');
 		chat.sendMessage({ role: 'user', parts: [{ type: 'text', text }] });
 	}
 
@@ -185,6 +310,29 @@
 	});
 
 	const isLoading = $derived(chat.status === 'streaming' || chat.status === 'submitted');
+	let loadingSeconds = $state(0);
+	let loadingTimer: ReturnType<typeof setInterval> | undefined;
+
+	$effect(() => {
+		if (isLoading) {
+			if (!loadingTimer) {
+				loadingSeconds = 0;
+				loadingTimer = setInterval(() => {
+					loadingSeconds++;
+				}, 1000);
+			}
+		} else {
+			if (loadingTimer) {
+				clearInterval(loadingTimer);
+				loadingTimer = undefined;
+			}
+		}
+		
+		return () => {
+			if (loadingTimer) clearInterval(loadingTimer);
+		};
+	});
+
 	let scrollY = $state(0);
 </script>
 
@@ -226,7 +374,7 @@
 		</div>
 
 		<!-- Chat Body -->
-		<div bind:this={chatBodyEl} class="flex-1 overflow-y-auto p-4 flex flex-col gap-4 scroll-smooth">
+		<div class="flex-1 overflow-y-auto p-4 flex flex-col gap-5 custom-scrollbar bg-black" bind:this={chatBodyEl} onclick={handleChatClicks} role="presentation">
 			<div class="flex flex-col items-start gap-1 max-w-[90%]">
 				<div class="bg-zinc-900 border border-zinc-700/80 px-4 py-3 text-sm text-zinc-200 rounded-sm leading-relaxed shadow-sm">
 					{welcomeMessage}
@@ -237,8 +385,8 @@
 			<!-- Messages -->
 			{#each chat.messages as message (message.id)}
 				{@const parts = (message.parts ?? []) as unknown as MessagePart[]}
-				{@const textContent = parts.find((p) => p.type === 'text')?.text ?? ''}
-				{@const tools = extractToolInvocations(parts)}
+				{@const textContent = parts.filter((p) => p.type === 'text').map((p) => p.text).join('\n')}
+				{@const tools = extractToolInvocations(message)}
 
 				<!-- User Message -->
 				{#if message.role === 'user'}
@@ -257,110 +405,54 @@
 								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 								{@html browser ? DOMPurify.sanitize(marked.parse(textContent) as string) : marked.parse(textContent)}
 							</div>
+						{:else if tools.length > 0 && tools.every(t => t.state === 'result' || t.state === 'output-available' || t.result) && !isLoading}
+							<!-- Fallback: model finished tools but produced no text (finish reason: other) -->
+							<div class="px-4 py-3 text-sm rounded-sm bg-zinc-900 border border-zinc-700 text-zinc-400 leading-relaxed shadow-sm italic">
+								¡Listo! ¿Hay algo más en lo que pueda ayudarte? 🍿
+							</div>
 						{/if}
 
 						<!-- Interactive Action Chips & Buttons (Rendered once tool is completed) -->
 						{#each tools as tp (tp.id)}
-							{#if tp.state === 'result'}
-								<!-- Rich Movie Card for Showtimes -->
-								{#if tp.toolName === 'get_showtimes' && tp.result?.shows_for_date && tp.result.shows_for_date.length > 0}
-									<div class="flex flex-col w-full mt-1 bg-zinc-950 border border-zinc-800 rounded-sm overflow-hidden shadow-md">
-										<!-- Clickable Header Area -->
-										<!-- svelte-ignore a11y_click_events_have_key_events -->
-										<!-- svelte-ignore a11y_no_static_element_interactions -->
-										<div 
-											class="flex gap-3 p-3 hover:bg-white/5 cursor-pointer transition-colors"
-											onclick={() => chatState.triggerAction('booking', { movieId: tp.result?.movieId, movieTitle: tp.result?.movie, date: tp.result?.target_date })}
+							{#if tp.state === 'result' || tp.state === 'output-available' || tp.result}
+
+
+								<!-- Copilot Fallback Buttons -->
+								{#if tp.toolName === 'navigate_to' && tp.result?.payload?.section}
+									<div class="mt-2 p-3 bg-zinc-900/50 border border-white/5 rounded-sm flex flex-col gap-2">
+										<div class="flex items-center gap-2 text-xs text-zinc-300">
+											<Sparkles class="size-4 text-yellow-500" />
+											<span>Navegar a <strong>{tp.result.payload.section}</strong></span>
+										</div>
+										<button
+											type="button"
+											onclick={() => chatState.triggerAction('navigate', tp.result?.payload)}
+											class="w-full py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-white text-[10px] font-bold uppercase tracking-wider rounded-sm transition-colors cursor-pointer"
 										>
-											<!-- Poster -->
-											<div class="w-16 h-24 shrink-0 bg-zinc-900 rounded-sm overflow-hidden relative border border-white/10">
-												{#if tp.result.poster_url}
-													<img src={tp.result.poster_url} alt={tp.result.movie} class="w-full h-full object-cover" />
-												{:else}
-													<div class="w-full h-full flex items-center justify-center">
-														<Film class="size-6 text-zinc-700" />
-													</div>
-												{/if}
-											</div>
-											
-											<!-- Movie Details -->
-											<div class="flex flex-col justify-center flex-1 min-w-0">
-												<h4 class="text-sm font-bold text-white truncate leading-tight mb-1">{tp.result.movie}</h4>
-												
-												<div class="flex items-center gap-1.5 mb-1.5 flex-wrap">
-													{#if tp.result.rating}
-														<span class="text-[9px] font-bold px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-sm uppercase">{tp.result.rating}</span>
-													{/if}
-													{#if tp.result.duration}
-														<span class="text-[10px] text-zinc-400 font-medium">{tp.result.duration} min</span>
-													{/if}
-												</div>
-
-												{#if tp.result.genres && tp.result.genres.length > 0}
-													<span class="text-[10px] text-zinc-500 font-medium truncate">{tp.result.genres.join(' • ')}</span>
-												{/if}
-											</div>
-										</div>
-
-										<!-- Showtimes Grid -->
-										<div class="p-3 bg-zinc-900/50 border-t border-white/5">
-											<span class="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">
-												Horarios para {tp.result.target_date}
-											</span>
-											<div class="flex flex-wrap gap-2">
-												{#each tp.result.shows_for_date as show (show.id || show.time)}
-													<button
-														onclick={() => chatState.triggerAction('booking', { movieId: tp.result?.movieId, movieTitle: tp.result?.movie, date: tp.result?.target_date, showtime: show })}
-														class="flex flex-col gap-0.5 px-2.5 py-1.5 bg-zinc-950 hover:bg-emerald-950/60 border border-zinc-800 hover:border-emerald-500 rounded-sm transition-all shadow-sm text-left group"
-														title="Seleccionar asientos para {show.time} en {show.room}"
-													>
-														<div class="flex items-center gap-1.5">
-															<span class="text-xs font-bold text-emerald-400 group-hover:text-emerald-300">{show.time}</span>
-															<span class="text-[9px] px-1 py-0.5 bg-zinc-800 text-zinc-300 rounded font-semibold">{show.format}</span>
-														</div>
-														{#if show.room}
-															<span class="text-[9px] text-zinc-500 group-hover:text-zinc-400">{show.room}</span>
-														{/if}
-													</button>
-												{/each}
-											</div>
-										</div>
+											Ir a la sección
+										</button>
 									</div>
 								{/if}
 
-								<!-- Movies Grid for get_movies -->
-								{#if tp.toolName === 'get_movies' && tp.result?.movies && tp.result.movies.length > 0}
-									<div class="flex overflow-x-auto gap-2 pb-2 pt-1 scrollbar-hide snap-x">
-										{#each tp.result.movies.slice(0, 5) as movie (movie.id)}
-											<button
-												onclick={() => chatState.triggerAction('booking', { movieId: movie.id, movieTitle: movie.title })}
-												class="flex flex-col gap-1 w-20 shrink-0 snap-start text-left group"
-											>
-												<div class="w-20 h-28 bg-zinc-900 rounded-sm overflow-hidden relative border border-white/5 group-hover:border-yellow-500/50 transition-colors shadow-sm">
-													{#if movie.poster_url}
-														<img src={movie.poster_url} alt={movie.title} class="w-full h-full object-cover" />
-													{:else}
-														<div class="w-full h-full flex items-center justify-center">
-															<Film class="size-5 text-zinc-700" />
-														</div>
-													{/if}
-													<div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-												</div>
-												<span class="text-[10px] font-bold text-zinc-300 group-hover:text-yellow-400 truncate w-full leading-tight">{movie.title}</span>
-											</button>
-										{/each}
-									</div>
-								{/if}
-
-								<!-- Combos Shortcut Button -->
-								{#if tp.toolName === 'get_combos'}
-									<div class="flex items-center gap-1.5 text-xs text-zinc-400 font-medium mt-1">
-										<Popcorn class="size-3.5 text-yellow-400" />
-										<span>Disponibles en el área de caramelería del cine</span>
+								{#if tp.toolName === 'open_movie_modal' && tp.result?.payload?.query}
+									<div class="mt-2 p-3 bg-zinc-900/50 border border-white/5 rounded-sm flex flex-col gap-2">
+										<div class="flex items-center gap-2 text-xs text-zinc-300">
+											<Film class="size-4 text-yellow-500" />
+											<span>Buscaste <strong>{tp.result.payload.query}</strong></span>
+										</div>
+										<button
+											type="button"
+											onclick={() => chatState.triggerAction('open_movie', tp.result?.payload)}
+											class="w-full py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-white text-[10px] font-bold uppercase tracking-wider rounded-sm transition-colors cursor-pointer"
+										>
+											Ver horarios
+										</button>
 									</div>
 								{/if}
 							{/if}
 						{/each}
+
+
 
 						{#if textContent}
 							<span class="text-[9px] text-zinc-500 font-bold uppercase tracking-wider ml-1">EPIK</span>
@@ -374,6 +466,27 @@
 				<div class="flex items-center gap-2 py-1 px-1 text-zinc-400 text-xs font-mono select-none w-fit animate-pulse">
 					<Sparkles class="size-3.5 text-yellow-400 animate-spin" style="animation-duration: 3s;" />
 					<span class="text-zinc-300 font-medium tracking-wide">{getActiveThinkingText()}</span>
+				</div>
+			{/if}
+
+			<!-- Error Alert State -->
+			{#if chat.error}
+				<div class="flex flex-col gap-2 p-3.5 bg-red-950/40 border border-red-500/50 rounded-sm text-red-200 text-xs shadow-lg mt-2">
+					<div class="flex items-center gap-2">
+						<AlertCircle class="size-4 text-red-400 shrink-0" />
+						<span class="font-bold">EPIK tuvo un inconveniente</span>
+					</div>
+					<p class="text-[11px] text-red-300/80 leading-relaxed">
+						No pudimos procesar tu mensaje debido a un problema temporal con el servicio de IA o límite de cuota.
+					</p>
+					<button
+						type="button"
+						onclick={() => quickSend(input.trim() || 'Hola')}
+						class="self-start mt-1 px-3 py-1.5 bg-red-900/60 hover:bg-red-800 border border-red-500/40 rounded-sm text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+					>
+						<RefreshCw class="size-3" />
+						Reintentar mensaje
+					</button>
 				</div>
 			{/if}
 
@@ -442,9 +555,10 @@
 				class="mb-3 relative max-w-[220px] bg-white border-2 border-black text-black font-bold px-4 py-3 shadow-[4px_4px_0_rgba(0,0,0,1)] pointer-events-auto rounded-sm"
 				transition:fly={{ y: 20, opacity: 0, duration: 300 }}
 			>
-				{bubbleQuote}
-				<!-- Triangle pointing down to the FAB -->
-				<div class="absolute -bottom-2 right-4 w-0 h-0 border-l-[8px] border-l-transparent border-t-[8px] border-t-white border-r-[8px] border-r-transparent filter drop-shadow-[0_2px_0_rgba(0,0,0,1)]"></div>
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+				{@html browser ? DOMPurify.sanitize(marked.parseInline(bubbleQuote) as string) : marked.parseInline(bubbleQuote)}
+				<!-- Triangle pointing right to the FAB -->
+				<div class="absolute top-1/2 -right-2 -translate-y-1/2 w-0 h-0 border-t-[8px] border-t-transparent border-l-[8px] border-l-white border-b-[8px] border-b-transparent filter drop-shadow-[2px_0_0_rgba(0,0,0,1)]"></div>
 			</div>
 		{/if}
 

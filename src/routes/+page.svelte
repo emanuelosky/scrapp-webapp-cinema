@@ -1,5 +1,5 @@
 <script lang="ts">
-
+	import { browser } from '$app/environment';
 	import Search from '@lucide/svelte/icons/search';
 	import User from '@lucide/svelte/icons/user';
 	import MapPin from '@lucide/svelte/icons/map-pin';
@@ -95,17 +95,13 @@
 		// Copilot Action Listener
 		if (chatState.pendingAction) {
 			const action = chatState.pendingAction;
-			if (action.type === 'movie_details' && action.payload && typeof action.payload === 'object') {
+			if (action.type === 'open_movie' && action.payload && typeof action.payload === 'object') {
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				const payload = action.payload as any;
 				let found: Movie | undefined;
-				if (payload.movieId) {
-					found = nowPlaying.find(m => m.id === payload.movieId) 
-						 || comingSoonMovies.find(m => m.id === payload.movieId);
-				}
-				if (!found && payload.movieTitle) {
+				if (payload.query) {
 					const clean = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-					const qClean = clean(payload.movieTitle);
+					const qClean = clean(payload.query);
 					found = nowPlaying.find(m => {
 						const tClean = clean(m.title);
 						return tClean.includes(qClean) || qClean.includes(tClean);
@@ -115,12 +111,41 @@
 					});
 				}
 				if (found) {
+					console.log('🎬 [Page] Abriendo modal para:', found.title);
 					openMovieDetails(found);
+				} else {
+					console.log('⚠️ [Page] No se encontró la película con ID:', payload.movieId, 'o título:', payload.movieTitle);
 				}
 			}
 			chatState.clearAction();
 		}
 	});
+
+	$effect(() => {
+		// Update chat context cache
+		if (nowPlaying && nowPlaying.length > 0) {
+			chatState.contextData = nowPlaying.map(m => {
+				let text = `[ID: ${m.id}] ${m.title}`;
+				if (m.rating) text += ` (Clasif: ${m.rating})`;
+				if (m.showtimesByDate) {
+					const firstDate = Object.keys(m.showtimesByDate)[0];
+					if (firstDate && m.showtimesByDate[firstDate]) {
+						const times = m.showtimesByDate[firstDate].map(s => s.time).join(', ');
+						text += ` (Hoy: ${times})`;
+					}
+				}
+				return text;
+			}).join(' | ');
+		}
+	});
+
+	if (browser) {
+		// @ts-expect-error - Exposing for debugging
+		window.__EPIK_TEST = (movieId: string, movieTitle: string) => {
+			console.log('🧪 [Test] Simulando señal EPIK para:', movieTitle);
+			chatState.triggerAction('movie_details', { movieId, movieTitle });
+		};
+	}
 
 	function openMovieDetails(movie: Movie) {
 		selectedMovie = movie;

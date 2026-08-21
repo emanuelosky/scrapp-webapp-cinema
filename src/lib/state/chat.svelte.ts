@@ -1,5 +1,6 @@
 export const chatState = $state({
 	isOpen: false,
+	contextData: '',
 	pendingAction: null as { type: string, payload: unknown } | null,
 	toggle() {
 		chatState.isOpen = !chatState.isOpen;

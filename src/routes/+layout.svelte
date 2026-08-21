@@ -42,19 +42,24 @@
 	$effect(() => {
 		if (chatState.pendingAction) {
 			const action = chatState.pendingAction;
-			if (action.type === 'scroll_to' && action.payload && typeof action.payload === 'object') {
+			if (action.type === 'navigate' && action.payload && typeof action.payload === 'object') {
 				const payload = action.payload as { section?: string };
 				if (payload.section) {
 					chatState.clearAction();
+					
+					let targetId = payload.section;
+					if (targetId === 'home') targetId = 'top';
+					if (targetId === 'cartelera') targetId = 'peliculas-en-este-cine';
+
 					if ($page.url.pathname !== '/') {
 						// eslint-disable-next-line svelte/no-navigation-without-resolve
 						goto('/').then(() => {
 							setTimeout(() => {
-								document.getElementById(payload.section!)?.scrollIntoView({ behavior: 'smooth' });
+								document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
 							}, 350);
 						});
 					} else {
-						document.getElementById(payload.section)?.scrollIntoView({ behavior: 'smooth' });
+						document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
 					}
 				}
 			} else if (action.type === 'booking' && action.payload && typeof action.payload === 'object') {

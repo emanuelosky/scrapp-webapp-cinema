@@ -17,11 +17,15 @@
 		type?: string;
 		action_triggered?: boolean;
 		payload?: Record<string, unknown>;
-		movies?: Array<{ id: string; title: string }>;
-		shows_for_date?: Array<{ id: string; time: string; format: string }>;
+		movies?: Array<{ id: string; title: string; poster_url?: string }>;
+		shows_for_date?: Array<{ id: string; time: string; format: string; room: string }>;
 		movie?: string;
 		movieId?: string;
 		target_date?: string;
+		poster_url?: string;
+		rating?: string;
+		duration?: number;
+		genres?: string[];
 	}
 
 	interface MessagePart {
@@ -258,37 +262,91 @@
 						<!-- Interactive Action Chips & Buttons (Rendered once tool is completed) -->
 						{#each tools as tp (tp.id)}
 							{#if tp.state === 'result'}
-								<!-- Direct Showtimes Pill List -->
+								<!-- Rich Movie Card for Showtimes -->
 								{#if tp.toolName === 'get_showtimes' && tp.result?.shows_for_date && tp.result.shows_for_date.length > 0}
-									<div class="flex flex-col gap-1.5 w-full mt-1 bg-zinc-900/60 border border-white/5 p-2.5 rounded-sm">
-										<span class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
-											Funciones Disponibles ({tp.result.target_date}):
-										</span>
-										<div class="flex flex-wrap gap-1.5">
-											{#each tp.result.shows_for_date as show (show.id || show.time)}
-												<button
-													onclick={() => chatState.triggerAction('booking', { movieId: tp.result?.movieId, movieTitle: tp.result?.movie, date: tp.result?.target_date, showtime: show })}
-													class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold bg-zinc-900 hover:bg-emerald-950/60 border border-zinc-700 hover:border-emerald-500 text-emerald-400 hover:text-emerald-300 rounded-sm transition-all shadow-sm"
-													title="Haz clic para seleccionar butacas en este horario"
-												>
-													<span>💺 {show.time}</span>
-													<span class="text-[9px] px-1 py-0.5 bg-black/50 text-zinc-400 rounded">{show.format}</span>
-												</button>
-											{/each}
+									<div class="flex flex-col w-full mt-1 bg-zinc-950 border border-zinc-800 rounded-sm overflow-hidden shadow-md">
+										<!-- Clickable Header Area -->
+										<!-- svelte-ignore a11y_click_events_have_key_events -->
+										<!-- svelte-ignore a11y_no_static_element_interactions -->
+										<div 
+											class="flex gap-3 p-3 hover:bg-white/5 cursor-pointer transition-colors"
+											onclick={() => chatState.triggerAction('booking', { movieId: tp.result?.movieId, movieTitle: tp.result?.movie, date: tp.result?.target_date })}
+										>
+											<!-- Poster -->
+											<div class="w-16 h-24 shrink-0 bg-zinc-900 rounded-sm overflow-hidden relative border border-white/10">
+												{#if tp.result.poster_url}
+													<img src={tp.result.poster_url} alt={tp.result.movie} class="w-full h-full object-cover" />
+												{:else}
+													<div class="w-full h-full flex items-center justify-center">
+														<Film class="size-6 text-zinc-700" />
+													</div>
+												{/if}
+											</div>
+											
+											<!-- Movie Details -->
+											<div class="flex flex-col justify-center flex-1 min-w-0">
+												<h4 class="text-sm font-bold text-white truncate leading-tight mb-1">{tp.result.movie}</h4>
+												
+												<div class="flex items-center gap-1.5 mb-1.5 flex-wrap">
+													{#if tp.result.rating}
+														<span class="text-[9px] font-bold px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-sm uppercase">{tp.result.rating}</span>
+													{/if}
+													{#if tp.result.duration}
+														<span class="text-[10px] text-zinc-400 font-medium">{tp.result.duration} min</span>
+													{/if}
+												</div>
+
+												{#if tp.result.genres && tp.result.genres.length > 0}
+													<span class="text-[10px] text-zinc-500 font-medium truncate">{tp.result.genres.join(' • ')}</span>
+												{/if}
+											</div>
+										</div>
+
+										<!-- Showtimes Grid -->
+										<div class="p-3 bg-zinc-900/50 border-t border-white/5">
+											<span class="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">
+												Horarios para {tp.result.target_date}
+											</span>
+											<div class="flex flex-wrap gap-2">
+												{#each tp.result.shows_for_date as show (show.id || show.time)}
+													<button
+														onclick={() => chatState.triggerAction('booking', { movieId: tp.result?.movieId, movieTitle: tp.result?.movie, date: tp.result?.target_date, showtime: show })}
+														class="flex flex-col gap-0.5 px-2.5 py-1.5 bg-zinc-950 hover:bg-emerald-950/60 border border-zinc-800 hover:border-emerald-500 rounded-sm transition-all shadow-sm text-left group"
+														title="Seleccionar asientos para {show.time} en {show.room}"
+													>
+														<div class="flex items-center gap-1.5">
+															<span class="text-xs font-bold text-emerald-400 group-hover:text-emerald-300">{show.time}</span>
+															<span class="text-[9px] px-1 py-0.5 bg-zinc-800 text-zinc-300 rounded font-semibold">{show.format}</span>
+														</div>
+														{#if show.room}
+															<span class="text-[9px] text-zinc-500 group-hover:text-zinc-400">{show.room}</span>
+														{/if}
+													</button>
+												{/each}
+											</div>
 										</div>
 									</div>
 								{/if}
 
-								<!-- Movies List Chips -->
+								<!-- Movies Grid for get_movies -->
 								{#if tp.toolName === 'get_movies' && tp.result?.movies && tp.result.movies.length > 0}
-									<div class="flex flex-wrap gap-1.5 mt-1">
-										{#each tp.result.movies.slice(0, 4) as movie (movie.id)}
+									<div class="flex overflow-x-auto gap-2 pb-2 pt-1 scrollbar-hide snap-x">
+										{#each tp.result.movies.slice(0, 5) as movie (movie.id)}
 											<button
 												onclick={() => chatState.triggerAction('booking', { movieId: movie.id, movieTitle: movie.title })}
-												class="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-yellow-500 text-zinc-300 hover:text-yellow-300 rounded-sm transition-all"
+												class="flex flex-col gap-1 w-20 shrink-0 snap-start text-left group"
 											>
-												<Film class="size-3 text-zinc-400" />
-												<span>{movie.title}</span>
+												<div class="w-20 h-28 bg-zinc-900 rounded-sm overflow-hidden relative border border-white/5 group-hover:border-yellow-500/50 transition-colors shadow-sm">
+													{#if movie.poster_url}
+														<img src={movie.poster_url} alt={movie.title} class="w-full h-full object-cover" />
+													{:else}
+														<div class="w-full h-full flex items-center justify-center">
+															<Film class="size-5 text-zinc-700" />
+														</div>
+													{/if}
+													<div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+												</div>
+												<span class="text-[10px] font-bold text-zinc-300 group-hover:text-yellow-400 truncate w-full leading-tight">{movie.title}</span>
 											</button>
 										{/each}
 									</div>

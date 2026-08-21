@@ -11,7 +11,6 @@
 	import { browser } from '$app/environment';
 	import Sparkles from '@lucide/svelte/icons/sparkles';
 	import Film from '@lucide/svelte/icons/film';
-	import Ticket from '@lucide/svelte/icons/ticket';
 	import Popcorn from '@lucide/svelte/icons/popcorn';
 
 	interface EpikToolResult {

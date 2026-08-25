@@ -116,6 +116,33 @@
 				} else {
 					console.log('⚠️ [Page] No se encontró la película con ID:', payload.movieId, 'o título:', payload.movieTitle);
 				}
+			} else if (action.type === 'start_booking' && action.payload && typeof action.payload === 'object') {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const payload = action.payload as any;
+				if (payload.query && payload.time) {
+					const clean = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+					const qClean = clean(payload.query);
+					const found = nowPlaying.find(m => {
+						const tClean = clean(m.title);
+						return tClean.includes(qClean) || qClean.includes(tClean);
+					});
+
+					if (found && found.showtimesByDate) {
+						const firstDate = Object.keys(found.showtimesByDate)[0];
+						if (firstDate) {
+							const showtime = found.showtimesByDate[firstDate].find(s => s.time === payload.time || s.time.includes(payload.time));
+							if (showtime) {
+								console.log('🎟️ [Page] Iniciando booking directo para:', found.title, showtime.time);
+								import('$lib/state/booking.svelte').then(({ bookingState }) => {
+									bookingState.startBooking(found, firstDate, showtime);
+									import('$app/navigation').then(({ goto }) => goto(`/booking/${found.id}`));
+								});
+							} else {
+								console.log('⚠️ [Page] No se encontró el horario:', payload.time);
+							}
+						}
+					}
+				}
 			}
 			chatState.clearAction();
 		}

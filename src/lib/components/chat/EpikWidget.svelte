@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { chatState } from '$lib/state/chat.svelte';
+	import { cartState } from '$lib/state/cart.svelte';
 	import X from '@lucide/svelte/icons/x';
 	import Send from '@lucide/svelte/icons/send';
 	import Square from '@lucide/svelte/icons/square';
@@ -56,7 +57,17 @@
 				'x-epik-secret': import.meta.env.VITE_EPIK_SECRET || 'scrapp_epik_secret_2026_dev'
 			},
 			body: {
-				get contextMovies() { return chatState.contextData; }
+				get contextMovies() { return chatState.contextData; },
+				get contextCart() {
+					let cartStr = [];
+					if (cartState.cartItems.length > 0) {
+						cartStr.push(`Entradas: ${cartState.cartItems.map(c => `${c.seats.length}x ${c.movieTitle} (${c.showtimeTime})`).join(', ')}`);
+					}
+					if (cartState.selectedConcessions.length > 0) {
+						cartStr.push(`Combos: ${cartState.selectedConcessions.map(c => `${c.quantity}x ${c.name}`).join(', ')}`);
+					}
+					return cartStr.length > 0 ? cartStr.join(' | ') : null;
+				}
 			}
 		})
 	});
@@ -222,12 +233,50 @@
 					} else if (actionType === 'booking' && id) {
 						chatState.triggerAction('booking', { movieId: id });
 						minimizeWithBubble(text);
+					} else if (actionType === 'start_booking' && id) {
+						chatState.triggerAction('start_booking', { movieId: id });
+						minimizeWithBubble(text);
 					}
 				}
 			} catch {
 				// Ignore invalid URLs
 			}
 		}
+	}
+
+	function retryMessage() {
+		const msgs = chat.messages;
+		if (msgs.length > 0) {
+			for (let i = msgs.length - 1; i >= 0; i--) {
+				if (msgs[i].role === 'user') {
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					const parts = (msgs[i].parts ?? []) as any[];
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					const content = parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('\n') || (msgs[i] as any).content || '';
+					
+					// Si el objeto chat expone un método para setear mensajes, úsalo, sino asignamos
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					if (typeof (chat as any).setMessages === 'function') {
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						(chat as any).setMessages(msgs.slice(0, i));
+					} else {
+						chat.messages = msgs.slice(0, i);
+					}
+					
+					// Agregar el parámetro useFallback=true en data
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					if (typeof (chat as any).sendMessage === 'function') {
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						(chat as any).sendMessage({ role: 'user', parts: [{ type: 'text', text: content }] }, { data: { useFallback: 'true' } });
+					} else {
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						(chat as any).append({ role: 'user', parts: [{ type: 'text', text: content }] }, { data: { useFallback: 'true' } });
+					}
+					return;
+				}
+			}
+		}
+		if (input.trim()) quickSend(input.trim());
 	}
 
 	function getActiveThinkingText(): string {
@@ -241,6 +290,7 @@
 					if (lastTool.toolName === 'get_movies') return 'Consultando cartelera de hoy en Sambil Candelaria...';
 					if (lastTool.toolName === 'get_showtimes') return 'Buscando funciones y horarios...';
 					if (lastTool.toolName === 'open_movie_modal') return 'Abriendo detalles de la película...';
+					if (lastTool.toolName === 'start_booking') return 'Preparando butacas para tu compra...';
 					if (lastTool.toolName === 'open_seat_map') return 'Abriendo el selector de asientos...';
 					if (lastTool.toolName === 'scroll_to_section') return 'Desplazando la pantalla a la cartelera...';
 					if (lastTool.toolName === 'open_modal') return 'Abriendo detalles en pantalla...';
@@ -449,6 +499,22 @@
 										</button>
 									</div>
 								{/if}
+
+								{#if tp.toolName === 'start_booking' && tp.result?.payload?.query && tp.result?.payload?.time}
+									<div class="mt-2 p-3 bg-zinc-900/50 border border-white/5 rounded-sm flex flex-col gap-2">
+										<div class="flex items-center gap-2 text-xs text-zinc-300">
+											<Film class="size-4 text-yellow-500" />
+											<span>Comprar: <strong>{tp.result.payload.query}</strong> a las <strong>{tp.result.payload.time}</strong></span>
+										</div>
+										<button
+											type="button"
+											onclick={() => chatState.triggerAction('start_booking', tp.result?.payload)}
+											class="w-full py-1.5 bg-yellow-500 hover:bg-yellow-400 text-black text-[10px] font-bold uppercase tracking-wider rounded-sm transition-colors cursor-pointer"
+										>
+											Elegir Butacas
+										</button>
+									</div>
+								{/if}
 							{/if}
 						{/each}
 
@@ -481,7 +547,7 @@
 					</p>
 					<button
 						type="button"
-						onclick={() => quickSend(input.trim() || 'Hola')}
+						onclick={() => retryMessage()}
 						class="self-start mt-1 px-3 py-1.5 bg-red-900/60 hover:bg-red-800 border border-red-500/40 rounded-sm text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
 					>
 						<RefreshCw class="size-3" />

@@ -38,12 +38,12 @@
 </script>
 
 <!--
-	Zócalo de medios del hero: franja corta tipo "widescreen" (no la pantalla
-	completa). object-contain para nunca recortar el banner — las
-	distribuidoras no permiten cubrir ni cortar su información, aunque eso
-	implique bandas negras a los lados si la proporción no calza exacto.
+	Medio del hero (banner o clip propio). Llena el contenedor que le dé el
+	padre (columna de imagen). object-contain para nunca recortar el banner
+	— las distribuidoras no permiten cubrir ni cortar su información, aunque
+	eso implique bandas negras si la proporción no calza exacto.
 -->
-<div bind:this={containerEl} class="relative w-full h-[200px] sm:h-[260px] md:h-[340px] lg:h-[420px] bg-black overflow-hidden">
+<div bind:this={containerEl} class="relative w-full h-full bg-black overflow-hidden">
 	{#if hasOwnClip && movie}
 		<video
 			bind:this={videoEl}

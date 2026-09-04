@@ -63,7 +63,7 @@
 			<img
 				src={movie.banner}
 				alt={movie.title}
-				class="w-full h-full {fitClass} transition-opacity duration-700 animate-in fade-in"
+				class="w-full h-full {fitClass}"
 			/>
 		{/key}
 	{/if}

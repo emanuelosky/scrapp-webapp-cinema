@@ -3,10 +3,10 @@
 	import AuroraBackground from '$lib/components/AuroraBackground.svelte';
 	import ParallaxSVGs from '$lib/components/ParallaxSVGs.svelte';
 	import { inview } from '$lib/actions/inview';
-	import ft1 from '$lib/assets/events/ft1.jpg';
-	import ft2 from '$lib/assets/events/ft2.jpg';
-	import ft3 from '$lib/assets/events/ft3.jpg';
-	import ft4 from '$lib/assets/events/ft4.jpg';
+	import ft1 from '$lib/assets/events/ft1.webp';
+	import ft2 from '$lib/assets/events/ft2.webp';
+	import ft3 from '$lib/assets/events/ft3.webp';
+	import ft4 from '$lib/assets/events/ft4.webp';
 
 	let activeEvent = $state(0);
 	let scrollY = $state(0);

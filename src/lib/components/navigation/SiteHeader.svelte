@@ -42,7 +42,7 @@
 
 	<!-- Main Navbar -->
 	<header class="w-full border-b border-zinc-800 bg-black relative">
-	<div class="w-full px-4 md:px-8 lg:px-12">
+	<div class="mx-auto w-full max-w-[1600px] px-4 md:px-8 lg:px-12">
 		<!-- Upper Nav -->
 		<div class="flex h-14 md:h-16 items-center justify-between static">
 			<div class="flex flex-1 min-w-0 items-center gap-4 lg:gap-8 overflow-hidden h-full">
@@ -105,24 +105,26 @@
 	</div>
 
 	<!-- Lower Nav (Sub-menu) -->
-	<div
-		class="flex w-full h-10 items-center justify-between border-t border-zinc-800 text-[10px] md:text-xs font-semibold text-zinc-400 relative px-4 md:px-8 lg:px-12"
-	>
-			<button class="flex items-center gap-2 group transition-colors focus:outline-none z-20 bg-black pl-4 pr-2" onclick={() => isTheatreSelectorOpen = true}>
-				<MapPin class="shrink-0 size-3 md:size-3.5 {cinemaState.selectedCinema ? 'text-zinc-300 group-hover:text-white' : 'text-zinc-400 group-hover:text-white'}" />
-				{#if cinemaState.isLoadingLocation}
-					<span class="flex items-center gap-2 text-zinc-300">
-						<Loader2 class="size-3 animate-spin shrink-0" /> Buscando...
-					</span>
-				{:else if cinemaState.selectedCinema}
-					<span class="text-zinc-300 group-hover:text-white transition-colors font-bold tracking-wide truncate max-w-[180px] sm:max-w-[250px] md:max-w-none text-left">Cine: {cinemaState.selectedCinema}</span>
-				{:else}
-					<span class="text-zinc-300 group-hover:text-white transition-colors truncate max-w-[180px] sm:max-w-none">Selecciona tu cine preferido</span>
-				{/if}
-			</button>
-			<div class="hidden items-center gap-6 md:flex">
-				<button class="transition-colors hover:text-white" onclick={() => isComingSoonOpen = true}>Tarjetas de Regalo</button>
-				<button class="transition-colors hover:text-white" onclick={() => isComingSoonOpen = true}>Ofertas</button>
+	<div class="w-full border-t border-zinc-800">
+		<div
+			class="mx-auto flex w-full max-w-[1600px] h-10 items-center justify-between text-[10px] md:text-xs font-semibold text-zinc-400 relative px-4 md:px-8 lg:px-12"
+		>
+				<button class="flex items-center gap-2 group transition-colors focus:outline-none z-20 bg-black pl-4 pr-2" onclick={() => isTheatreSelectorOpen = true}>
+					<MapPin class="shrink-0 size-3 md:size-3.5 {cinemaState.selectedCinema ? 'text-zinc-300 group-hover:text-white' : 'text-zinc-400 group-hover:text-white'}" />
+					{#if cinemaState.isLoadingLocation}
+						<span class="flex items-center gap-2 text-zinc-300">
+							<Loader2 class="size-3 animate-spin shrink-0" /> Buscando...
+						</span>
+					{:else if cinemaState.selectedCinema}
+						<span class="text-zinc-300 group-hover:text-white transition-colors font-bold tracking-wide truncate max-w-[180px] sm:max-w-[250px] md:max-w-none text-left">Cine: {cinemaState.selectedCinema}</span>
+					{:else}
+						<span class="text-zinc-300 group-hover:text-white transition-colors truncate max-w-[180px] sm:max-w-none">Selecciona tu cine preferido</span>
+					{/if}
+				</button>
+				<div class="hidden items-center gap-6 md:flex">
+					<button class="transition-colors hover:text-white" onclick={() => isComingSoonOpen = true}>Tarjetas de Regalo</button>
+					<button class="transition-colors hover:text-white" onclick={() => isComingSoonOpen = true}>Ofertas</button>
+				</div>
 			</div>
 		</div>
 	</header>

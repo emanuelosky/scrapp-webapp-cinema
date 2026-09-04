@@ -4,8 +4,11 @@
 	let {
 		movie,
 		isMuted = $bindable(true),
-		hasOwnClip = $bindable(false)
-	}: { movie: Movie | null; isMuted?: boolean; hasOwnClip?: boolean } = $props();
+		hasOwnClip = $bindable(false),
+		mode = 'contain'
+	}: { movie: Movie | null; isMuted?: boolean; hasOwnClip?: boolean; mode?: 'contain' | 'cover' } = $props();
+
+	let fitClass = $derived(mode === 'cover' ? 'object-cover' : 'object-contain');
 
 	let containerEl = $state<HTMLDivElement | null>(null);
 	let shouldLoadVideo = $state(false);
@@ -39,16 +42,17 @@
 
 <!--
 	Medio del hero (banner o clip propio). Llena el contenedor que le dé el
-	padre (columna de imagen). object-contain para nunca recortar el banner
-	— las distribuidoras no permiten cubrir ni cortar su información, aunque
-	eso implique bandas negras si la proporción no calza exacto.
+	padre. mode="contain" (default, usado en el layout de escritorio) nunca
+	recorta el banner. mode="cover" es solo para el fondo ambiental de
+	mobile, donde el banner actúa como decoración detrás del póster/texto
+	(estos banners no traen texto/logos propios que se puedan tapar).
 -->
 <div bind:this={containerEl} class="relative w-full h-full bg-black overflow-hidden">
 	{#if hasOwnClip && movie}
 		<video
 			bind:this={videoEl}
 			src={movie.trailerAssetUrl}
-			class="w-full h-full object-contain"
+			class="w-full h-full {fitClass}"
 			autoplay
 			muted={isMuted}
 			loop
@@ -59,7 +63,7 @@
 			<img
 				src={movie.banner}
 				alt={movie.title}
-				class="w-full h-full object-contain transition-opacity duration-700 animate-in fade-in"
+				class="w-full h-full {fitClass} transition-opacity duration-700 animate-in fade-in"
 			/>
 		{/key}
 	{/if}

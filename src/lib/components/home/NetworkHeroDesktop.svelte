@@ -29,10 +29,10 @@
 			<TrailerBackground {movie} mode="cover" bind:isMuted bind:hasOwnClip />
 		{/key}
 
-		<!-- Fusión: degradado ancho y suave, la imagen queda despejada del lado derecho -->
+		<!-- Fusión: degradado ancho hacia el texto (izquierda) + fundido suave en el borde opuesto (derecha) -->
 		<div
 			class="pointer-events-none absolute inset-0"
-			style="background: linear-gradient(to right, rgba(0,0,0,0.97) 0%, rgba(0,0,0,0.88) 30%, rgba(0,0,0,0.4) 55%, transparent 75%);"
+			style="background: linear-gradient(to right, rgba(0,0,0,0.97) 0%, rgba(0,0,0,0.88) 30%, rgba(0,0,0,0.4) 55%, transparent 75%, transparent 88%, rgba(0,0,0,0.6) 100%);"
 		></div>
 
 		<div class="absolute inset-y-0 left-0 z-10 flex w-full max-w-xl flex-col justify-center gap-5 px-10 lg:px-16">

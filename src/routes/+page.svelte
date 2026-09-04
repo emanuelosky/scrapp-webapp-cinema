@@ -51,7 +51,7 @@
 				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 				<a
 					href="/cartelera"
-					class="shrink-0 rounded-full border border-zinc-700 px-5 py-2 text-xs font-bold uppercase tracking-widest text-zinc-300 transition-colors hover:border-champagne-500/50 hover:text-white"
+					class="shrink-0 rounded-full bg-zinc-200 px-5 py-2 text-xs font-bold uppercase tracking-widest text-black shadow-xl transition-colors hover:bg-white"
 				>
 					Ver Cartelera
 				</a>

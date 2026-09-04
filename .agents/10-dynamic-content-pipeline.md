@@ -23,25 +23,39 @@ web, adaptándolo de formato.
 `TrailerBackground.svelte` decide automáticamente qué mostrar en el hero de
 cada película, en este orden:
 
+**Regla de oro (restricción de distribuidoras):** el banner/clip se muestra
+siempre completo, a su proporción natural, **sin overlays ni desenfoques
+encima** — nada de texto o botones superpuestos a la imagen. Todo control
+(título, "Comprar Boletos", ícono de tráiler/sonido) vive en una franja
+aparte, debajo del medio.
+
 1. **Clip propio (`trailer_asset_url`)** — si existe, se reproduce en loop,
-   silenciado, sin marca de nadie. El usuario puede activar el sonido con
-   el ícono de bocina. Se carga de forma perezosa (`IntersectionObserver`):
-   nunca descarga el video hasta que el hero entra en pantalla.
+   silenciado, ocupando el ancho completo del hero (16:9, sin recortes). El
+   ícono debajo del hero pasa a ser un toggle de sonido en vez de un enlace.
+   Se carga de forma perezosa (`IntersectionObserver`): nunca descarga el
+   video hasta que el hero entra en pantalla.
 2. **Enlace de YouTube (`trailer_url`)** — si no hay clip propio pero sí hay
    el tráiler oficial de YouTube (ya se obtiene automáticamente vía TMDB al
-   enriquecer metadata en Xelaris), aparece un botón "Ver Tráiler" que abre
-   YouTube en pestaña nueva. Cero impacto en el diseño del hero.
+   enriquecer metadata en Xelaris), el ícono debajo del hero abre YouTube en
+   pestaña nueva. Cero impacto en el diseño del hero.
 3. **Búsqueda en YouTube** — si no hay ninguno de los dos datos, el mismo
-   botón arma una búsqueda por título ("{película} tráiler oficial").
+   ícono arma una búsqueda por título ("{película} tráiler oficial").
+
+Si una película no tiene `banner` (backdrop) en absoluto, simplemente no
+entra en la rotación del hero — nunca se usa el póster ahí.
 
 ## 3. Especificación técnica para subir un clip propio
 
 Cuando el equipo tenga un archivo listo para publicar en la web:
 
 - **Formato:** `.mp4` (H.264) — mejor compatibilidad que `.webm`.
-- **Orientación:** horizontal/panorámica (llena el fondo del hero, que es
-  ancho). El caso de video vertical *sobre el póster* de cada tarjeta es una
-  idea separada, todavía no construida (ver sección 5).
+- **Proporción:** 16:9 exacto (igual que los backdrops de TMDB) — el
+  contenedor del hero está fijado a esa proporción para no recortar ni
+  dejar barras negras. Un archivo con otra proporción sí se vería
+  recortado o con letterboxing.
+- **Orientación:** horizontal/panorámica. El caso de video vertical *sobre
+  el póster* de cada tarjeta es una idea separada, todavía no construida
+  (ver sección 5).
 - **Duración:** 10–20 segundos en loop es suficiente — no hace falta el
   tráiler completo, el objetivo es ambiente, no narrativa.
 - **Peso objetivo:** idealmente bajo 5–8 MB para ese fragmento, comprimido

@@ -22,11 +22,12 @@
 
 	let isAnyModalOpen = $derived(headerModalOpen || isTheatreSelectorOpen);
 
-	// Destacadas para el hero: preventas/estrenos primero (ya vienen ordenadas así desde la API),
-	// tope de 8 para no alargar demasiado la rotación.
+	// Destacadas para el hero: solo películas con banner (el hero nunca usa el poster),
+	// preventas/estrenos primero (ya vienen ordenadas así desde la API), tope de 8.
 	let featuredMovies = $derived.by(() => {
-		const priority = data.nowPlaying.filter((m: Movie) => m.label === 'PREVENTA' || m.label === 'ESTRENO');
-		const rest = data.nowPlaying.filter((m: Movie) => m.label !== 'PREVENTA' && m.label !== 'ESTRENO');
+		const withBanner = data.nowPlaying.filter((m: Movie) => !!m.banner);
+		const priority = withBanner.filter((m: Movie) => m.label === 'PREVENTA' || m.label === 'ESTRENO');
+		const rest = withBanner.filter((m: Movie) => m.label !== 'PREVENTA' && m.label !== 'ESTRENO');
 		return [...priority, ...rest].slice(0, 8);
 	});
 </script>

@@ -91,7 +91,7 @@ export class CinemaState {
 				}
 			}
 
-			this.selectedCinema = closestCinema.short_name || closestCinema.name || 'Sambil Candelaria';
+			this.selectedCinema = closestCinema.name || closestCinema.short_name || 'Sambil Candelaria';
 		} catch (error) {
 			console.error('Error getting location or finding cinema', error);
 			// Fallback if permission denied or fetch fails

@@ -40,7 +40,7 @@
 		if (cinemaState.cinemas.length === 0) return fallback;
 		const target = normalize(paramSede);
 		const match = cinemaState.cinemas.find(c => normalize(c.short_name || c.name).includes(target));
-		return match?.short_name || match?.name || fallback;
+		return match?.name || match?.short_name || fallback;
 	});
 
 	onMount(() => {

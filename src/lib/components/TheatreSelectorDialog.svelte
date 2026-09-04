@@ -5,13 +5,26 @@
 	import LocateFixed from '@lucide/svelte/icons/locate-fixed';
 	import Loader2 from '@lucide/svelte/icons/loader-2';
 	import MapPin from '@lucide/svelte/icons/map-pin';
-	import { cinemaState } from '$lib/state/cinema.svelte';
+	import { cinemaState, type CinemaLocation } from '$lib/state/cinema.svelte';
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 
-	let { open = $bindable(false) } = $props();
-	
+	let {
+		open = $bindable(false),
+		pendingMovieId
+	}: { open?: boolean; pendingMovieId?: string } = $props();
+
 	let searchQuery = $state('');
 	let showConsent = $state(false);
+
+	async function selectCinema(cinema: CinemaLocation) {
+		cinemaState.selectedCinema = cinema.name || cinema.short_name;
+		open = false;
+		if (pendingMovieId) {
+			// eslint-disable-next-line svelte/no-navigation-without-resolve
+			await goto(`/cines/${cinema.id}/booking/${pendingMovieId}`);
+		}
+	}
 
 	onMount(() => {
 		cinemaState.init();
@@ -58,13 +71,17 @@
 						</div>
 					</div>
 					<div class="flex items-center gap-3 mt-2">
-						<button 
+						<button
 							class="flex-1 bg-white text-black py-2.5 rounded-sm font-bold text-sm hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
 							disabled={cinemaState.isLoadingLocation}
 							onclick={async () => {
-								await cinemaState.findNearestCinema();
+								const cinema = await cinemaState.findNearestCinema();
 								open = false;
 								showConsent = false;
+								if (pendingMovieId && cinema) {
+									// eslint-disable-next-line svelte/no-navigation-without-resolve
+									await goto(`/cines/${cinema.id}/booking/${pendingMovieId}`);
+								}
 							}}
 						>
 							{#if cinemaState.isLoadingLocation}
@@ -107,10 +124,7 @@
 					{:else}
 						{#each filteredCinemas as cinema (cinema.name)}
 							<button class="flex flex-col text-left py-4 hover:bg-zinc-900/30 transition-colors px-2 group"
-								onclick={() => { 
-									cinemaState.selectedCinema = cinema.short_name || cinema.name; 
-									open = false; 
-								}}>
+								onclick={() => selectCinema(cinema)}>
 								<span class="text-white font-bold text-lg group-hover:text-champagne-400 transition-colors">
 									CINEPIC
 								</span>

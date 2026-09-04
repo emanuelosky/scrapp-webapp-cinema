@@ -5,25 +5,28 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 	const R = 6371; // Radio de la Tierra en km
 	const dLat = (lat2 - lat1) * Math.PI / 180;
 	const dLon = (lon2 - lon1) * Math.PI / 180;
-	const a = 
+	const a =
 		Math.sin(dLat/2) * Math.sin(dLat/2) +
-		Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+		Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
 		Math.sin(dLon/2) * Math.sin(dLon/2);
 	const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 	return R * c;
 }
 
+export interface CinemaLocation {
+	id: string;
+	name: string;
+	short_name: string | null;
+	city: string | null;
+	latitude: number | null;
+	longitude: number | null;
+	is_active: boolean;
+}
+
 export class CinemaState {
 	selectedCinema = $state<string | null>(null);
 	isLoadingLocation = $state(false);
-	cinemas = $state<Array<{
-		name: string;
-		short_name: string | null;
-		city: string | null;
-		latitude: number | null;
-		longitude: number | null;
-		is_active: boolean;
-	}>>([]);
+	cinemas = $state<CinemaLocation[]>([]);
 	isLoadingCinemas = $state(false);
 
 	async init() {
@@ -32,7 +35,7 @@ export class CinemaState {
 		try {
 			const { data, error } = await supabase
 				.from('cinema_locations')
-				.select('name, short_name, city, latitude, longitude, is_active')
+				.select('id, name, short_name, city, latitude, longitude, is_active')
 				.eq('is_active', true)
 				.order('sort_order', { ascending: true });
 			if (!error && data) {
@@ -45,11 +48,11 @@ export class CinemaState {
 		}
 	}
 
-	async findNearestCinema() {
-		if (this.isLoadingLocation) return;
-		
+	async findNearestCinema(): Promise<CinemaLocation | null> {
+		if (this.isLoadingLocation) return null;
+
 		this.isLoadingLocation = true;
-		
+
 		try {
 			// Simular un retraso para UX
 			await new Promise(resolve => setTimeout(resolve, 800));
@@ -92,10 +95,12 @@ export class CinemaState {
 			}
 
 			this.selectedCinema = closestCinema.name || closestCinema.short_name || 'Sambil Candelaria';
+			return closestCinema;
 		} catch (error) {
 			console.error('Error getting location or finding cinema', error);
 			// Fallback if permission denied or fetch fails
 			this.selectedCinema = 'Sambil Candelaria';
+			return null;
 		} finally {
 			this.isLoadingLocation = false;
 		}

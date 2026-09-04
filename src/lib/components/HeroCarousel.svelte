@@ -2,12 +2,12 @@
 	import type { Movie } from '$lib/types';
 	import Ticket from '@lucide/svelte/icons/ticket';
 
-	let { movies = [], currentIndex = $bindable(0) }: { movies: Movie[], currentIndex?: number } = $props();
+	let { movies = [], currentIndex = $bindable(0), autoRotate = true }: { movies: Movie[], currentIndex?: number, autoRotate?: boolean } = $props();
 
 	let interval: ReturnType<typeof setInterval>;
-	
+
 	$effect(() => {
-		if (movies.length <= 1) return;
+		if (movies.length <= 1 || !autoRotate) return;
 		interval = setInterval(() => {
 			currentIndex = (currentIndex + 1) % movies.length;
 		}, 4000);

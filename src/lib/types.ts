@@ -12,6 +12,8 @@ export interface Movie {
 	title: string;
 	poster: string;
 	banner?: string;
+	trailerAssetUrl?: string;   // Clip propio auto-alojado (vertical, silencioso, loop) — cuando exista
+	trailerYoutubeUrl?: string; // Enlace del tráiler oficial en YouTube (fallback, se abre en pestaña nueva)
 	label?: string;
 	rating?: string;
 	formats?: {

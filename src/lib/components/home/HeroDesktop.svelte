@@ -30,6 +30,8 @@
 		{#key activeMovie.id}
 			<img src={activeMovie.banner || activeMovie.poster} class="w-full h-full object-cover blur-2xl opacity-70 scale-110 transition-opacity duration-1000 animate-in fade-in" alt=""/>
 			<div class="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/20"></div>
+			<!-- Fades smoothly into the black section below -->
+			<div class="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black via-black/80 to-transparent"></div>
 		{/key}
 	{/if}
 </div>
@@ -49,7 +51,7 @@
 		</h2>
 
 		<div class="mx-auto mb-8 flex w-full max-w-sm items-center justify-center gap-3 text-sm text-white/90 md:text-base lg:max-w-md">
-			<MapPin class="size-5 shrink-0 text-amber-500" />
+			<MapPin class="size-5 shrink-0 text-champagne-500" />
 			<span
 				class="truncate"
 				title="Centro Comercial Sambil, Av. Andrés Bello, La Candelaria, Caracas 1010"

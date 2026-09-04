@@ -34,7 +34,7 @@
 		>
 			<div class="relative">
 				<ShoppingCart class="size-4 md:size-5" />
-				<span class="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-black border border-black shadow-sm">
+				<span class="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-champagne-500 text-[9px] font-bold text-black border border-black shadow-sm">
 					{bookingState.cartItems.reduce((acc, item) => acc + item.seats.length, 0)}
 				</span>
 				<!-- Eliminado el mini reloj porque volvimos a la píldora -->
@@ -51,11 +51,11 @@
 							</div>
 						</div>
 					</div>
-					<span class="font-mono font-black text-[13px] tracking-tight {isExpiringSoon ? 'text-red-500 animate-pulse' : 'text-amber-500'}">
+					<span class="font-mono font-black text-[13px] tracking-tight {isExpiringSoon ? 'text-red-500 animate-pulse' : 'text-champagne-500'}">
 						{formatTime(bookingState.timeRemainingSeconds)}
 					</span>
 				{:else}
-					<span class="text-[9px] uppercase tracking-widest text-zinc-400 font-bold group-hover:text-amber-500 transition-colors whitespace-nowrap">Tu Reserva</span>
+					<span class="text-[9px] uppercase tracking-widest text-zinc-400 font-bold group-hover:text-champagne-500 transition-colors whitespace-nowrap">Tu Reserva</span>
 				{/if}
 			</div>
 		</button>
@@ -75,7 +75,7 @@
 			<div class="bg-black p-4 border-b border-zinc-800 flex flex-col gap-3">
 				<div class="flex items-center justify-between">
 					<h3 class="font-display uppercase tracking-widest text-sm font-black flex items-center gap-2 text-white">
-						<ShoppingCart class="size-4 text-amber-500" />
+						<ShoppingCart class="size-4 text-champagne-500" />
 						Carrito de Compras
 					</h3>
 					<div class="flex gap-2">
@@ -106,7 +106,7 @@
 												{#each item.seats as seat (seat)}
 													{@const parts = seat.split('-')}
 													{@const formattedSeat = parts.length >= 2 ? `${parts[0]}:${parts[1]}` : seat}
-													<span class="px-1.5 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded shadow-sm text-[10px] font-mono font-bold">{formattedSeat}</span>
+													<span class="px-1.5 py-0.5 bg-champagne-500/10 text-champagne-400 border border-champagne-500/20 rounded shadow-sm text-[10px] font-mono font-bold">{formattedSeat}</span>
 												{/each}
 											</div>
 										</div>
@@ -141,10 +141,10 @@
 
 					<div class="flex items-center justify-between pt-4 border-t border-zinc-800 mt-2">
 						<span class="text-xs text-white font-black uppercase tracking-widest">Total a Pagar</span>
-						<span class="font-black text-2xl text-amber-500">${bookingState.totalPrice.toFixed(2)}</span>
+						<span class="font-black text-2xl text-champagne-500">${bookingState.totalPrice.toFixed(2)}</span>
 					</div>
 
-					<div class="flex items-start gap-3 {isExpiringSoon ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'} border p-3 rounded-lg text-xs mt-2 shadow-inner">
+					<div class="flex items-start gap-3 {isExpiringSoon ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-champagne-500/10 text-champagne-400 border-champagne-500/20'} border p-3 rounded-lg text-xs mt-2 shadow-inner">
 						{#if isExpiringSoon}
 							<AlertCircle class="size-5 shrink-0 animate-pulse mt-0.5" />
 						{:else}
@@ -167,20 +167,22 @@
 						class="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-bold uppercase tracking-widest py-3 text-xs transition-colors rounded-md border border-zinc-700"
 						onclick={() => {
 							isOpen = false;
-							window.location.href = '/';
+							const currentSede = $page.params.sede;
+							window.location.href = currentSede ? `/cines/${currentSede}` : '/';
 						}}
 					>
 						Añadir Otra Película
 					</button>
 				{/if}
 				<button 
-					class="w-full bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-widest py-3.5 text-xs transition-colors rounded-md shadow-[0_0_20px_rgba(245,158,11,0.2)] hover:shadow-[0_0_25px_rgba(245,158,11,0.4)]"
+					class="w-full bg-champagne-500 hover:bg-champagne-400 text-black font-black uppercase tracking-widest py-3.5 text-xs transition-colors rounded-md shadow-[0_0_20px_rgba(245,158,11,0.2)] hover:shadow-[0_0_25px_rgba(245,158,11,0.4)]"
 					onclick={() => {
 						isOpen = false;
 						if (bookingState.cartItems.length > 0 && !$page.url.pathname.includes('/concessions') && !$page.url.pathname.includes('/checkout')) {
 							// Use the last added item for the concessions link context
 							const lastItem = bookingState.cartItems[bookingState.cartItems.length - 1];
-							window.location.href = `/concessions/${lastItem.showtimeId}`;
+							const currentSede = $page.params.sede;
+							window.location.href = currentSede ? `/cines/${currentSede}/concessions/${lastItem.showtimeId}` : `/concessions/${lastItem.showtimeId}`;
 						} else {
 							// Ya estan en checkout
 						}
@@ -201,7 +203,10 @@
 <div class="relative flex items-center gap-2 md:gap-4">
 	<button 
 		class="relative flex items-center gap-3 transition-colors duration-200 hover:text-white group px-3 py-2 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20"
-		onclick={() => { window.location.href = '/checkout/success'; }}
+		onclick={() => { 
+			const currentSede = $page.params.sede;
+			window.location.href = currentSede ? `/cines/${currentSede}/checkout/success` : '/checkout/success'; 
+		}}
 	>
 		<CheckCircle2 class="size-4 md:size-5" />
 		<span class="hidden md:inline text-xs font-bold uppercase tracking-widest whitespace-nowrap">Tu Última Venta</span>

@@ -20,7 +20,7 @@
 </script>
 
 <div class="flex items-center gap-3">
-	<span class="text-base sm:text-lg font-black text-zinc-300 hidden sm:flex items-center gap-2"><CalendarDays class="size-5 text-orange-500" /> Ver para:</span>
+	<span class="text-base sm:text-lg font-black text-zinc-300 hidden sm:flex items-center gap-2"><CalendarDays class="size-5 text-champagne-500" /> Ver para:</span>
 	<div class="flex w-full sm:w-[360px] bg-zinc-900 border border-white/10 rounded-full h-11 p-1 shadow-inner overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
 		<button 
 			class="flex-1 min-w-max px-3 whitespace-nowrap rounded-full font-bold transition-all text-xs sm:text-sm {selectedDateTab === 'hoy' ? 'bg-white text-black shadow-md' : 'text-zinc-400 hover:text-white'}"

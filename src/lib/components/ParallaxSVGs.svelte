@@ -16,7 +16,7 @@
 <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
 	{#each particles as p (p.id)}
 		<div 
-			class="absolute text-orange-500/20"
+			class="absolute text-champagne-500/20"
 			style="
 				top: {p.top}%; 
 				left: {p.left}%; 

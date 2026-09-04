@@ -4,11 +4,25 @@
 	import Search from '@lucide/svelte/icons/search';
 	import LocateFixed from '@lucide/svelte/icons/locate-fixed';
 	import Loader2 from '@lucide/svelte/icons/loader-2';
+	import MapPin from '@lucide/svelte/icons/map-pin';
 	import { cinemaState } from '$lib/state/cinema.svelte';
+	import { onMount } from 'svelte';
 
 	let { open = $bindable(false) } = $props();
 	
 	let searchQuery = $state('');
+	let showConsent = $state(false);
+
+	onMount(() => {
+		cinemaState.init();
+	});
+
+	const filteredCinemas = $derived(
+		cinemaState.cinemas.filter(c => {
+			const term = searchQuery.toLowerCase();
+			return (c.name || '').toLowerCase().includes(term) || (c.city || '').toLowerCase().includes(term);
+		})
+	);
 </script>
 
 <Dialog.Root bind:open>
@@ -19,47 +33,95 @@
 
 		<div class="p-6 flex flex-col gap-6">
 			<!-- Search Input -->
-			<div class="relative w-full">
-				<Input
-					type="text"
-					placeholder="Buscar por Ciudad, Zona o Cine"
-					bind:value={searchQuery}
-					class="w-full bg-zinc-900 border-none rounded-sm pl-4 pr-10 py-6 text-base text-white placeholder:text-zinc-500 focus-visible:ring-1 focus-visible:ring-white/20"
-				/>
-				<Search class="absolute right-4 top-1/2 -translate-y-1/2 size-5 text-zinc-500" />
-			</div>
+			{#if !showConsent}
+				<div class="relative w-full">
+					<Input
+						type="text"
+						placeholder="Buscar por Ciudad, Zona o Cine"
+						bind:value={searchQuery}
+						class="w-full bg-zinc-900 border-none rounded-sm pl-4 pr-10 py-6 text-base text-white placeholder:text-zinc-500 focus-visible:ring-1 focus-visible:ring-white/20"
+					/>
+					<Search class="absolute right-4 top-1/2 -translate-y-1/2 size-5 text-zinc-500" />
+				</div>
+			{/if}
 
-			<!-- Use Current Location -->
-			<button 
-				class="flex items-center gap-3 text-zinc-300 font-bold hover:text-white transition-colors text-lg text-left"
-				onclick={async () => {
-					await cinemaState.findNearestCinema();
-					open = false;
-				}}
-			>
-				{#if cinemaState.isLoadingLocation}
-					<Loader2 class="size-5 animate-spin" /> Buscando ubicación...
-				{:else}
-					<LocateFixed class="size-5" /> Usar mi ubicación actual
-				{/if}
-			</button>
-
-			<!-- Hardcoded List -->
-			<div class="mt-4 flex flex-col gap-2">
-				<h4 class="text-zinc-600 text-[11px] font-bold uppercase tracking-widest mb-1">Cines Disponibles</h4>
-				
-				<button class="flex flex-col text-left py-4 hover:bg-zinc-900/30 transition-colors px-2 group"
-					onclick={() => { cinemaState.selectedCinema = 'Sambil Candelaria'; open = false; }}>
-					<span class="text-white font-bold text-lg group-hover:text-amber-400 transition-colors">CINEPIC</span>
-					<span class="text-zinc-500 text-sm mt-1">Sambil Candelaria, Caracas</span>
+			<!-- Use Current Location / Consent -->
+			{#if showConsent}
+				<div class="bg-zinc-900/50 border border-zinc-800 rounded-lg p-5 flex flex-col gap-3">
+					<div class="flex items-start gap-3">
+						<MapPin class="size-5 text-champagne-400 shrink-0 mt-0.5" />
+						<div>
+							<h4 class="text-white font-bold text-sm">Permiso de Ubicación</h4>
+							<p class="text-zinc-400 text-xs mt-1 leading-relaxed">
+								Usamos tu ubicación únicamente en este momento para mostrarte el cine más cercano. No almacenamos estos datos en nuestros servidores.
+							</p>
+						</div>
+					</div>
+					<div class="flex items-center gap-3 mt-2">
+						<button 
+							class="flex-1 bg-white text-black py-2.5 rounded-sm font-bold text-sm hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+							disabled={cinemaState.isLoadingLocation}
+							onclick={async () => {
+								await cinemaState.findNearestCinema();
+								open = false;
+								showConsent = false;
+							}}
+						>
+							{#if cinemaState.isLoadingLocation}
+								<Loader2 class="size-4 animate-spin" /> Buscando...
+							{:else}
+								Permitir
+							{/if}
+						</button>
+						<button 
+							class="flex-1 bg-transparent text-white border border-zinc-700 py-2.5 rounded-sm font-bold text-sm hover:bg-zinc-800 transition-colors"
+							disabled={cinemaState.isLoadingLocation}
+							onclick={() => { showConsent = false; }}
+						>
+							Cancelar
+						</button>
+					</div>
+				</div>
+			{:else}
+				<button 
+					class="flex items-center gap-3 text-zinc-300 font-bold hover:text-white transition-colors text-lg text-left"
+					onclick={() => { showConsent = true; }}
+				>
+					<LocateFixed class="size-5" /> Encontrar mi cine más cercano
 				</button>
+			{/if}
 
-				<button class="flex flex-col text-left py-4 transition-colors px-2 cursor-default opacity-50"
-					onclick={(e) => { e.preventDefault(); }}>
-					<span class="text-white font-bold text-lg">CINEPIC VVIP</span>
-					<span class="text-zinc-500 text-sm mt-1">Centro Lido, Caracas (Próximamente)</span>
-				</button>
-			</div>
+			<!-- Dynamic List -->
+			{#if !showConsent}
+				<div class="mt-4 flex flex-col gap-2">
+					<h4 class="text-zinc-600 text-[11px] font-bold uppercase tracking-widest mb-1">Cines Disponibles</h4>
+					
+					{#if cinemaState.isLoadingCinemas}
+						<div class="flex items-center gap-2 text-zinc-500 py-4 px-2 text-sm">
+							<Loader2 class="size-4 animate-spin" /> Cargando cines...
+						</div>
+					{:else if filteredCinemas.length === 0}
+						<div class="text-zinc-500 py-4 px-2 text-sm">
+							No se encontraron cines.
+						</div>
+					{:else}
+						{#each filteredCinemas as cinema (cinema.name)}
+							<button class="flex flex-col text-left py-4 hover:bg-zinc-900/30 transition-colors px-2 group"
+								onclick={() => { 
+									cinemaState.selectedCinema = cinema.short_name || cinema.name; 
+									open = false; 
+								}}>
+								<span class="text-white font-bold text-lg group-hover:text-champagne-400 transition-colors">
+									CINEPIC
+								</span>
+								<span class="text-zinc-500 text-sm mt-1">
+									{cinema.name}, {cinema.city || 'Caracas'}
+								</span>
+							</button>
+						{/each}
+					{/if}
+				</div>
+			{/if}
 		</div>
 	</Dialog.Content>
 </Dialog.Root>

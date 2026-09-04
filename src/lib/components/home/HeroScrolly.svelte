@@ -29,9 +29,9 @@
 		<!-- Timeline Indicator (Camino de progreso) -->
 		<div class="absolute left-4 md:left-12 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 z-20 transition-opacity duration-1000 {activeEvent > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}">
 			{#each [1, 2, 3, 4, 5] as step (step)}
-				<div class="w-3 h-3 rounded-full transition-all duration-500 {activeEvent >= step ? 'bg-orange-500 scale-125 shadow-[0_0_10px_rgba(249,115,22,0.8)]' : 'bg-zinc-700'}"></div>
+				<div class="w-3 h-3 rounded-full transition-all duration-500 {activeEvent >= step ? 'bg-champagne-500 scale-125 shadow-[0_0_10px_rgba(249,115,22,0.8)]' : 'bg-zinc-700'}"></div>
 				{#if step < 5}
-					<div class="w-0.5 h-12 md:h-16 transition-all duration-500 {activeEvent > step ? 'bg-orange-500' : 'bg-zinc-800'}"></div>
+					<div class="w-0.5 h-12 md:h-16 transition-all duration-500 {activeEvent > step ? 'bg-champagne-500' : 'bg-zinc-800'}"></div>
 				{/if}
 			{/each}
 		</div>
@@ -41,7 +41,7 @@
 			<!-- Slide 0: Título Principal -->
 			<div class="absolute inset-0 flex items-center justify-center transition-all duration-1000 ease-in-out {activeEvent === 0 ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-110 z-0 pointer-events-none'}">
 				<h2 class="text-4xl md:text-7xl font-black text-white uppercase tracking-tighter text-center max-w-5xl leading-none drop-shadow-2xl">
-					¿Qué historia te gustaría <br class="md:hidden" /><span class="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-600">crear con nosotros?</span>
+					¿Qué historia te gustaría <br class="md:hidden" /><span class="text-transparent bg-clip-text bg-gradient-to-r from-champagne-400 to-champagne-600">crear con nosotros?</span>
 				</h2>
 			</div>
 
@@ -95,13 +95,13 @@
 				<!-- Slide 5: ¿Tienes otra idea? -->
 				<div class="absolute inset-0 flex flex-col items-center justify-center text-center transition-all duration-1000 ease-in-out {activeEvent >= 5 ? 'opacity-100 scale-100 z-10' : 'opacity-0 scale-110 z-0 pointer-events-none'}">
 					<h2 class="text-5xl md:text-8xl font-black text-white uppercase tracking-tighter max-w-5xl leading-none drop-shadow-2xl mb-8">
-						¿Tienes <span class="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-600">otra idea?</span>
+						¿Tienes <span class="text-transparent bg-clip-text bg-gradient-to-r from-champagne-400 to-champagne-600">otra idea?</span>
 					</h2>
 					<p class="text-xl md:text-2xl text-zinc-300 max-w-2xl leading-relaxed mb-12">Cuéntanos tu proyecto y lo haremos realidad. Contamos con espacios, tecnología y personal experto a tu disposición.</p>
 					
 					<div class="flex flex-col md:flex-row items-center justify-center gap-6">
 						<a href="https://api.whatsapp.com/send?phone=584221825273" target="_blank" class="w-full md:w-auto">
-							<Button class="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold py-6 px-10 rounded-full text-xl shadow-[0_0_20px_rgba(249,115,22,0.4)] transition-all hover:scale-105 w-full">
+							<Button class="bg-white hover:bg-zinc-200 text-black font-bold py-6 px-10 rounded-full text-xl shadow-[0_0_20px_rgba(255,255,255,0.4)] transition-all hover:scale-105 w-full">
 								Contáctanos Ahora
 							</Button>
 						</a>
@@ -112,7 +112,7 @@
 			<!-- Mensaje Inferior: "Sigue deslizando" -->
 			<div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 z-30 transition-all duration-1000 {activeEvent >= 5 ? 'opacity-0 translate-y-10 pointer-events-none' : 'opacity-100 translate-y-0'}">
 				<span class="text-zinc-400 text-xs md:text-sm font-bold tracking-[0.2em] uppercase animate-pulse">Sigue deslizando</span>
-				<div class="w-px h-12 md:h-16 bg-gradient-to-b from-orange-500 to-transparent animate-[bounce_2s_infinite]"></div>
+				<div class="w-px h-12 md:h-16 bg-gradient-to-b from-champagne-500 to-transparent animate-[bounce_2s_infinite]"></div>
 			</div>
 		</div>
 	</div>

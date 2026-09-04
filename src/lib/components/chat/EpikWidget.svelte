@@ -400,13 +400,13 @@
 
 	<!-- Chat Panel -->
 	<div 
-		class="fixed bottom-0 md:bottom-6 right-0 md:right-6 w-full md:w-[420px] h-[85vh] md:h-[620px] z-[100] flex flex-col overflow-hidden bg-zinc-950/95 backdrop-blur-3xl md:rounded-sm border-t md:border border-white/20 shadow-2xl shadow-black font-sans"
+		class="fixed bottom-0 md:bottom-6 right-0 md:right-6 w-full md:w-[420px] h-[85vh] md:h-[620px] z-[100] flex flex-col overflow-hidden bg-black md:rounded-none border-t md:border border-zinc-800 shadow-2xl shadow-black font-sans"
 		transition:fly={{ y: 50, duration: 300, opacity: 0 }}
 	>
 		<!-- Header -->
-		<div class="flex items-center justify-between px-5 py-3.5 border-b border-white/10 bg-zinc-900/90 backdrop-blur-md">
+		<div class="flex items-center justify-between px-5 py-3.5 border-b border-zinc-800 bg-black">
 			<div class="flex items-center gap-3">
-				<div class="flex items-center justify-center w-8 h-8 bg-gradient-to-tr from-yellow-500 to-amber-600 border border-yellow-400/40 rounded-full overflow-hidden relative shadow-inner">
+				<div class="flex items-center justify-center w-8 h-8 bg-gradient-to-tr from-zinc-300 to-zinc-500 border border-zinc-400/40 rounded-full overflow-hidden relative shadow-inner">
 					<img src="/favicon.png" alt="EPIK" class="w-5 h-5 object-contain" />
 				</div>
 				<div>
@@ -426,7 +426,7 @@
 		<!-- Chat Body -->
 		<div class="flex-1 overflow-y-auto p-4 flex flex-col gap-5 custom-scrollbar bg-black" bind:this={chatBodyEl} onclick={handleChatClicks} role="presentation">
 			<div class="flex flex-col items-start gap-1 max-w-[90%]">
-				<div class="bg-zinc-900 border border-zinc-700/80 px-4 py-3 text-sm text-zinc-200 rounded-sm leading-relaxed shadow-sm">
+				<div class="epik-ai-bubble px-4 py-3 text-sm text-zinc-200 rounded-2xl rounded-tl-none leading-relaxed shadow-sm">
 					{welcomeMessage}
 				</div>
 				<span class="text-[9px] text-zinc-500 font-bold uppercase tracking-wider ml-1 mt-0.5">EPIK • Caracas</span>
@@ -441,7 +441,7 @@
 				<!-- User Message -->
 				{#if message.role === 'user'}
 					<div class="flex flex-col gap-1 max-w-[85%] self-end items-end">
-						<div class="px-4 py-2.5 text-sm rounded-sm bg-zinc-200 text-black border border-white font-medium shadow-sm">
+						<div class="px-4 py-2.5 text-sm rounded-2xl rounded-tr-none bg-zinc-800 text-zinc-200 border border-zinc-700 font-medium shadow-sm">
 							{textContent}
 						</div>
 						<span class="text-[9px] text-zinc-500 font-bold uppercase tracking-wider mr-1">TÚ</span>
@@ -451,13 +451,13 @@
 					<div class="flex flex-col gap-2 max-w-[92%] items-start">
 						<!-- Text Content -->
 						{#if textContent}
-							<div class="px-4 py-3 text-sm rounded-sm bg-zinc-900 border border-zinc-700 text-zinc-200 prose prose-invert prose-sm max-w-none leading-relaxed shadow-sm">
+							<div class="epik-ai-bubble px-4 py-3 text-sm rounded-2xl rounded-tl-none text-zinc-200 prose prose-invert prose-sm max-w-none leading-relaxed shadow-sm">
 								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 								{@html browser ? DOMPurify.sanitize(marked.parse(textContent) as string) : marked.parse(textContent)}
 							</div>
 						{:else if tools.length > 0 && tools.every(t => t.state === 'result' || t.state === 'output-available' || t.result) && !isLoading}
 							<!-- Fallback: model finished tools but produced no text (finish reason: other) -->
-							<div class="px-4 py-3 text-sm rounded-sm bg-zinc-900 border border-zinc-700 text-zinc-400 leading-relaxed shadow-sm italic">
+							<div class="epik-ai-bubble px-4 py-3 text-sm rounded-2xl rounded-tl-none text-zinc-400 leading-relaxed shadow-sm italic">
 								¡Listo! ¿Hay algo más en lo que pueda ayudarte? 🍿
 							</div>
 						{/if}
@@ -469,15 +469,15 @@
 
 								<!-- Copilot Fallback Buttons -->
 								{#if tp.toolName === 'navigate_to' && tp.result?.payload?.section}
-									<div class="mt-2 p-3 bg-zinc-900/50 border border-white/5 rounded-sm flex flex-col gap-2">
+									<div class="mt-2 p-3 bg-black border border-zinc-800 rounded-2xl flex flex-col gap-2 w-full">
 										<div class="flex items-center gap-2 text-xs text-zinc-300">
-											<Sparkles class="size-4 text-yellow-500" />
+											<Sparkles class="size-4 text-zinc-300" />
 											<span>Navegar a <strong>{tp.result.payload.section}</strong></span>
 										</div>
 										<button
 											type="button"
 											onclick={() => chatState.triggerAction('navigate', tp.result?.payload)}
-											class="w-full py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-white text-[10px] font-bold uppercase tracking-wider rounded-sm transition-colors cursor-pointer"
+											class="w-full py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-white text-[10px] font-bold uppercase tracking-wider rounded-full transition-colors cursor-pointer"
 										>
 											Ir a la sección
 										</button>
@@ -485,15 +485,15 @@
 								{/if}
 
 								{#if tp.toolName === 'open_movie_modal' && tp.result?.payload?.query}
-									<div class="mt-2 p-3 bg-zinc-900/50 border border-white/5 rounded-sm flex flex-col gap-2">
+									<div class="mt-2 p-3 bg-black border border-zinc-800 rounded-2xl flex flex-col gap-2 w-full">
 										<div class="flex items-center gap-2 text-xs text-zinc-300">
-											<Film class="size-4 text-yellow-500" />
+											<Film class="size-4 text-zinc-300" />
 											<span>Buscaste <strong>{tp.result.payload.query}</strong></span>
 										</div>
 										<button
 											type="button"
 											onclick={() => chatState.triggerAction('open_movie', tp.result?.payload)}
-											class="w-full py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-white text-[10px] font-bold uppercase tracking-wider rounded-sm transition-colors cursor-pointer"
+											class="w-full py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-white text-[10px] font-bold uppercase tracking-wider rounded-full transition-colors cursor-pointer"
 										>
 											Ver horarios
 										</button>
@@ -501,15 +501,15 @@
 								{/if}
 
 								{#if tp.toolName === 'start_booking' && tp.result?.payload?.query && tp.result?.payload?.time}
-									<div class="mt-2 p-3 bg-zinc-900/50 border border-white/5 rounded-sm flex flex-col gap-2">
+									<div class="mt-2 p-3 bg-black border border-zinc-800 rounded-2xl flex flex-col gap-2 w-full">
 										<div class="flex items-center gap-2 text-xs text-zinc-300">
-											<Film class="size-4 text-yellow-500" />
+											<Film class="size-4 text-zinc-300" />
 											<span>Comprar: <strong>{tp.result.payload.query}</strong> a las <strong>{tp.result.payload.time}</strong></span>
 										</div>
 										<button
 											type="button"
 											onclick={() => chatState.triggerAction('start_booking', tp.result?.payload)}
-											class="w-full py-1.5 bg-yellow-500 hover:bg-yellow-400 text-black text-[10px] font-bold uppercase tracking-wider rounded-sm transition-colors cursor-pointer"
+											class="w-full py-1.5 bg-zinc-200 hover:bg-zinc-300 text-black text-[10px] font-bold uppercase tracking-wider rounded-full transition-colors cursor-pointer"
 										>
 											Elegir Butacas
 										</button>
@@ -527,11 +527,13 @@
 				{/if}
 			{/each}
 
-			<!-- Single, Subtle Thinking Indicator (Gemini Web Style + Brutalism) -->
+			<!-- Single, Subtle Thinking Indicator (Gemini Web Style) -->
 			{#if isLoading}
-				<div class="flex items-center gap-2 py-1 px-1 text-zinc-400 text-xs font-mono select-none w-fit animate-pulse">
-					<Sparkles class="size-3.5 text-yellow-400 animate-spin" style="animation-duration: 3s;" />
-					<span class="text-zinc-300 font-medium tracking-wide">{getActiveThinkingText()}</span>
+				<div class="flex items-center gap-2.5 py-1 px-1 mt-2 text-sm font-sans select-none w-fit z-10 relative animate-pulse" style="animation-duration: 2s;">
+					<Sparkles class="size-3.5 text-zinc-300 animate-[spin_4s_linear_infinite]" />
+					<span class="tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-zinc-300 to-zinc-400 font-medium">
+						{getActiveThinkingText()}
+					</span>
 				</div>
 			{/if}
 
@@ -559,37 +561,44 @@
 			{#if chat.messages.length === 0}
 				<!-- Quick Actions -->
 				<div class="flex flex-wrap gap-2 mt-4">
-					<button onclick={() => quickSend('¿Qué películas hay hoy?')} class="px-3 py-1.5 text-xs font-bold uppercase tracking-wider bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 transition-colors rounded-sm">
+					<button onclick={() => quickSend('¿Qué películas hay hoy?')} class="px-3 py-1.5 text-xs font-bold uppercase tracking-wider bg-black hover:bg-zinc-900 border border-zinc-800 text-zinc-300 transition-colors rounded-full">
 						¿Qué películas hay hoy?
 					</button>
-					<button onclick={() => quickSend('¿Cómo funciona el Lunes Popular?')} class="px-3 py-1.5 text-xs font-bold uppercase tracking-wider bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 transition-colors rounded-sm">
+					<button onclick={() => quickSend('¿Cómo funciona el Lunes Popular?')} class="px-3 py-1.5 text-xs font-bold uppercase tracking-wider bg-black hover:bg-zinc-900 border border-zinc-800 text-zinc-300 transition-colors rounded-full">
 						¿Cómo funciona el Lunes Popular?
 					</button>
-					<button onclick={() => quickSend('Horarios de Spiderman')} class="px-3 py-1.5 text-xs font-bold uppercase tracking-wider bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 transition-colors rounded-sm">
+					<button onclick={() => quickSend('Horarios de Spiderman')} class="px-3 py-1.5 text-xs font-bold uppercase tracking-wider bg-black hover:bg-zinc-900 border border-zinc-800 text-zinc-300 transition-colors rounded-full">
 						Horarios de Spiderman
 					</button>
-					<button onclick={() => quickSend('¿Qué combos tienen?')} class="px-3 py-1.5 text-xs font-bold uppercase tracking-wider bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 transition-colors rounded-sm">
+					<button onclick={() => quickSend('¿Qué combos tienen?')} class="px-3 py-1.5 text-xs font-bold uppercase tracking-wider bg-black hover:bg-zinc-900 border border-zinc-800 text-zinc-300 transition-colors rounded-full">
 						¿Qué combos tienen?
 					</button>
 				</div>
 			{/if}
 		</div>
 
+		<!-- Aura Pensativa Absolute -->
+		{#if isLoading}
+			<div class="absolute bottom-[76px] -left-1/4 w-[150%] h-48 pointer-events-none z-10 flex items-end justify-center">
+				<div class="w-full h-full epik-thinking-aura blur-[30px]"></div>
+			</div>
+		{/if}
+
 		<!-- Input Area -->
-		<div class="p-4 border-t border-white/20 bg-black">
+		<div class="p-4 border-t border-zinc-800 bg-black relative z-20">
 			<form class="relative flex items-center" onsubmit={(e) => { e.preventDefault(); sendMessage(); }}>
 				<input 
 					type="text" 
 					bind:value={input}
 					disabled={isLoading}
 					placeholder="ESCRÍBELE A EPIK..." 
-					class="w-full bg-zinc-900 border border-zinc-700 rounded-sm py-3 pl-4 pr-12 text-sm font-medium text-white placeholder:text-zinc-500 placeholder:tracking-widest placeholder:text-[10px] focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 transition-all uppercase disabled:opacity-75"
+					class="w-full bg-[#111] border border-zinc-800 rounded-full py-3 pl-5 pr-14 text-sm font-medium text-white placeholder:text-zinc-500 placeholder:tracking-widest placeholder:text-[10px] placeholder:uppercase focus:outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600 transition-all disabled:opacity-75"
 				/>
 				{#if isLoading}
 					<button
 						type="button"
 						onclick={() => chat.stop()}
-						class="absolute right-2 p-2 rounded-sm bg-red-600 hover:bg-red-500 text-white transition-colors flex items-center justify-center shadow-md shadow-red-900/30"
+						class="absolute right-2 p-2.5 rounded-full bg-red-600 hover:bg-red-500 text-white transition-colors flex items-center justify-center shadow-md shadow-red-900/30"
 						title="Detener respuesta"
 						aria-label="Detener respuesta"
 					>
@@ -598,7 +607,7 @@
 				{:else}
 					<button 
 						type="submit"
-						class="absolute right-2 p-2 rounded-sm bg-white text-black hover:bg-zinc-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+						class="absolute right-2 p-2.5 rounded-full bg-zinc-200 text-black hover:bg-zinc-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
 						disabled={!input.trim()}
 						title="Enviar mensaje"
 						aria-label="Enviar mensaje"
@@ -630,7 +639,7 @@
 
 		<!-- Floating Action Button -->
 		<button 
-			class="pointer-events-auto flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-tr from-yellow-500 to-orange-500 border border-yellow-300 text-white shadow-[0_0_30px_rgba(245,158,11,0.4)] hover:scale-105 hover:shadow-[0_0_40px_rgba(245,158,11,0.6)] transition-all group shrink-0 relative"
+			class="pointer-events-auto flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-zinc-200 via-zinc-300 to-zinc-500 border border-zinc-400 text-white shadow-[0_0_30px_rgba(228,228,231,0.25)] hover:scale-105 hover:shadow-[0_0_40px_rgba(228,228,231,0.4)] transition-all group shrink-0 relative"
 			onclick={() => { showBubble = false; chatState.open(); }}
 			transition:scale={{ start: 0.9, duration: 200 }}
 		>
@@ -651,3 +660,37 @@
 		</button>
 	</div>
 {/if}
+
+<style>
+	.epik-ai-bubble {
+		position: relative;
+		background: #111;
+		z-index: 1;
+	}
+	.epik-ai-bubble::before {
+		content: "";
+		position: absolute;
+		inset: -1px;
+		border-radius: inherit;
+		background: linear-gradient(135deg, #e4e4e7, #3b82f6, #b56965, #121212, #e4e4e7);
+		background-size: 300% 300%;
+		animation: epik-aurora 15s ease infinite;
+		z-index: -1;
+		opacity: 0.3;
+	}
+	@keyframes epik-aurora {
+		0% { background-position: 0% 50%; }
+		50% { background-position: 100% 50%; }
+		100% { background-position: 0% 50%; }
+	}
+	
+	.epik-thinking-aura {
+		background: radial-gradient(ellipse at bottom, rgba(228,228,231,0.15) 0%, rgba(59,130,246,0.08) 35%, rgba(181,105,101,0.04) 60%, transparent 75%);
+		animation: aura-breathe 2.5s ease-in-out infinite alternate;
+	}
+	
+	@keyframes aura-breathe {
+		0% { opacity: 0.4; transform: scaleY(0.8) translateY(10px); filter: hue-rotate(0deg); }
+		100% { opacity: 1; transform: scaleY(1.3) translateY(0px); filter: hue-rotate(15deg); }
+	}
+</style>

@@ -1,37 +1,100 @@
+import { supabase } from '$lib/supabase';
+
+// Helper: Fórmula de Haversine para calcular distancia en km
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+	const R = 6371; // Radio de la Tierra en km
+	const dLat = (lat2 - lat1) * Math.PI / 180;
+	const dLon = (lon2 - lon1) * Math.PI / 180;
+	const a = 
+		Math.sin(dLat/2) * Math.sin(dLat/2) +
+		Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+		Math.sin(dLon/2) * Math.sin(dLon/2);
+	const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+	return R * c;
+}
+
 export class CinemaState {
 	selectedCinema = $state<string | null>(null);
 	isLoadingLocation = $state(false);
+	cinemas = $state<Array<{
+		name: string;
+		short_name: string | null;
+		city: string | null;
+		latitude: number | null;
+		longitude: number | null;
+		is_active: boolean;
+	}>>([]);
+	isLoadingCinemas = $state(false);
+
+	async init() {
+		if (this.cinemas.length > 0) return;
+		this.isLoadingCinemas = true;
+		try {
+			const { data, error } = await supabase
+				.from('cinema_locations')
+				.select('name, short_name, city, latitude, longitude, is_active')
+				.eq('is_active', true)
+				.order('sort_order', { ascending: true });
+			if (!error && data) {
+				this.cinemas = data;
+			}
+		} catch(e) {
+			console.error(e);
+		} finally {
+			this.isLoadingCinemas = false;
+		}
+	}
 
 	async findNearestCinema() {
-		// Si ya está cargando o ya se seleccionó uno, no hacemos nada (a menos que quieras forzar re-check)
 		if (this.isLoadingLocation) return;
 		
 		this.isLoadingLocation = true;
 		
 		try {
-			// Simular un retraso para darle peso a la acción de búsqueda
+			// Simular un retraso para UX
 			await new Promise(resolve => setTimeout(resolve, 800));
 
-			// Solicitar geolocalización real (el navegador lanzará el prompt de permisos)
-			await new Promise<GeolocationPosition>((resolve, reject) => {
+			const position = await new Promise<GeolocationPosition>((resolve, reject) => {
 				if (!navigator.geolocation) {
 					reject(new Error('Geolocation is not supported'));
 				} else {
 					navigator.geolocation.getCurrentPosition(resolve, reject, {
-						timeout: 10000, // 10 segundos máximo para responder
+						timeout: 10000,
 						maximumAge: 0
 					});
 				}
 			});
 
-			// Animación extra después de dar permisos
+			// Animación extra
 			await new Promise(resolve => setTimeout(resolve, 1000));
 
-			// Al ser la única sede, "calculamos" que es la más cercana
-			this.selectedCinema = 'Sambil Candelaria';
+			// Fetch active cinemas from database if not loaded
+			await this.init();
+
+			if (this.cinemas.length === 0) {
+				throw new Error('No cinemas found');
+			}
+
+			const userLat = position.coords.latitude;
+			const userLng = position.coords.longitude;
+
+			let closestCinema = this.cinemas[0];
+			let minDistance = Infinity;
+
+			for (const cinema of this.cinemas) {
+				if (cinema.latitude != null && cinema.longitude != null) {
+					const distance = calculateDistance(userLat, userLng, cinema.latitude, cinema.longitude);
+					if (distance < minDistance) {
+						minDistance = distance;
+						closestCinema = cinema;
+					}
+				}
+			}
+
+			this.selectedCinema = closestCinema.short_name || closestCinema.name || 'Sambil Candelaria';
 		} catch (error) {
-			console.error('Error getting location', error);
-			// Fallback: si el usuario rechaza los permisos o falla, de todas formas lo enviamos al único cine
+			console.error('Error getting location or finding cinema', error);
+			// Fallback if permission denied or fetch fails
 			this.selectedCinema = 'Sambil Candelaria';
 		} finally {
 			this.isLoadingLocation = false;

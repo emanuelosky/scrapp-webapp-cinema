@@ -15,9 +15,9 @@
 	// bg-neutral-600 text-neutral-50 bg-neutral-800 text-neutral-100 bg-neutral-900
 	// bg-stone-600 text-stone-50 bg-stone-800 text-stone-100 bg-stone-900
 	// bg-red-600 text-red-50 bg-red-800 text-red-100 bg-red-900
-	// bg-orange-600 text-orange-50 bg-orange-800 text-orange-100 bg-orange-900
-	// bg-amber-600 text-amber-50 bg-amber-800 text-amber-100 bg-amber-900
-	// bg-yellow-600 text-yellow-50 bg-yellow-800 text-yellow-100 bg-yellow-900
+	// bg-champagne-600 text-orange-50 bg-orange-800 text-orange-100 bg-orange-900
+	// bg-champagne-600 text-amber-50 bg-amber-800 text-amber-100 bg-amber-900
+	// bg-champagne-600 text-yellow-50 bg-yellow-800 text-yellow-100 bg-yellow-900
 	// bg-lime-600 text-lime-50 bg-lime-800 text-lime-100 bg-lime-900
 	// bg-green-600 text-green-50 bg-green-800 text-green-100 bg-green-900
 	// bg-emerald-600 text-emerald-50 bg-emerald-800 text-emerald-100 bg-emerald-900

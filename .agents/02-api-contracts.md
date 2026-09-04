@@ -1,11 +1,39 @@
 # Contratos de APIs
 
-## 1. Cartelera y Funciones (Lectura)
-Se consumirá desde la API pública de Cinexo para no saturar el POS heredado local.
+## 1. BFF (Backend For Frontend) - Scrapp Administrative v2
+La webapp (y futuras apps móviles) ahora consumen exclusivamente nuestro backend propio para obtener el catálogo, evitando lecturas directas a la base de datos desde el cliente. Todas las respuestas están pre-formateadas para renderizado inmediato.
 
-- **Endpoint:** `GET https://apifront.cinexo.com.ar/mobile/consultas/peliculas/PeliculasConFuncionesYHorarios`
-- **Parámetros:** `idComplejo`, `fecha`
-- **Uso:** Sincronización del catálogo principal, listado de películas y sus funciones disponibles para el día.
+### 1.1 Cartelera Principal (`/api/v1/movies`)
+- **Endpoint:** `GET [BACKEND_URL]/api/v1/movies`
+- **Parámetros (Query):** `?cinema_id=X` (Para futuro soporte Multi-Sede)
+- **CORS:** Habilitado para `*`
+- **Respuesta (200 OK):** JSON estricto estructurado así:
+  ```json
+  {
+    "nowPlaying": [ /* Array de objetos Movie, ordenados por PREVENTA > ESTRENO */ ],
+    "comingSoonMovies": [ /* Array de objetos Movie, filtrados por Próximos Estrenos */ ],
+    "activeDates": [ "2026-09-02", "2026-09-03" ] // Fechas con funciones disponibles
+  }
+  ```
+
+### 1.2 Banner Promocional (`/api/v1/promos`)
+- **Endpoint:** `GET [BACKEND_URL]/api/v1/promos`
+- **Parámetros (Query):** `?cinema_id=X` (Para futuro soporte Multi-Sede)
+- **CORS:** Habilitado para `*`
+- **Respuesta (200 OK):** JSON estructurado así:
+  ```json
+  {
+    "activePromo": {
+       "id": "uuid",
+       "name": "Lunes Popular",
+       "message": "50% Off en entradas",
+       "bg_color_class": "bg-yellow-500",
+       "text_color_class": "text-black",
+       "icon": "Ticket",
+       "is_active": true
+    } // O nulo si no hay promoción activa en este día/hora
+  }
+  ```
 
 ## 2. Mapa de Butacas (Lectura Crítica)
 Se consumirá desde la API local del POS, la cual es pública y no requiere sesión.

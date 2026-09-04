@@ -51,8 +51,8 @@
 			<span class="text-white font-bold uppercase tracking-tight">{bookingState.activeSelection.selectedDate} • {bookingState.activeSelection.selectedShowtime?.time}</span>
 		</div>
 		<div class="hidden md:flex items-center justify-between text-[10px] md:text-xs mb-1.5">
-			<span class="font-bold text-amber-500 uppercase tracking-widest">Fecha y hora:</span>
-			<span class="font-bold text-amber-500 font-mono tracking-tighter">{currentDateStr} • {currentTimeStr}</span>
+			<span class="font-bold text-champagne-500 uppercase tracking-widest">Fecha y hora:</span>
+			<span class="font-bold text-champagne-500 font-mono tracking-tighter">{currentDateStr} • {currentTimeStr}</span>
 		</div>
 		<div class="flex items-center justify-between mt-0.5 md:mt-1.5 border-t border-zinc-800/50 pt-1 md:pt-2">
 			{#if bookingState.timeRemainingSeconds !== null}

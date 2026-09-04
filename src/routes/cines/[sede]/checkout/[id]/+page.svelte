@@ -7,10 +7,13 @@
 	import Info from '@lucide/svelte/icons/info';
 	import Mail from '@lucide/svelte/icons/mail';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/stores';
+
+	let currentSede = $derived($page.params.sede);
 
 	onMount(() => {
 		if (bookingState.cartItems.length === 0) {
-			goto(resolve('/'));
+			goto(currentSede ? resolve(`/cines/${currentSede}`) : resolve('/'));
 		}
 	});
 
@@ -34,7 +37,7 @@
 			};
 
 			await bookingState.checkout(mockPago);
-			goto(resolve('/checkout/success'));
+			goto(currentSede ? `/cines/${currentSede}/checkout/success` : '/checkout/success');
 		} catch (e: any) {
 			alert('Error en checkout: ' + e.message);
 		} finally {
@@ -51,7 +54,7 @@
 		<header class="mx-auto flex max-w-5xl items-center gap-4 px-4 py-6">
 			<button
 				class="text-zinc-400 transition-colors hover:text-white"
-				onclick={() => goto(resolve('/'))}
+				onclick={() => goto(currentSede ? resolve(`/cines/${currentSede}`) : resolve('/'))}
 			>
 				<ArrowLeft class="size-6" />
 			</button>
@@ -64,10 +67,10 @@
 				<div class="flex-1 space-y-10">
 					<!-- CI Required -->
 					<div
-						class="rounded-r-xl border-l-4 border-amber-500/50 bg-amber-500/5 py-2 pl-4 opacity-70"
+						class="rounded-r-xl border-l-4 border-champagne-500/50 bg-champagne-500/5 py-2 pl-4 opacity-70"
 					>
 						<h2
-							class="mb-1 flex items-center gap-2 text-sm font-bold tracking-tight text-amber-500"
+							class="mb-1 flex items-center gap-2 text-sm font-bold tracking-tight text-champagne-500"
 						>
 							<Info class="size-4" />
 							CI Requerida para Películas +18
@@ -90,7 +93,7 @@
 									type="email"
 									placeholder="tucorreo@ejemplo.com"
 									bind:value={bookingState.customerEmail}
-									class="w-full rounded border-none bg-[#1a1a1a] py-4 pl-12 pr-4 text-white placeholder:text-zinc-600 focus:ring-1 focus:ring-amber-400 focus:outline-none"
+									class="w-full rounded border-none bg-[#1a1a1a] py-4 pl-12 pr-4 text-white placeholder:text-zinc-600 focus:ring-1 focus:ring-champagne-400 focus:outline-none"
 								/>
 							</div>
 							<p class="pt-1 text-xs text-zinc-500">
@@ -142,19 +145,19 @@
 						<div class="flex gap-4 border-b border-white/10 pb-4">
 							<button
 								class="text-sm font-medium {bookingState.paymentMethod === 'card'
-									? '-mb-4 border-b-2 border-amber-400 pb-4 text-white'
+									? '-mb-4 border-b-2 border-champagne-400 pb-4 text-white'
 									: 'text-zinc-500'}"
 								onclick={() => (bookingState.paymentMethod = 'card')}>Tarjeta</button
 							>
 							<button
 								class="text-sm font-medium {bookingState.paymentMethod === 'zelle'
-									? '-mb-4 border-b-2 border-amber-400 pb-4 text-white'
+									? '-mb-4 border-b-2 border-champagne-400 pb-4 text-white'
 									: 'text-zinc-500'}"
 								onclick={() => (bookingState.paymentMethod = 'zelle')}>Zelle</button
 							>
 							<button
 								class="text-sm font-medium {bookingState.paymentMethod === 'pago_movil'
-									? '-mb-4 border-b-2 border-amber-400 pb-4 text-white'
+									? '-mb-4 border-b-2 border-champagne-400 pb-4 text-white'
 									: 'text-zinc-500'}"
 								onclick={() => (bookingState.paymentMethod = 'pago_movil')}>Pago Móvil</button
 							>
@@ -285,12 +288,12 @@
 							<span class="text-xs tracking-widest text-zinc-500 uppercase pt-2">Total</span>
 							<div class="flex flex-col items-end gap-1">
 								<span class="text-3xl font-bold text-white leading-none">${orderTotal.toFixed(2)}</span>
-								<span class="text-xl font-bold text-amber-500">Bs {orderTotalBs.toFixed(2)}</span>
+								<span class="text-xl font-bold text-champagne-500">Bs {orderTotalBs.toFixed(2)}</span>
 							</div>
 						</div>
 
 						<button
-							class="mt-8 w-full rounded bg-amber-400 py-4 font-bold tracking-widest text-black uppercase transition-all hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
+							class="mt-8 w-full rounded bg-champagne-400 py-4 font-bold tracking-widest text-black uppercase transition-all hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
 							onclick={handlePayment}
 							disabled={isProcessing}
 						>

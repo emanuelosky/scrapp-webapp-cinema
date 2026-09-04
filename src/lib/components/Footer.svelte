@@ -3,6 +3,7 @@
 	import Shield from '@lucide/svelte/icons/shield';
 	import FileText from '@lucide/svelte/icons/file-text';
 	import { bookingState } from '$lib/state/booking.svelte';
+	import { toast } from 'svelte-sonner';
 </script>
 
 <footer class="w-full bg-[#000000] border-t border-white/5 pt-16 pb-8 px-4 z-10 relative">
@@ -33,9 +34,9 @@
 			<div class="flex flex-col gap-4">
 				<h4 class="text-white font-bold uppercase tracking-wider text-sm mb-2">Explorar</h4>
 				<ul class="flex flex-col gap-3">
-					<li><a href="https://cinepic.com.ve" class="text-zinc-400 hover:text-white transition-colors text-sm">Ver Cartelera</a></li>
-					<li><a href="https://cinepic.com.ve" class="text-zinc-400 hover:text-white transition-colors text-sm">Ver Combos</a></li>
-					<li><a href="https://cinepic.com.ve" class="text-zinc-400 hover:text-white transition-colors text-sm">Próximos Estrenos</a></li>
+					<li><button onclick={() => toast('Oops. Esta función todavía no está disponible.')} class="text-zinc-400 hover:text-white transition-colors text-sm">Ver Cartelera</button></li>
+					<li><button onclick={() => toast('Oops. Esta función todavía no está disponible.')} class="text-zinc-400 hover:text-white transition-colors text-sm">Ver Combos</button></li>
+					<li><button onclick={() => toast('Oops. Esta función todavía no está disponible.')} class="text-zinc-400 hover:text-white transition-colors text-sm">Próximos Estrenos</button></li>
 				</ul>
 			</div>
 
@@ -43,8 +44,8 @@
 			<div class="flex flex-col gap-4">
 				<h4 class="text-white font-bold uppercase tracking-wider text-sm mb-2">Tu Cuenta</h4>
 				<ul class="flex flex-col gap-3">
-					<li><a href="https://cinepic.com.ve" class="text-zinc-400 hover:text-white transition-colors text-sm">Iniciar Sesión</a></li>
-					<li><a href="https://cinepic.com.ve" class="text-zinc-400 hover:text-white transition-colors text-sm">Crear Cuenta</a></li>
+					<li><button onclick={() => toast('Oops. Esta función todavía no está disponible.')} class="text-zinc-400 hover:text-white transition-colors text-sm">Iniciar Sesión</button></li>
+					<li><button onclick={() => toast('Oops. Esta función todavía no está disponible.')} class="text-zinc-400 hover:text-white transition-colors text-sm">Crear Cuenta</button></li>
 				</ul>
 			</div>
 
@@ -53,16 +54,16 @@
 				<h4 class="text-white font-bold uppercase tracking-wider text-sm mb-2">Legal</h4>
 				<ul class="flex flex-col gap-3">
 					<li>
-						<a href="https://cinepic.com.ve/terminos" target="_blank" class="text-zinc-400 hover:text-white transition-colors text-sm flex items-center gap-2">
+						<button onclick={() => toast('Oops. Esta función todavía no está disponible.')} class="text-zinc-400 hover:text-white transition-colors text-sm flex items-center gap-2">
 							<FileText size={14} />
 							Términos y Condiciones
-						</a>
+						</button>
 					</li>
 					<li>
-						<a href="https://cinepic.com.ve/privacidad" target="_blank" class="text-zinc-400 hover:text-white transition-colors text-sm flex items-center gap-2">
+						<button onclick={() => toast('Oops. Esta función todavía no está disponible.')} class="text-zinc-400 hover:text-white transition-colors text-sm flex items-center gap-2">
 							<Shield size={14} />
 							Políticas de Privacidad
-						</a>
+						</button>
 					</li>
 				</ul>
 			</div>

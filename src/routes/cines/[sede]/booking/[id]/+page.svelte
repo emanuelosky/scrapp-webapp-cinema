@@ -17,7 +17,8 @@
 		}
 
 		if (!bookingState.movie) {
-			goto(resolve('/'));
+			const currentSede = $page.params.sede;
+			goto(currentSede ? resolve(`/cines/${currentSede}`) : resolve('/'));
 			return;
 		}
 

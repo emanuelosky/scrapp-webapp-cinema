@@ -1,10 +1,10 @@
 <!-- src/lib/components/AuroraBackground.svelte -->
 <div class="absolute inset-0 overflow-hidden pointer-events-none -z-10 bg-[#000000]">
-    <div class="aurora-blob w-[500px] h-[500px] bg-orange-600/40 rounded-full blur-[100px] md:blur-[120px] top-[-10%] left-[-10%]"></div>
-    <div class="aurora-blob w-[600px] h-[600px] bg-amber-600/30 rounded-full blur-[120px] md:blur-[150px] bottom-[-20%] right-[-10%] animation-delay-2000"></div>
+    <div class="aurora-blob w-[500px] h-[500px] bg-champagne-600/40 rounded-full blur-[100px] md:blur-[120px] top-[-10%] left-[-10%]"></div>
+    <div class="aurora-blob w-[600px] h-[600px] bg-champagne-600/30 rounded-full blur-[120px] md:blur-[150px] bottom-[-20%] right-[-10%] animation-delay-2000"></div>
     <div class="aurora-blob w-[400px] h-[400px] bg-red-900/40 rounded-full blur-[80px] md:blur-[100px] top-[40%] left-[30%] animation-delay-4000"></div>
     <div class="aurora-blob w-[550px] h-[550px] bg-purple-900/30 rounded-full blur-[130px] md:blur-[160px] top-[20%] right-[10%] animation-delay-1000"></div>
-    <div class="aurora-blob w-[450px] h-[450px] bg-yellow-600/20 rounded-full blur-[90px] md:blur-[110px] bottom-[10%] left-[10%] animation-delay-3000"></div>
+    <div class="aurora-blob w-[450px] h-[450px] bg-champagne-600/20 rounded-full blur-[90px] md:blur-[110px] bottom-[10%] left-[10%] animation-delay-3000"></div>
 </div>
 
 <style>

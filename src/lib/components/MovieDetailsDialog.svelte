@@ -8,9 +8,10 @@
 	import type { Movie, ShowtimeDetails } from '$lib/types';
 	import { bookingState } from '$lib/state/booking.svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { SvelteDate } from 'svelte/reactivity';
 
-	let { open = $bindable(false), movie }: { open: boolean; movie: Movie | null } = $props();
+	let { open = $bindable(false), movie, initialDate = null, initialExpandSynopsis = false }: { open: boolean; movie: Movie | null; initialDate?: string | null; initialExpandSynopsis?: boolean } = $props();
 
 	let availableDates = $derived.by(() => {
 		if (!movie?.showtimesByDate) return [];
@@ -25,6 +26,8 @@
 	let selectedDate = $state<string | null>(null);
 	let selectedShowtime = $state<ShowtimeDetails | null>(null);
 	let isSynopsisExpanded = $state(false);
+	let synopsisP = $state<HTMLElement | null>(null);
+	let hasSynopsisOverflow = $state(false);
 	let showConflictModal = $state(false);
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let conflictingItem = $state<any>(null);
@@ -33,16 +36,80 @@
 		if (movie && selectedShowtime && selectedDate) {
 			bookingState.startBooking(movie, selectedDate, selectedShowtime);
 			open = false;
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			await goto(`/booking/${movie.id}` as any);
+			const currentSede = $page.params.sede;
+			if (currentSede) {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				await goto(`/cines/${currentSede}/booking/${movie.id}` as any);
+			} else {
+				// Fallback si por alguna razón no estamos en una ruta de sede
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				await goto(`/booking/${movie.id}` as any);
+			}
 		}
 	}
 
 	// Select first date automatically when movie changes
 	$effect(() => {
-		if (open && availableDates.length > 0 && (!selectedDate || !availableDates.includes(selectedDate))) {
-			selectedDate = availableDates[0];
+		if (open && movie) {
+			// Si EPIK mandó abrir la sinopsis, la expandimos
+			if (initialExpandSynopsis && !isSynopsisExpanded) {
+				isSynopsisExpanded = true;
+			}
+			
+			if (availableDates.length > 0 && (!selectedDate || !availableDates.includes(selectedDate))) {
+				// Si EPIK pasó una fecha y es válida, usar esa
+				if (initialDate && availableDates.includes(initialDate)) {
+					selectedDate = initialDate;
+					selectedShowtime = null;
+					return;
+				}
+
+				// Buscar la primera fecha que tenga funciones válidas (que no hayan pasado)
+			const now = new SvelteDate();
+			const currentTotalMins = now.getHours() * 60 + now.getMinutes();
+			const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
+			let foundDate = availableDates[0];
+			
+			for (const date of availableDates) {
+				const shows = movie.showtimesByDate?.[date] || [];
+				let hasValid = false;
+				if (date === todayStr) {
+					for (const s of shows) {
+						const match = s.time.match(/(\d+):(\d+)\s*(A\.M\.|P\.M\.)/i);
+						if (match) {
+							let h = parseInt(match[1]);
+							const m = parseInt(match[2]);
+							const ampm = match[3].toUpperCase();
+							if (ampm === 'P.M.' && h < 12) h += 12;
+							if (ampm === 'A.M.' && h === 12) h = 0;
+							const showTotalMins = h * 60 + m;
+							if (currentTotalMins - showTotalMins <= 30) {
+								hasValid = true;
+								break;
+							}
+						}
+					}
+				} else {
+					hasValid = shows.length > 0;
+				}
+				
+				if (hasValid) {
+					foundDate = date;
+					break;
+				}
+			}
+
+			selectedDate = foundDate;
 			selectedShowtime = null;
+			}
+		}
+	});
+
+	// Check for synopsis overflow
+	$effect(() => {
+		if (synopsisP && movie && !isSynopsisExpanded) {
+			hasSynopsisOverflow = synopsisP.scrollHeight > synopsisP.clientHeight;
 		}
 	});
 
@@ -107,30 +174,45 @@
 </script>
 
 <Dialog.Root bind:open>
-	<Dialog.Content class="sm:max-w-3xl md:max-w-4xl lg:max-w-5xl w-[95vw] bg-black border-none text-white p-0 overflow-hidden rounded-none shadow-2xl gap-0">
+	<Dialog.Content class="sm:max-w-3xl md:max-w-5xl lg:max-w-6xl xl:max-w-[1200px] w-[95vw] bg-black border-none text-white p-0 overflow-hidden rounded-none shadow-2xl gap-0">
 		{#if movie}
-			<div class="flex flex-col md:flex-row h-[90vh] md:h-auto md:max-h-[90vh] overflow-y-auto md:overflow-hidden custom-scrollbar">
+			<div class="flex flex-col md:flex-row h-[90vh] md:h-[85vh] md:min-h-[600px] overflow-y-auto md:overflow-hidden custom-scrollbar">
 				<!-- Left: Poster -->
-				<div class="md:w-[40%] h-[250px] md:h-auto relative shrink-0 bg-black">
+				<div class="md:w-[45%] h-[250px] md:h-full relative shrink-0 bg-black flex items-center justify-center overflow-hidden">
+					<!-- Blurred Background Layer para Escritorio -->
+					<div class="hidden md:block absolute inset-0 z-0">
+						<img src={movie.poster} alt="" class="w-full h-full object-cover blur-2xl opacity-40 scale-110" />
+						<div class="absolute inset-0 bg-black/40"></div>
+					</div>
+
 					<!-- Mobile Image (Banner preferred) -->
-					<img src={movie.banner || movie.poster} alt={movie.title} class="w-full h-full object-cover md:hidden {movie.banner ? 'object-center' : 'object-top'}" />
-					<!-- Desktop Image (Poster strictly) -->
-					<img src={movie.poster} alt={movie.title} class="w-full h-full object-cover object-top hidden md:block min-h-full" />
-					<div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent md:hidden"></div>
-					<div class="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black via-black/80 to-transparent md:hidden"></div>
-					<div class="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/60 to-transparent md:hidden"></div>
+					<img src={movie.banner || movie.poster} alt={movie.title} class="w-full h-full object-cover md:hidden relative z-10 {movie.banner ? 'object-center' : 'object-top'}" />
+					
+					<!-- Desktop Image (Poster object-contain para no cortar, con mask para difuminar bordes) -->
+					<img 
+						src={movie.poster} 
+						alt={movie.title} 
+						class="w-full h-[100%] object-contain hidden md:block relative z-10 rounded-lg drop-shadow-2xl" 
+						style="-webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%); mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);"
+					/>
+					
+					<div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent md:hidden z-20"></div>
+					<div class="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black via-black/80 to-transparent md:hidden z-20"></div>
+					<div class="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/60 to-transparent md:hidden z-20"></div>
 				</div>
 
 				<!-- Right: Details & Showtimes -->
-				<div class="md:w-[60%] flex flex-col md:h-full overflow-visible md:overflow-hidden relative">
+				<div class="md:w-[55%] flex flex-col md:h-full overflow-visible md:overflow-hidden relative">
 					<!-- Blurred Background Layer -->
 					<div class="absolute inset-0 z-0 overflow-hidden">
 						<img src={movie.banner || movie.poster} class="w-full h-full object-cover blur-[80px] opacity-40 scale-110" alt="" />
 						<div class="absolute inset-0 bg-black/90"></div>
 					</div>
 
-					<!-- Header -->
-					<div class="relative z-10 p-6 md:px-10 md:pt-10 pb-4 shrink-0">
+					<!-- Main Scrollable Area -->
+					<div class="flex-1 flex flex-col overflow-y-auto custom-scrollbar relative z-10">
+						<!-- Header -->
+						<div class="relative z-10 p-6 md:px-10 md:pt-10 pb-4 shrink-0">
 						<div class="flex flex-wrap items-center gap-3 mb-4">
 							{#if movie.label}
 								<span class="bg-zinc-200 text-black text-[10px] font-black px-2 py-0.5 uppercase tracking-widest">{movie.label}</span>
@@ -154,31 +236,35 @@
 						</Dialog.Description>
 					</div>
 
-					<div class="flex flex-col md:flex-1 overflow-visible md:overflow-hidden relative z-10">
-						<!-- Synopsis -->
-						<div class="relative flex flex-col transition-all duration-300">
-							<div class="px-6 md:px-10 pb-4">
-								<p class="text-zinc-300 text-sm leading-relaxed {isSynopsisExpanded ? '' : 'line-clamp-3 md:line-clamp-5'} transition-all">
-									{movie.synopsis || 'Sin sinopsis disponible para esta película.'}
-								</p>
-							</div>
+					<!-- Synopsis -->
+					<div class="relative flex flex-col transition-all duration-300">
+						<div class="px-6 md:px-10 pb-4">
+							<p 
+								bind:this={synopsisP}
+								class="text-zinc-300 text-sm leading-relaxed {isSynopsisExpanded ? '' : 'line-clamp-3 md:line-clamp-4'} transition-all"
+							>
+								{movie.synopsis || 'Sin sinopsis disponible para esta película.'}
+							</p>
+						</div>
 							
 							<!-- Toggle Button -->
-							<button 
-								onclick={() => isSynopsisExpanded = !isSynopsisExpanded}
-								class="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-zinc-900 border-none rounded-full p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 z-10 shadow-lg transition-transform hover:scale-110"
-								title={isSynopsisExpanded ? 'Colapsar sinopsis' : 'Expandir sinopsis'}
-							>
-								{#if isSynopsisExpanded}
-									<ChevronUp class="size-4" />
-								{:else}
-									<ChevronDown class="size-4" />
-								{/if}
-							</button>
+							{#if hasSynopsisOverflow}
+								<button 
+									onclick={() => isSynopsisExpanded = !isSynopsisExpanded}
+									class="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-zinc-900 border-none rounded-full p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 z-10 shadow-lg transition-transform hover:scale-110"
+									title={isSynopsisExpanded ? 'Colapsar sinopsis' : 'Expandir sinopsis'}
+								>
+									{#if isSynopsisExpanded}
+										<ChevronUp class="size-4" />
+									{:else}
+										<ChevronDown class="size-4" />
+									{/if}
+								</button>
+							{/if}
 						</div>
 
 						<!-- Showtimes -->
-						<div class="md:flex-1 overflow-y-visible md:overflow-y-auto px-6 md:px-10 py-6 custom-scrollbar {isSynopsisExpanded ? 'opacity-30 pointer-events-none' : ''} transition-opacity duration-300">
+						<div class="px-6 md:px-10 py-6 transition-all duration-300">
 							<!-- Dates -->
 							<div class="mb-8 mt-2">
 								<h4 class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Calendar class="size-4" /> Selecciona la Fecha</h4>
@@ -199,7 +285,19 @@
 								<h4 class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Clock class="size-4" /> Horarios Disponibles</h4>
 								
 								{#if formatKeys.length === 0}
-									<p class="text-sm text-zinc-500 italic">No hay funciones disponibles para esta fecha.</p>
+									<div class="flex flex-col items-start gap-5 bg-white/5 border border-white/10 rounded-xl p-6 mt-2">
+										<p class="text-sm text-zinc-300 font-medium leading-relaxed">Las funciones de hoy ya finalizaron o no hay horarios programados para esta fecha.</p>
+										
+										{#if selectedDate && availableDates.indexOf(selectedDate) + 1 < availableDates.length}
+											{@const nextDate = availableDates[availableDates.indexOf(selectedDate) + 1]}
+											<button 
+												class="px-6 py-3 bg-white text-black font-black text-xs uppercase tracking-widest rounded-full transition-transform hover:scale-105 shadow-xl"
+												onclick={() => { selectedDate = nextDate; selectedShowtime = null; }}
+											>
+												Ver Horarios de {formatDateLabel(nextDate).split(',')[0]}
+											</button>
+										{/if}
+									</div>
 								{:else}
 									<div class="flex flex-col gap-6">
 										{#each formatKeys as format (format)}
@@ -221,10 +319,10 @@
 								{/if}
 							</div>
 						</div>
-					</div>
+					</div> <!-- End of Main Scrollable Area -->
 
 					<!-- Footer Actions -->
-					<div class="relative z-20 md:mt-auto p-6 md:px-10 shrink-0 bg-black/40 backdrop-blur-md sticky bottom-0">
+					<div class="relative z-20 md:mt-auto p-6 md:px-10 shrink-0 bg-black/40 backdrop-blur-md sticky bottom-0 border-t border-white/5">
 						<button 
 							class="w-full bg-zinc-200 hover:bg-white rounded-full text-black font-black uppercase tracking-widest py-4 text-sm transition-colors shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
 							disabled={!selectedShowtime}

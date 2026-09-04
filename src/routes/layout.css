@@ -6,6 +6,11 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
+  --color-champagne-300: #F7E7CE;
+  --color-champagne-400: #E5C48A;
+  --color-champagne-500: #D4AF37;
+  --color-champagne-600: #B38B22;
+  --color-champagne-700: #997415;
   --font-sans: 'Montserrat', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-display: 'Bebas Neue', 'Antonio', sans-serif;
   --color-border: hsl(var(--border));
@@ -65,7 +70,7 @@
   }
 
   .dark {
-    --background: 240 10% 3.9%;
+    --background: 0 0% 0%;
     --foreground: 0 0% 98%;
     --card: 240 10% 3.9%;
     --card-foreground: 0 0% 98%;

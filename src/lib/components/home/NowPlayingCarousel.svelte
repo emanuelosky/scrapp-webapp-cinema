@@ -15,10 +15,12 @@
 	let scrollbarTrack = $state<HTMLElement | null>(null);
 	let canScroll = $state(false);
 
-	const plugin = AutoScroll({ speed: 0.8, stopOnInteraction: true, playOnInit: false });
+	const plugin = AutoScroll({ speed: 0.4, stopOnInteraction: true, playOnInit: false });
 
 	let safeMovies = $derived.by(() => {
 		if (movies.length === 0) return [];
+		if (movies.length < 6) return [...movies];
+
 		let arr = [...movies];
 		while (arr.length < 12) {
 			arr = [...arr, ...movies];
@@ -49,16 +51,25 @@
 		onScroll(); // Set initial
 		checkScroll();
 
-		// Truco para inicializar loop de forma segura sin glitchear Embla
-		let loopTimeout = setTimeout(() => {
-			if (!api) return;
+		let loopTimeout: ReturnType<typeof setTimeout>;
+		
+		// Solo activar el loop infinito y auto-scroll si hay suficientes películas para llenar la pantalla
+		if (movies.length >= 6) {
+			loopTimeout = setTimeout(() => {
+				if (!api) return;
+				try {
+					api.plugins().autoScroll?.stop();
+					api.reInit({ loop: true });
+				} catch (e) {
+					void e;
+				}
+			}, 800);
+		} else {
+			// Si son menos de 5, desactivamos el auto scroll para evitar problemas visuales
 			try {
 				api.plugins().autoScroll?.stop();
-				api.reInit({ loop: true });
-			} catch (e) {
-				void e;
-			}
-		}, 800);
+			} catch (e) { void e; }
+		}
 
 		let resumeTimeout: ReturnType<typeof setTimeout>;
 
@@ -140,116 +151,144 @@
 	}
 </script>
 
-<Carousel.Root class="w-full relative" opts={{ align: 'start', loop: false }} plugins={[plugin]} setApi={(a) => api = a}>
-	<Carousel.Content class="-ml-4 py-4 {canScroll ? '' : 'justify-center'}">
-		{#each safeMovies as movie, i (movie.id + '-' + i)}
-			<Carousel.Item class="pl-4 basis-[55%] md:basis-[30%] lg:basis-[22%] xl:basis-[18%]">
-					<!-- svelte-ignore a11y_click_events_have_key_events -->
-					<div
-						role="button"
-						tabindex="0"
-						class="group relative flex w-full cursor-pointer flex-col text-center focus:outline-none animate-in fade-in duration-500"
-						onclick={() => openMovieDetails(movie)}
-					>
-						<!-- Dynamic Hover Glow from Poster -->
-						{#if movie.poster}
-							<div class="absolute -inset-6 z-0 opacity-0 transition-all duration-700 group-hover:opacity-100 pointer-events-none">
-								<img src={movie.poster} alt="" class="w-full h-full object-cover blur-3xl opacity-70 scale-[1.5]" />
-							</div>
-						{/if}
-
-						<div class="relative z-10 group-hover:z-50 w-full overflow-hidden rounded-lg border border-transparent group-hover:border-white/10 shadow-lg transition-all duration-500 group-hover:scale-[1.03] group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.8)] bg-black">
-							{#if movie.label}
-								<div class="absolute top-4 left-[-4px] z-20 drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
-									<div class="ticket-shape relative flex items-center justify-center py-1.5 px-4 
-										{movie.label === 'PREVENTA' ? 'bg-gradient-to-r from-zinc-200 via-zinc-300 to-zinc-400' : 'bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-500'}">
-										<div class="absolute left-2.5 top-1 bottom-1 border-l-[1.5px] border-dashed border-black/30"></div>
-										<div class="absolute right-2.5 top-1 bottom-1 border-r-[1.5px] border-dashed border-black/30"></div>
-										
-										<Ticket class="size-3.5 mr-1.5 text-black ml-1 opacity-90" />
-										<span class="text-[10px] md:text-xs font-black text-black uppercase tracking-widest mr-1">
-											{movie.label}
-										</span>
-									</div>
-								</div>
-							{/if}
-							
+{#if movies && movies.length > 0}
+	<Carousel.Root class="w-full relative" opts={{ align: 'start', loop: true }} plugins={[plugin]} setApi={(a) => api = a}>
+		<Carousel.Content class="-ml-4 py-4 {canScroll ? '' : 'justify-center'}">
+			{#each safeMovies as movie, i (movie.id + '-' + i)}
+				<Carousel.Item class="pl-4 basis-[55%] md:basis-[30%] lg:basis-[22%] xl:basis-[18%] relative hover:z-50">
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
+						<div
+							role="button"
+							tabindex="0"
+							class="group relative flex w-full cursor-pointer flex-col text-center focus:outline-none animate-in fade-in duration-500"
+							onclick={() => openMovieDetails(movie)}
+						>
+							<!-- Dynamic Hover Glow from Poster -->
 							{#if movie.poster}
-								<img
-									src={movie.poster}
-									alt={movie.title}
-									class="aspect-[2/3] w-full object-cover transition-transform duration-500 group-hover:scale-105"
-								/>
-							{:else}
-								<div class="flex aspect-[2/3] w-full items-center justify-center bg-zinc-900 text-zinc-600 px-4">
-									<span class="font-display text-sm font-bold uppercase">{movie.title}</span>
+								<div class="absolute -inset-4 z-[-1] opacity-0 transition-all duration-700 group-hover:opacity-30 pointer-events-none">
+									<img src={movie.poster} alt="" class="w-full h-full object-cover blur-[30px] scale-[1.15]" />
 								</div>
 							{/if}
 
-							<div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pt-12 text-center transition-opacity duration-300 group-hover:opacity-0 z-20 flex flex-col items-center justify-end">
-								<h4 class="font-sans font-bold text-white uppercase leading-tight line-clamp-2 drop-shadow-md text-center">{movie.title}</h4>
+							<div 
+								class="relative z-10 w-full overflow-hidden rounded-none bg-black group cursor-pointer transition-all duration-500 hover:scale-[1.03] hover:shadow-[0_0_40px_rgba(255,255,255,0.1)] transform-gpu will-change-transform"
+							>
+								{#if movie.label}
+									<div class="absolute top-4 left-[-4px] z-20 drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
+										<div class="ticket-shape relative flex items-center justify-center py-1.5 px-4 
+											{movie.label === 'PREVENTA' ? 'bg-gradient-to-r from-zinc-200 via-zinc-300 to-zinc-400' : 'bg-gradient-to-r from-champagne-400 via-champagne-500 to-champagne-500'}">
+											<div class="absolute left-2.5 top-1 bottom-1 border-l-[1.5px] border-dashed border-black/30"></div>
+											<div class="absolute right-2.5 top-1 bottom-1 border-r-[1.5px] border-dashed border-black/30"></div>
+											
+											<Ticket class="size-3.5 mr-1.5 text-black ml-1 opacity-90" />
+											<span class="text-[10px] md:text-xs font-black text-black uppercase tracking-widest mr-1">
+												{movie.label}
+											</span>
+										</div>
+									</div>
+								{/if}
+								
+								{#if movie.poster}
+									<img
+										src={movie.poster}
+										alt={movie.title}
+										class="aspect-[2/3] w-full object-cover transition-transform duration-500 group-hover:scale-105"
+									/>
+								{:else}
+									<div class="flex aspect-[2/3] w-full items-center justify-center bg-zinc-900 text-zinc-600 px-4">
+										<span class="font-display text-sm font-bold uppercase">{movie.title}</span>
+									</div>
+								{/if}
+
+								<!-- Anti-aliasing edge bleed fix -->
+								<div class="absolute inset-0 border border-black/80 z-20 pointer-events-none"></div>
 							</div>
 
-							<!-- Hover Overlay (AMC Style) -->
-							<div class="absolute inset-0 bg-gradient-to-t from-[#111] via-[#111]/80 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex flex-col justify-end p-4 text-center z-30 pointer-events-none group-hover:pointer-events-auto">
-								<div class="translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-									<h3 class="text-xl md:text-2xl font-black text-white tracking-tight mb-2 leading-tight drop-shadow-md">{movie.title}</h3>
-									
-									<div class="flex items-center justify-center gap-3 text-zinc-300 text-[11px] md:text-xs font-semibold mb-2">
-										<span class="tracking-widest">{movie.duration || '2 HR 15 MIN'}</span>
-										<span class="w-px h-3 bg-zinc-500"></span>
-										<span class="tracking-widest">{movie.rating || 'B'}</span>
-									</div>
-									
-									<p class="text-zinc-400 text-[10px] md:text-xs font-medium mb-4 tracking-wider uppercase">
-										Estreno {movie.releaseDate || '25 JUL 2026'}
-									</p>
-									
-									<button class="w-full bg-zinc-200 hover:bg-white text-black font-bold py-2.5 rounded-full transition-colors text-sm shadow-xl" onclick={(e) => { e.stopPropagation(); openMovieDetails(movie); }}>
-										Comprar Entradas
-									</button>
+							<!-- Movie Info Below Poster -->
+							<div class="mt-3 flex flex-col items-center text-center px-1">
+								<h4 class="font-display text-base md:text-lg font-black text-white uppercase leading-tight line-clamp-2 tracking-wide">{movie.title}</h4>
+								
+								<div class="w-2/3 h-px bg-gradient-to-r from-transparent via-zinc-700 to-transparent my-1.5"></div>
+								
+								<div class="flex items-center justify-center gap-2 text-zinc-400 text-[10px] md:text-xs font-semibold mb-2">
+									<span class="tracking-widest">{movie.duration || '2 HR 15 MIN'}</span>
+									<span class="w-px h-2.5 bg-zinc-600"></span>
+									<span class="tracking-widest">{movie.rating || 'B'}</span>
 								</div>
+								
+								<button class="w-full max-w-[180px] bg-zinc-200 hover:bg-white text-black font-bold py-2 rounded-full transition-colors text-[10px] md:text-xs shadow-xl uppercase tracking-wider" onclick={(e) => { e.stopPropagation(); openMovieDetails(movie); }}>
+									Comprar Boletos
+								</button>
 							</div>
 						</div>
+				</Carousel.Item>
+			{/each}
+		</Carousel.Content>
+		
+		{#if canScroll}
+			<!-- Gradient Edge Fades (replaces mask-image to preserve vertical bleeding) -->
+			<div class="hidden md:block pointer-events-none absolute -inset-y-32 -left-8 w-24 lg:w-40 bg-gradient-to-r from-black via-black/80 to-transparent z-40"></div>
+			<div class="hidden md:block pointer-events-none absolute -inset-y-32 -right-8 w-24 lg:w-40 bg-gradient-to-l from-black via-black/80 to-transparent z-40"></div>
+
+			<!-- Controles de navegación laterales flotantes -->
+			<div class="hidden md:flex absolute inset-y-0 left-4 right-4 lg:left-8 lg:right-8 justify-between pointer-events-none z-40">
+				<!-- Lado Izquierdo (Previous) -->
+				<!-- svelte-ignore a11y_click_events_have_key_events -->
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div 
+					class="w-20 lg:w-24 h-full pointer-events-auto flex items-center justify-start group cursor-pointer pl-2 lg:pl-4"
+					onclick={() => {
+						api?.scrollPrev();
+						api?.plugins().autoScroll?.stop(); // Pausar auto-scroll si el usuario interactúa
+					}}
+				>
+					<div class="flex items-center justify-center w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white shadow-[0_0_20px_rgba(0,0,0,0.5)] opacity-40 transition-all duration-300 group-hover:opacity-100 group-hover:bg-white group-hover:text-black group-hover:scale-110 group-active:scale-95 -translate-x-2 group-hover:translate-x-0">
+						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="size-6 lg:size-7"><path d="m15 18-6-6 6-6"/></svg>
 					</div>
-			</Carousel.Item>
-		{/each}
-	</Carousel.Content>
-	
-	{#if canScroll}
-		<div class="hidden md:flex absolute -left-12 -right-12 top-[40%] justify-between pointer-events-none z-40">
-			<div class="pointer-events-auto">
-				<Carousel.Previous class="relative left-0 bg-white/5 backdrop-blur-md hover:bg-white hover:text-black text-white border-white/20 transition-all" />
+				</div>
+
+				<!-- Lado Derecho (Next) -->
+				<!-- svelte-ignore a11y_click_events_have_key_events -->
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div 
+					class="w-20 lg:w-24 h-full pointer-events-auto flex items-center justify-end group cursor-pointer pr-2 lg:pr-4"
+					onclick={() => {
+						api?.scrollNext();
+						api?.plugins().autoScroll?.stop();
+					}}
+				>
+					<div class="flex items-center justify-center w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white shadow-[0_0_20px_rgba(0,0,0,0.5)] opacity-40 transition-all duration-300 group-hover:opacity-100 group-hover:bg-white group-hover:text-black group-hover:scale-110 group-active:scale-95 translate-x-2 group-hover:translate-x-0">
+						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="size-6 lg:size-7"><path d="m9 18 6-6-6-6"/></svg>
+					</div>
+				</div>
 			</div>
-			<div class="pointer-events-auto">
-				<Carousel.Next class="relative right-0 bg-white/5 backdrop-blur-md hover:bg-white hover:text-black text-white border-white/20 transition-all" />
+		{/if}
+	</Carousel.Root>
+
+	{#if canScroll}
+		<div class="mt-8 md:mt-12 w-full flex flex-col items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500 fill-mode-both">
+			<div class="flex items-center gap-2 text-zinc-500 uppercase tracking-widest text-[10px] md:text-xs font-bold">
+				<MoveHorizontal class="size-4 animate-pulse" />
+				<span>Desliza para explorar</span>
+			</div>
+			
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div 
+				bind:this={scrollbarTrack}
+				onpointerdown={onPointerDown}
+				onpointermove={onPointerMove}
+				onpointerup={onPointerUp}
+				onpointercancel={onPointerUp}
+				class="w-full max-w-sm md:max-w-2xl h-2 bg-zinc-800 rounded-full relative cursor-grab touch-none {isDraggingScrollbar ? 'cursor-grabbing' : ''}"
+			>
+				<div 
+					class="absolute top-0 bottom-0 w-[20%] bg-gradient-to-r from-zinc-300 via-zinc-400 to-zinc-300 rounded-full transition-transform duration-75 ease-out origin-center {isDraggingScrollbar ? 'scale-y-[2.5] scale-x-105 shadow-[0_0_15px_rgba(212,212,216,0.8)]' : ''}" 
+					style="transform: translate3d({scrollProgress * 4}%, 0, 0)"
+				></div>
 			</div>
 		</div>
 	{/if}
-</Carousel.Root>
 
-{#if canScroll}
-	<div class="mt-8 md:mt-12 w-full flex flex-col items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500 fill-mode-both">
-		<div class="flex items-center gap-2 text-zinc-500 uppercase tracking-widest text-[10px] md:text-xs font-bold">
-			<MoveHorizontal class="size-4 animate-pulse" />
-			<span>Desliza para explorar</span>
-		</div>
-		
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div 
-			bind:this={scrollbarTrack}
-			onpointerdown={onPointerDown}
-			onpointermove={onPointerMove}
-			onpointerup={onPointerUp}
-			onpointercancel={onPointerUp}
-			class="w-full max-w-sm md:max-w-2xl h-2 bg-zinc-800 rounded-full relative cursor-grab touch-none {isDraggingScrollbar ? 'cursor-grabbing' : ''}"
-		>
-			<div 
-				class="absolute top-0 bottom-0 w-[20%] bg-gradient-to-r from-zinc-300 via-zinc-400 to-zinc-300 rounded-full transition-transform duration-75 ease-out origin-center {isDraggingScrollbar ? 'scale-y-[2.5] scale-x-105 shadow-[0_0_15px_rgba(212,212,216,0.8)]' : ''}" 
-				style="transform: translate3d({scrollProgress * 4}%, 0, 0)"
-			></div>
-		</div>
-	</div>
 {/if}
 
 <style>

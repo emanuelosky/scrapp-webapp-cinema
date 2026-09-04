@@ -4,10 +4,13 @@
 	import { onMount } from 'svelte';
 	import CheckCircle2 from '@lucide/svelte/icons/check-circle-2';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/stores';
+
+	let currentSede = $derived($page.params.sede);
 
 	onMount(() => {
 		if (!bookingState.lastCompletedSale) {
-			goto(resolve('/'));
+			goto(currentSede ? resolve(`/cines/${currentSede}`) : resolve('/'));
 		}
 	});
 </script>
@@ -38,7 +41,7 @@
 							</div>
 							<div class="text-right">
 								<p class="mb-1 text-xs font-bold tracking-widest text-zinc-500 uppercase">Butacas</p>
-								<p class="font-bold text-amber-400">{item.seats.join(', ')}</p>
+								<p class="font-bold text-champagne-400">{item.seats.join(', ')}</p>
 							</div>
 						</div>
 					</div>
@@ -50,7 +53,7 @@
 				onclick={() => {
 					bookingState.lastCompletedSale = null;
 					bookingState.saveToLocalStorage();
-					goto(resolve('/'));
+					goto(currentSede ? resolve(`/cines/${currentSede}`) : resolve('/'));
 				}}
 			>
 				Comprar más entradas

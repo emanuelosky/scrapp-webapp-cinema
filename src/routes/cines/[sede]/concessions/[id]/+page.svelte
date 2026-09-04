@@ -11,15 +11,16 @@
 	import { page } from '$app/stores';
 
 	let id = $derived($page.params.id);
+	let currentSede = $derived($page.params.sede);
 
 	onMount(() => {
 		if (bookingState.cartItems.length === 0) {
-			goto(resolve('/'));
+			goto(currentSede ? resolve(`/cines/${currentSede}`) : resolve('/'));
 		}
 	});
 
 	// If the user navigates back natively using browser history, intercept it if possible.
-	// We handle explicit "back" buttons by using goto(resolve('/')) instead of history.back().
+	// We handle explicit "back" buttons by using goto(resolve('/cines/...')) instead of history.back().
 
 	const EXCHANGE_RATE = 40.50; // Mock Tasa BCV
 	let orderTotal = $derived(bookingState.totalPrice);
@@ -81,7 +82,7 @@
 	<header class="mx-auto flex max-w-5xl items-center gap-4 px-4 py-6">
 		<button
 			class="text-zinc-400 transition-colors hover:text-white"
-			onclick={() => goto(resolve('/'))}
+			onclick={() => goto(currentSede ? resolve(`/cines/${currentSede}`) : resolve('/'))}
 		>
 			<ArrowLeft class="size-6" />
 		</button>
@@ -120,7 +121,7 @@
 									<div class="py-4 flex justify-between items-center first:pt-0 last:pb-0">
 										<div class="pr-4">
 											<h3 class="font-bold text-lg leading-tight mb-1">{product.name}</h3>
-											<p class="text-amber-500 font-medium">${product.price.toFixed(2)}</p>
+											<p class="text-champagne-500 font-medium">${product.price.toFixed(2)}</p>
 										</div>
 										<div class="flex items-center gap-3 bg-black rounded-full px-2 py-1 border border-white/10 shrink-0">
 											<button 
@@ -132,7 +133,7 @@
 											</button>
 											<span class="font-bold w-4 text-center">{getQuantity(product.id)}</span>
 											<button 
-												class="p-1.5 rounded-full hover:bg-white/10 transition-colors text-amber-500"
+												class="p-1.5 rounded-full hover:bg-white/10 transition-colors text-champagne-500"
 												onclick={() => bookingState.updateConcession(product.id, product.name, product.price, 1)}
 											>
 												<Plus class="size-4" />
@@ -157,7 +158,7 @@
 							<span>Entradas</span>
 							<button
 								class="font-bold tracking-normal text-[#00c0f3] capitalize hover:underline"
-								onclick={() => goto(resolve('/'))}
+								onclick={() => goto(currentSede ? resolve(`/cines/${currentSede}`) : resolve('/'))}
 							>Añadir más</button>
 						</div>
 						
@@ -199,7 +200,7 @@
 						<span class="text-xs tracking-widest text-zinc-500 uppercase pt-2">Total</span>
 						<div class="flex flex-col items-end gap-1">
 							<span class="text-3xl font-bold text-white leading-none">${orderTotal.toFixed(2)}</span>
-							<span class="text-xl font-bold text-amber-500">Bs {orderTotalBs.toFixed(2)}</span>
+							<span class="text-xl font-bold text-champagne-500">Bs {orderTotalBs.toFixed(2)}</span>
 						</div>
 					</div>
 
@@ -215,12 +216,12 @@
 				<p class="text-[10px] md:text-xs text-zinc-400 uppercase tracking-widest font-bold mb-0.5 md:mb-1">Total a Pagar</p>
 				<div class="flex flex-col md:flex-row md:items-baseline gap-0 md:gap-3">
 					<p class="text-xl md:text-3xl font-bold leading-tight">${orderTotal.toFixed(2)}</p>
-					<p class="text-sm md:text-2xl font-bold text-amber-500 leading-tight">Bs {orderTotalBs.toFixed(2)}</p>
+					<p class="text-sm md:text-2xl font-bold text-champagne-500 leading-tight">Bs {orderTotalBs.toFixed(2)}</p>
 				</div>
 			</div>
-			<button
-				class="px-6 py-3 md:px-12 md:py-4 rounded bg-white text-black text-sm md:text-base font-bold uppercase tracking-widest transition-all hover:bg-zinc-200"
-				onclick={() => goto(resolve('/checkout/[id]', { id: id || '' }))}
+			<button 
+				class="w-full md:w-auto bg-champagne-500 hover:bg-champagne-400 text-black font-black uppercase tracking-widest py-3 px-8 text-sm transition-colors rounded-lg shadow-[0_0_20px_rgba(245,158,11,0.2)]"
+				onclick={() => goto(currentSede ? `/cines/${currentSede}/checkout/${id || ''}` : `/checkout/${id || ''}`)}
 			>
 				Continuar
 			</button>

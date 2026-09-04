@@ -43,3 +43,11 @@ La representación gráfica de la sala será altamente inmersiva y técnica:
    - **Pago Móvil (C2P/P2P):** Formulario para Banco, Teléfono y N° de Referencia.
    - **Zelle:** Muestra datos del titular y pide captura de N° de Confirmación.
    - Mostrará explícitamente conversiones duales (USD / VES) si aplica.
+
+## 5. Diseño y Renderizado Avanzado (Posters y Carruseles)
+- **Minimalismo en Pósters ("El arte primero"):** Los carruseles de películas deben exhibir el póster limpio. Quedan prohibidos los overlays, degradados internos o textos superpuestos dentro de los límites del póster. Toda la información (título, duración, rating, botones) debe ubicarse de manera estática y elegante debajo de la imagen.
+- **Slogans Dinámicos:** Los títulos principales (como "VIVE LO INIMAGINABLE") deben rotar dinámicamente mediante arrays predefinidos. Para evitar errores de hidratación SSR (Hydration Mismatch) en Svelte 5, se debe inicializar el estado con el primer elemento y seleccionar aleatoriamente usando `$effect` en el cliente.
+- **Sub-pixel Bleeding (Bugs de Escala en WebKit):** Cuando se anime la escala (`scale`) de contenedores con recortes rígidos (`overflow-hidden`), se debe obligatoriamente:
+  1. Forzar una capa de composición GPU en el contenedor (`transform-gpu will-change-transform`).
+  2. Implementar un micro-borde interno absoluto (`border border-black/80`) para contener físicamente cualquier fuga de píxeles generada por el cálculo de anti-aliasing del navegador.
+- **Gestión de Auras:** Las auras de los pósters deben ser sutiles (`blur-[30px] scale-[1.15] opacity-30` como máximo) y renderizarse detrás del póster (`z-[-1]`). El contenedor debe elevar su índice en hover (`hover:z-50`) para evitar que el resplandor solape o contamine las tarjetas adyacentes.

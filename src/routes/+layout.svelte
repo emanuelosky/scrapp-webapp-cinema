@@ -51,9 +51,17 @@
 					if (targetId === 'home') targetId = 'top';
 					if (targetId === 'cartelera') targetId = 'peliculas-en-este-cine';
 
-					if ($page.url.pathname !== '/') {
+					if ($page.url.pathname !== '/' && !$page.url.pathname.startsWith('/cines/')) {
 						// eslint-disable-next-line svelte/no-navigation-without-resolve
 						goto('/').then(() => {
+							setTimeout(() => {
+								document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
+							}, 350);
+						});
+					} else if ($page.url.pathname !== '/' && $page.url.pathname.startsWith('/cines/') && !$page.url.pathname.endsWith($page.params.sede || '')) {
+						// If we are in a sede but deeply nested, go to the sede home
+						const currentSede = $page.params.sede;
+						goto(`/cines/${currentSede}`).then(() => {
 							setTimeout(() => {
 								document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
 							}, 350);
@@ -80,13 +88,21 @@
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						bookingState.startBooking(movieObj as any, payload.date, payload.showtime);
 					}
-					// eslint-disable-next-line svelte/no-navigation-without-resolve
-					goto(`/booking/${payload.movieId}`);
+					const currentSede = $page.params.sede;
+					if (currentSede) {
+						// eslint-disable-next-line svelte/no-navigation-without-resolve
+						goto(`/cines/${currentSede}/booking/${payload.movieId}`);
+					} else {
+						// eslint-disable-next-line svelte/no-navigation-without-resolve
+						goto(`/booking/${payload.movieId}`);
+					}
 				}
 			} else if (action.type === 'movie_details') {
-				if ($page.url.pathname !== '/') {
+				if ($page.url.pathname !== '/' && !$page.url.pathname.startsWith('/cines/')) {
 					// eslint-disable-next-line svelte/no-navigation-without-resolve
 					goto('/');
+				} else if ($page.params.sede && $page.url.pathname !== `/cines/${$page.params.sede}`) {
+					goto(`/cines/${$page.params.sede}`);
 				}
 			}
 		}

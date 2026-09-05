@@ -59,17 +59,23 @@
 <section class="relative hidden w-full overflow-hidden border-b border-zinc-900 bg-black md:flex md:h-[300px] xl:h-[440px]">
 	<!-- Zona negra: flexible, absorbe todo el ancho que el banner no necesita -->
 	<div class="relative flex flex-1 items-center justify-end overflow-hidden px-6 xl:px-16">
-		<!-- Aura: glow de color derivado del banner, sutil -->
+		<!--
+			Aura: glow de color derivado del banner, contenido cerca del lado
+			del banner (donde ya vive la fusión) — detrás del título/info debe
+			quedar negro absoluto, para que no compita con el linear-gradient
+			ni deje un tinte raro sin resolver.
+		-->
 		{#key movie.id}
 			{#if movie.banner}
 				<img
 					src={movie.banner}
 					alt=""
-					class="pointer-events-none absolute -inset-20 h-[calc(100%+10rem)] w-[calc(100%+10rem)] scale-125 object-cover opacity-25 blur-3xl"
+					class="pointer-events-none absolute -inset-20 h-[calc(100%+10rem)] w-[calc(100%+10rem)] scale-125 object-cover opacity-15 blur-3xl"
+					style="mask-image: linear-gradient(to right, transparent 0%, transparent 55%, black 100%); -webkit-mask-image: linear-gradient(to right, transparent 0%, transparent 55%, black 100%);"
 				/>
 			{/if}
 		{/key}
-		<div class="pointer-events-none absolute inset-0 bg-black/60"></div>
+		<div class="pointer-events-none absolute inset-0 bg-black/70"></div>
 
 		<div class="relative z-10 flex w-full max-w-xl flex-col gap-6">
 			<div class="min-w-0">

@@ -16,21 +16,18 @@
 		return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${m.title} tráiler oficial`)}`;
 	}
 
-	// Borde derecho de la columna negra: ondulado (varía en X según Y) en vez
-	// de una línea vertical recta. La capa de difuminado usa la misma forma
-	// desplazada un poco más hacia la imagen, con blur, para que la unión no
-	// se note como una línea.
-	const solidEdge =
-		'polygon(0 0%, 32% 0%, 31% 10%, 33% 20%, 32% 30%, 34% 40%, 33% 50%, 31% 60%, 33% 70%, 32% 80%, 30% 90%, 32% 100%, 0 100%)';
-	const fadeEdge =
-		'polygon(0 0%, 41% 0%, 40% 10%, 42% 20%, 41% 30%, 43% 40%, 42% 50%, 40% 60%, 42% 70%, 41% 80%, 39% 90%, 41% 100%, 0 100%)';
+	// Mismo tipo de degradado que usan los pósters del carrusel para
+	// desvanecerse en los bordes (linear-gradient from-black/via/to-transparent),
+	// pero más fuerte y contenido en un ancho fijo para no estirarse sobre el
+	// banner. Los stops intermedios le dan una caída curva, no una rampa recta.
+	const fusionGradient =
+		'linear-gradient(to right, #000 0%, #000 30%, rgba(0,0,0,0.95) 50%, rgba(0,0,0,0.55) 70%, transparent 100%)';
 </script>
 
 <!--
 	Desktop estilo AMC: una sola imagen a banner completo (no dos columnas).
-	La columna de texto es 100% negra sólida con un borde ondulado (curvo en
-	ambos ejes, no una línea vertical recta); una segunda capa negra con blur
-	sobre ese mismo borde funde la unión con el banner sin taparlo demasiado.
+	La columna de texto es 100% negra sólida; el degradado que la funde con
+	el banner queda contenido en un ancho fijo (no cruza todo el banner).
 -->
 <section class="relative hidden w-full overflow-hidden border-b border-zinc-900 bg-black md:block md:h-[380px] lg:h-[440px]">
 	<div class="relative h-full w-full">
@@ -38,13 +35,10 @@
 			<TrailerBackground {movie} mode="cover" bind:isMuted bind:hasOwnClip />
 		{/key}
 
-		<!-- Columna sólida: 100% negra, borde ondulado -->
-		<div class="pointer-events-none absolute inset-0 bg-black" style="clip-path: {solidEdge};"></div>
-
-		<!-- Fusión: mismo borde desplazado hacia la imagen, difuminado -->
+		<!-- Fusión: degradado lineal contenido en un ancho fijo, no cruza todo el banner -->
 		<div
-			class="pointer-events-none absolute inset-0 bg-black/70"
-			style="clip-path: {fadeEdge}; filter: blur(28px);"
+			class="pointer-events-none absolute inset-y-0 left-0 w-[46%]"
+			style="background: {fusionGradient};"
 		></div>
 
 		<div class="absolute inset-y-0 left-0 z-10 flex w-full max-w-2xl flex-col justify-center gap-6 px-10 lg:px-16">

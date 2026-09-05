@@ -77,12 +77,21 @@
 		-->
 		{#key movie.id}
 			{#if movie.banner}
-				<img
-					src={movie.banner}
-					alt=""
-					class="pointer-events-none absolute -inset-20 h-[calc(100%+10rem)] w-[calc(100%+10rem)] scale-125 object-cover opacity-15 blur-3xl"
+				<!-- La máscara vive en este contenedor (inset-0 exacto = los bordes
+				     reales de la zona visible); la imagen sobredimensionada de
+				     adentro solo existe para que el blur no muestre su propio
+				     borde recto. Aplicar la máscara directo a la imagen agrandada
+				     desalineaba el 0%/100% respecto a lo que realmente se ve. -->
+				<div
+					class="pointer-events-none absolute inset-0 overflow-hidden"
 					style="mask-image: {auraMask}; -webkit-mask-image: {auraMask};"
-				/>
+				>
+					<img
+						src={movie.banner}
+						alt=""
+						class="absolute -inset-20 h-[calc(100%+10rem)] w-[calc(100%+10rem)] scale-125 object-cover opacity-15 blur-3xl"
+					/>
+				</div>
 			{/if}
 		{/key}
 		<div class="pointer-events-none absolute inset-0 bg-black/70"></div>

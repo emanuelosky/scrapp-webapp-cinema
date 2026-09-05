@@ -15,33 +15,41 @@
 		if (m.trailerYoutubeUrl) return m.trailerYoutubeUrl;
 		return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${m.title} tráiler oficial`)}`;
 	}
+
+	// Borde derecho de la columna negra: ondulado (varía en X según Y) en vez
+	// de una línea vertical recta. La capa de difuminado usa la misma forma
+	// desplazada un poco más hacia la imagen, con blur, para que la unión no
+	// se note como una línea.
+	const solidEdge =
+		'polygon(0 0%, 32% 0%, 31% 10%, 33% 20%, 32% 30%, 34% 40%, 33% 50%, 31% 60%, 33% 70%, 32% 80%, 30% 90%, 32% 100%, 0 100%)';
+	const fadeEdge =
+		'polygon(0 0%, 41% 0%, 40% 10%, 42% 20%, 41% 30%, 43% 40%, 42% 50%, 40% 60%, 42% 70%, 41% 80%, 39% 90%, 41% 100%, 0 100%)';
 </script>
 
 <!--
-	Desktop estilo AMC: una sola imagen a banner completo (no dos columnas),
-	fundida con un degradado radial (curvo en ambos ejes, no un corte vertical
-	recto) hacia negro donde vive el texto. Estos banners no traen texto/logo
-	propio que cubrir, así que se tratan como fondo, igual que hace TMDB/AMC.
+	Desktop estilo AMC: una sola imagen a banner completo (no dos columnas).
+	La columna de texto es 100% negra sólida con un borde ondulado (curvo en
+	ambos ejes, no una línea vertical recta); una segunda capa negra con blur
+	sobre ese mismo borde funde la unión con el banner sin taparlo demasiado.
 -->
-<section class="relative hidden w-full overflow-hidden border-b border-zinc-900 bg-black md:block md:h-[360px] lg:h-[420px]">
+<section class="relative hidden w-full overflow-hidden border-b border-zinc-900 bg-black md:block md:h-[380px] lg:h-[440px]">
 	<div class="relative h-full w-full">
 		{#key movie.id}
 			<TrailerBackground {movie} mode="cover" bind:isMuted bind:hasOwnClip />
 		{/key}
 
-		<!--
-			Fusión curva: elipse anclada al lado del texto — su borde es curvo en
-			ambos ejes (no una línea vertical recta), y se desvanece antes hacia
-			la imagen para dejarla más visible.
-		-->
+		<!-- Columna sólida: 100% negra, borde ondulado -->
+		<div class="pointer-events-none absolute inset-0 bg-black" style="clip-path: {solidEdge};"></div>
+
+		<!-- Fusión: mismo borde desplazado hacia la imagen, difuminado -->
 		<div
-			class="pointer-events-none absolute inset-0"
-			style="background: radial-gradient(ellipse 780px 620px at 0% 50%, #000 0%, #000 32%, rgba(0,0,0,0.85) 48%, rgba(0,0,0,0.35) 66%, transparent 82%);"
+			class="pointer-events-none absolute inset-0 bg-black/70"
+			style="clip-path: {fadeEdge}; filter: blur(28px);"
 		></div>
 
-		<div class="absolute inset-y-0 left-8 z-10 flex w-fit max-w-lg flex-col justify-center gap-5 lg:left-14">
+		<div class="absolute inset-y-0 left-0 z-10 flex w-full max-w-2xl flex-col justify-center gap-6 px-10 lg:px-16">
 			<div class="min-w-0">
-				<h2 class="font-display text-4xl font-black uppercase leading-[0.95] tracking-tight text-white lg:text-5xl">
+				<h2 class="font-display text-5xl font-black uppercase leading-[0.95] tracking-tight text-white lg:text-6xl">
 					{movie.title}
 				</h2>
 				{#if movie.formats || movie.rating || movie.duration}
@@ -53,7 +61,7 @@
 					</div>
 				{/if}
 				{#if movie.synopsis}
-					<p class="mt-4 line-clamp-2 max-w-md text-sm leading-relaxed text-zinc-400">
+					<p class="mt-4 line-clamp-2 max-w-lg text-sm leading-relaxed text-zinc-400 lg:text-base">
 						{movie.synopsis}
 					</p>
 				{/if}
@@ -62,7 +70,7 @@
 			<div class="flex items-center gap-3">
 				<Button
 					onclick={() => onSelectMovie(movie)}
-					class="h-12 flex-none rounded-full border border-white/10 bg-white/5 px-8 text-sm font-bold tracking-wide text-white/90 backdrop-blur-md transition-all hover:scale-105 hover:border-white/30 hover:bg-white/10 hover:text-white"
+					class="h-14 flex-none rounded-full border border-white/10 bg-white/5 px-10 text-base font-bold tracking-wide text-white/90 backdrop-blur-md transition-all hover:scale-105 hover:border-white/30 hover:bg-white/10 hover:text-white"
 				>
 					Comprar Boletos
 				</Button>
@@ -70,20 +78,20 @@
 				{#if hasOwnClip}
 					<button
 						onclick={() => (isMuted = !isMuted)}
-						class="flex size-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur-md transition-colors hover:border-white/40"
+						class="flex size-14 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur-md transition-colors hover:border-white/40"
 						aria-label={isMuted ? 'Activar sonido' : 'Silenciar'}
 					>
-						{#if isMuted}<VolumeX class="size-4" />{:else}<Volume2 class="size-4" />{/if}
+						{#if isMuted}<VolumeX class="size-5" />{:else}<Volume2 class="size-5" />{/if}
 					</button>
 				{:else}
 					<a
 						href={youtubeFallbackUrl(movie)}
 						target="_blank"
 						rel="noopener noreferrer"
-						class="flex size-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur-md transition-colors hover:border-white/40"
+						class="flex size-14 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur-md transition-colors hover:border-white/40"
 						aria-label="Ver tráiler"
 					>
-						<Play class="size-4" />
+						<Play class="size-5" />
 					</a>
 				{/if}
 			</div>

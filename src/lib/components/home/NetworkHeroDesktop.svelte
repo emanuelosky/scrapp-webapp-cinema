@@ -30,13 +30,13 @@
 		{/key}
 
 		<!--
-			Fusión: zona plana 100% negra (empalma exacto con el fondo del sitio,
-			no se alcanza a ver textura de la foto) hasta ~42%, transición corta
-			a la imagen nítida, y un fundido suave en el borde opuesto.
+			Fusión: zona plana 100% negra hasta ~30% (cubre el texto sin dejar
+			ver textura), transición corta y temprana a imagen nítida, y sin
+			oscurecer el extremo opuesto — la imagen ocupa todo ese espacio.
 		-->
 		<div
 			class="pointer-events-none absolute inset-0"
-			style="background: linear-gradient(to right, #000 0%, #000 30%, rgba(0,0,0,0.98) 42%, rgba(0,0,0,0.6) 55%, transparent 68%, transparent 88%, rgba(0,0,0,0.6) 100%);"
+			style="background: linear-gradient(to right, #000 0%, #000 26%, rgba(0,0,0,0.9) 34%, rgba(0,0,0,0.4) 42%, transparent 52%);"
 		></div>
 
 		<div class="absolute inset-y-0 left-0 z-10 flex w-full max-w-2xl flex-col justify-center gap-6 px-10 lg:px-16">

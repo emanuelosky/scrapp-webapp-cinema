@@ -23,21 +23,25 @@
 	no traen texto/logo propio que cubrir, así que se tratan como fondo,
 	igual que hace TMDB/AMC.
 -->
-<section class="relative hidden w-full overflow-hidden border-b border-zinc-900 bg-black md:block md:h-[380px] lg:h-[460px]">
+<section class="relative hidden w-full overflow-hidden border-b border-zinc-900 bg-black md:block md:h-[440px] lg:h-[520px]">
 	<div class="relative mx-auto h-full w-full max-w-[1600px]">
 		{#key movie.id}
 			<TrailerBackground {movie} mode="cover" bind:isMuted bind:hasOwnClip />
 		{/key}
 
-		<!-- Fusión: degradado ancho hacia el texto (izquierda) + fundido suave en el borde opuesto (derecha) -->
+		<!--
+			Fusión: zona plana 100% negra (empalma exacto con el fondo del sitio,
+			no se alcanza a ver textura de la foto) hasta ~42%, transición corta
+			a la imagen nítida, y un fundido suave en el borde opuesto.
+		-->
 		<div
 			class="pointer-events-none absolute inset-0"
-			style="background: linear-gradient(to right, rgba(0,0,0,0.97) 0%, rgba(0,0,0,0.88) 30%, rgba(0,0,0,0.4) 55%, transparent 75%, transparent 88%, rgba(0,0,0,0.6) 100%);"
+			style="background: linear-gradient(to right, #000 0%, #000 30%, rgba(0,0,0,0.98) 42%, rgba(0,0,0,0.6) 55%, transparent 68%, transparent 88%, rgba(0,0,0,0.6) 100%);"
 		></div>
 
-		<div class="absolute inset-y-0 left-0 z-10 flex w-full max-w-xl flex-col justify-center gap-5 px-10 lg:px-16">
+		<div class="absolute inset-y-0 left-0 z-10 flex w-full max-w-2xl flex-col justify-center gap-6 px-10 lg:px-16">
 			<div class="min-w-0">
-				<h2 class="font-display text-4xl font-black uppercase leading-[0.95] tracking-tight text-white lg:text-5xl">
+				<h2 class="font-display text-5xl font-black uppercase leading-[0.95] tracking-tight text-white lg:text-6xl">
 					{movie.title}
 				</h2>
 				{#if movie.formats || movie.rating || movie.duration}
@@ -48,12 +52,17 @@
 						{#if movie.duration}<span>{movie.duration}</span>{/if}
 					</div>
 				{/if}
+				{#if movie.synopsis}
+					<p class="mt-4 line-clamp-2 max-w-lg text-sm leading-relaxed text-zinc-400 lg:text-base">
+						{movie.synopsis}
+					</p>
+				{/if}
 			</div>
 
 			<div class="flex items-center gap-3">
 				<Button
 					onclick={() => onSelectMovie(movie)}
-					class="h-12 flex-none rounded-full border border-white/10 bg-white/5 px-8 text-sm font-bold tracking-wide text-white/90 backdrop-blur-md transition-all hover:scale-105 hover:border-white/30 hover:bg-white/10 hover:text-white"
+					class="h-14 flex-none rounded-full border border-white/10 bg-white/5 px-10 text-base font-bold tracking-wide text-white/90 backdrop-blur-md transition-all hover:scale-105 hover:border-white/30 hover:bg-white/10 hover:text-white"
 				>
 					Comprar Boletos
 				</Button>
@@ -61,20 +70,20 @@
 				{#if hasOwnClip}
 					<button
 						onclick={() => (isMuted = !isMuted)}
-						class="flex size-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur-md transition-colors hover:border-white/40"
+						class="flex size-14 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur-md transition-colors hover:border-white/40"
 						aria-label={isMuted ? 'Activar sonido' : 'Silenciar'}
 					>
-						{#if isMuted}<VolumeX class="size-4" />{:else}<Volume2 class="size-4" />{/if}
+						{#if isMuted}<VolumeX class="size-5" />{:else}<Volume2 class="size-5" />{/if}
 					</button>
 				{:else}
 					<a
 						href={youtubeFallbackUrl(movie)}
 						target="_blank"
 						rel="noopener noreferrer"
-						class="flex size-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur-md transition-colors hover:border-white/40"
+						class="flex size-14 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur-md transition-colors hover:border-white/40"
 						aria-label="Ver tráiler"
 					>
-						<Play class="size-4" />
+						<Play class="size-5" />
 					</a>
 				{/if}
 			</div>

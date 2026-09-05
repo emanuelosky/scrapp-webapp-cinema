@@ -5,8 +5,15 @@
 		movie,
 		isMuted = $bindable(true),
 		hasOwnClip = $bindable(false),
-		mode = 'contain'
-	}: { movie: Movie | null; isMuted?: boolean; hasOwnClip?: boolean; mode?: 'contain' | 'cover' } = $props();
+		mode = 'contain',
+		naturalRatio = $bindable(null)
+	}: {
+		movie: Movie | null;
+		isMuted?: boolean;
+		hasOwnClip?: boolean;
+		mode?: 'contain' | 'cover';
+		naturalRatio?: number | null;
+	} = $props();
 
 	let fitClass = $derived(mode === 'cover' ? 'object-cover' : 'object-contain');
 
@@ -38,6 +45,29 @@
 	$effect(() => {
 		if (videoEl) videoEl.muted = isMuted;
 	});
+
+	// El banner/clip ya no viene en un tamaño fijo (TMDB "original" varía por
+	// película). En vez de forzar 16:9, leemos la proporción real una vez
+	// carga y la exponemos hacia arriba para que el contenedor se ajuste.
+	// Se resetea al cambiar de película para no arrastrar la proporción
+	// anterior mientras la nueva imagen todavía está cargando.
+	$effect(() => {
+		void movie?.id;
+		naturalRatio = null;
+	});
+
+	function onImageLoad(e: Event) {
+		const img = e.currentTarget as HTMLImageElement;
+		if (img.naturalWidth && img.naturalHeight) {
+			naturalRatio = img.naturalWidth / img.naturalHeight;
+		}
+	}
+	function onVideoMeta(e: Event) {
+		const video = e.currentTarget as HTMLVideoElement;
+		if (video.videoWidth && video.videoHeight) {
+			naturalRatio = video.videoWidth / video.videoHeight;
+		}
+	}
 </script>
 
 <!--
@@ -57,6 +87,7 @@
 			muted={isMuted}
 			loop
 			playsinline
+			onloadedmetadata={onVideoMeta}
 		></video>
 	{:else if movie?.banner}
 		{#key movie.id}
@@ -64,6 +95,7 @@
 				src={movie.banner}
 				alt={movie.title}
 				class="w-full h-full {fitClass}"
+				onload={onImageLoad}
 			/>
 		{/key}
 	{/if}

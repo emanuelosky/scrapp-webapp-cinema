@@ -28,6 +28,12 @@
 
 	let isMuted = $state(true);
 	let hasOwnClip = $state(false);
+	// TMDB ya no nos da un tamaño fijo (usamos "original", que varía por
+	// película) — la columna del banner adopta la proporción real de la
+	// imagen/clip cargado en vez de forzar 16:9. Ese valor cae de vuelta a
+	// 16/9 mientras la imagen todavía no reporta sus dimensiones.
+	let naturalRatio = $state<number | null>(null);
+	let bannerRatio = $derived(naturalRatio ?? 16 / 9);
 
 	function youtubeFallbackUrl(m: Movie): string {
 		if (m.trailerYoutubeUrl) return m.trailerYoutubeUrl;
@@ -116,15 +122,16 @@
 		</div>
 	</div>
 
-	<!-- Banner: columna a su proporción real (16:9), nunca recortado. Su borde
-	     izquierdo se disuelve hacia el negro (mask) y una segunda capa de
-	     degradado refuerza esa misma zona por encima. -->
+	<!-- Banner: columna a la proporción real de la imagen/clip cargado (ya no
+	     un 16:9 fijo, porque TMDB "original" varía por película), nunca
+	     recortado. Su borde izquierdo se disuelve hacia el negro (mask) y una
+	     segunda capa de degradado refuerza esa misma zona por encima. -->
 	<div
-		class="relative hidden h-full shrink-0 aspect-video md:block"
-		style="mask-image: {bannerMask}; -webkit-mask-image: {bannerMask};"
+		class="relative hidden h-full shrink-0 md:block"
+		style="aspect-ratio: {bannerRatio}; mask-image: {bannerMask}; -webkit-mask-image: {bannerMask};"
 	>
 		{#key movie.id}
-			<TrailerBackground {movie} mode="cover" bind:isMuted bind:hasOwnClip />
+			<TrailerBackground {movie} mode="cover" bind:isMuted bind:hasOwnClip bind:naturalRatio />
 		{/key}
 		<div class="pointer-events-none absolute inset-y-0 left-0 w-[40%]" style="background: {bannerOverlay};"></div>
 	</div>

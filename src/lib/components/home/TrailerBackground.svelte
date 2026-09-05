@@ -6,20 +6,28 @@
 		isMuted = $bindable(true),
 		hasOwnClip = $bindable(false),
 		mode = 'contain',
-		naturalRatio = $bindable(null)
+		naturalRatio = $bindable(null),
+		loop = true,
+		isPlaying = $bindable(true),
+		videoEl = $bindable(null),
+		onEnded
 	}: {
 		movie: Movie | null;
 		isMuted?: boolean;
 		hasOwnClip?: boolean;
 		mode?: 'contain' | 'cover';
 		naturalRatio?: number | null;
+		loop?: boolean;
+		isPlaying?: boolean;
+		videoEl?: HTMLVideoElement | null;
+		onEnded?: () => void;
 	} = $props();
 
 	let fitClass = $derived(mode === 'cover' ? 'object-cover' : 'object-contain');
 
 	let containerEl = $state<HTMLDivElement | null>(null);
 	let shouldLoadVideo = $state(false);
-	let videoEl = $state<HTMLVideoElement | null>(null);
+	let videoFailed = $state(false);
 
 	// Carga asíncrona: el clip solo se pide cuando el hero entra en pantalla,
 	// nunca bloquea el render inicial de la página.
@@ -38,12 +46,31 @@
 		return () => observer.disconnect();
 	});
 
+	// Reinicia el estado de falla al cambiar de película o de clip candidato.
 	$effect(() => {
-		hasOwnClip = !!movie?.trailerAssetUrl && shouldLoadVideo;
+		void movie?.trailerAssetUrl;
+		videoFailed = false;
 	});
 
 	$effect(() => {
+		hasOwnClip = !!movie?.trailerAssetUrl && shouldLoadVideo && !videoFailed;
+	});
+
+	function onVideoError() {
+		// El emparejamiento de clips es aproximado (ver localTrailers.ts) —
+		// si el archivo no existe o falla, volvemos silenciosamente al banner.
+		videoFailed = true;
+	}
+
+	$effect(() => {
 		if (videoEl) videoEl.muted = isMuted;
+	});
+
+	// Control manual de reproducción (pausa/reanuda) desde el hero.
+	$effect(() => {
+		if (!videoEl) return;
+		if (isPlaying) videoEl.play().catch(() => {});
+		else videoEl.pause();
 	});
 
 	// El banner/clip ya no viene en un tamaño fijo (TMDB "original" varía por
@@ -85,9 +112,11 @@
 			class="w-full h-full {fitClass}"
 			autoplay
 			muted={isMuted}
-			loop
+			{loop}
 			playsinline
 			onloadedmetadata={onVideoMeta}
+			onerror={onVideoError}
+			onended={() => onEnded?.()}
 		></video>
 	{:else if movie?.banner}
 		{#key movie.id}

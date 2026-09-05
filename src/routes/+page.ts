@@ -1,4 +1,5 @@
 import { cinemaState } from '$lib/state/cinema.svelte';
+import { matchLocalHeroTrailer } from '$lib/utils/localTrailers';
 import type { Movie } from '$lib/types';
 
 // Catálogo combinado: trae las películas en cartelera de todas las sedes activas
@@ -31,5 +32,13 @@ export const load = async ({ fetch }) => {
 		}
 	}
 
-	return { nowPlaying: Array.from(merged.values()) };
+	// TEMPORAL: prueba local de clips de tráiler (ver localTrailers.ts).
+	// No pisa trailerAssetUrl si ya viene poblado desde la BD.
+	const nowPlaying = Array.from(merged.values()).map((movie) => {
+		if (movie.trailerAssetUrl) return movie;
+		const local = matchLocalHeroTrailer(movie.title);
+		return local ? { ...movie, trailerAssetUrl: local } : movie;
+	});
+
+	return { nowPlaying };
 };

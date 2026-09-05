@@ -4,8 +4,11 @@
 	import Volume2 from '@lucide/svelte/icons/volume-2';
 	import VolumeX from '@lucide/svelte/icons/volume-x';
 	import Play from '@lucide/svelte/icons/play';
+	import Pause from '@lucide/svelte/icons/pause';
+	import Maximize2 from '@lucide/svelte/icons/maximize-2';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import Ticket from '@lucide/svelte/icons/ticket';
 	import type { Movie } from '$lib/types';
 
 	let {
@@ -15,7 +18,9 @@
 		currentIndex = 0,
 		onNext,
 		onPrev,
-		onGoTo
+		onGoTo,
+		onClipStateChange,
+		onClipEnded
 	}: {
 		movie: Movie;
 		onSelectMovie: (m: Movie) => void;
@@ -24,10 +29,48 @@
 		onNext?: () => void;
 		onPrev?: () => void;
 		onGoTo?: (i: number) => void;
+		onClipStateChange?: (hasClip: boolean) => void;
+		onClipEnded?: () => void;
 	} = $props();
 
 	let isMuted = $state(true);
 	let hasOwnClip = $state(false);
+	let isPlaying = $state(true);
+	let videoEl = $state<HTMLVideoElement | null>(null);
+
+	// Avisa al orquestador (NetworkHero) si la película activa tiene clip
+	// propio reproduciéndose, para que pause la rotación automática mientras
+	// dura — evita cortar el tráiler a la mitad.
+	$effect(() => {
+		onClipStateChange?.(hasOwnClip);
+	});
+
+	// Cada película arranca reproduciéndose — sin esto, pausar una y avanzar
+	// a la siguiente (que es una instancia nueva de TrailerBackground, por el
+	// {#key movie.id}) heredaría el "pausado" del estado local de este padre.
+	$effect(() => {
+		void movie.id;
+		isPlaying = true;
+	});
+
+	function toggleFullscreen() {
+		videoEl?.requestFullscreen?.();
+	}
+
+	// Al entrar a pantalla completa, mostramos los controles nativos del
+	// video (play/pausa/volumen/progreso) y activamos el sonido — es un
+	// gesto explícito del usuario, así que no choca con las políticas de
+	// autoplay del navegador.
+	$effect(() => {
+		function onFullscreenChange() {
+			if (!videoEl) return;
+			const isFs = document.fullscreenElement === videoEl;
+			videoEl.controls = isFs;
+			if (isFs) isMuted = false;
+		}
+		document.addEventListener('fullscreenchange', onFullscreenChange);
+		return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+	});
 	// TMDB ya no nos da un tamaño fijo (usamos "original", que varía por
 	// película) — la columna del banner adopta la proporción real de la
 	// imagen/clip cargado en vez de forzar 16:9. Ese valor cae de vuelta a
@@ -40,20 +83,25 @@
 		return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${m.title} tráiler oficial`)}`;
 	}
 
-	// Fusión reforzada y simétrica: ambos bordes del banner se disuelven hacia
-	// negro (izquierda: la zona de texto: derecha: el margen negro que deja
-	// centrar la composición), con varias paradas (curva, no una rampa recta).
+	// Fusión hacia negro en ambos bordes del banner (mask-image, no un overlay
+	// pintado encima — así el video/imagen se desvanece una sola vez, sin
+	// doble oscurecimiento que tape el aura del lado izquierdo).
 	const bannerMask =
-		'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 10%, rgba(0,0,0,0.75) 20%, black 32%, black 68%, rgba(0,0,0,0.75) 80%, rgba(0,0,0,0.35) 90%, transparent 100%)';
-	const bannerOverlayLeft =
-		'linear-gradient(to right, black 0%, rgba(0,0,0,0.6) 14%, rgba(0,0,0,0.2) 24%, transparent 34%)';
+		'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.5) 10%, black 20%, black 90%, rgba(0,0,0,0.5) 95%, transparent 100%)';
 	const bannerOverlayRight =
 		'linear-gradient(to left, black 0%, rgba(0,0,0,0.6) 14%, rgba(0,0,0,0.2) 24%, transparent 34%)';
 
-	// Aura: forma un marco — visible en ambos extremos exteriores de la zona
-	// negra, y totalmente oculta en la franja central donde vive el texto.
+	// Aura: forma un marco — visible detrás del texto pero difuminada hacia los
+	// extremos (izquierdo y derecho) para fusionarse con el fondo negro puro.
 	const auraMask =
-		'linear-gradient(to right, black 0%, transparent 20%, transparent 60%, black 100%)';
+		'linear-gradient(to right, transparent 0%, black 15%, black 60%, transparent 95%, transparent 100%)';
+	// El escudo de legibilidad (bg-black/70) antes cubría TODA la zona negra
+	// parejo, ahogando el aura incluso donde el auraMask ya la deja visible.
+	// Esta máscara es la inversa: concentra el oscurecido en la franja central
+	// (donde vive el texto y el aura ya está oculta de todos modos) y lo
+	// retira en los extremos, para que el aura se vea a plena intensidad ahí.
+	const textShieldMask =
+		'linear-gradient(to right, transparent 0%, black 20%, black 60%, transparent 100%)';
 </script>
 
 <!--
@@ -62,11 +110,16 @@
 	columna de ancho fijo. La zona negra es flexible y absorbe el resto del
 	espacio — ahí vive la información, pegada hacia el lado del banner, con
 	un aura de color sutil detrás (igual técnica que HeroDesktop en las sedes).
+
+	Nota: la composición ya NO se centra con un max-width — en pantallas
+	>1700px eso dejaba un margen negro suelto pegado al borde del banner
+	(visible como una barra, porque el banner no es negro como la zona de
+	texto). El banner ahora siempre llega hasta el borde real de la pantalla;
+	el espacio extra en pantallas anchas lo absorbe la zona de texto (ya
+	negra, así que no se nota).
 -->
-<section class="relative hidden w-full overflow-hidden border-b border-zinc-900 bg-black md:flex md:justify-center md:h-[300px] xl:h-[440px]">
-	<!-- Grupo centrado: info + banner se tratan como una sola composición,
-	     dejando margen negro simétrico en pantallas muy anchas. -->
-	<div class="flex h-full w-full max-w-[1700px]">
+<section class="relative hidden w-full overflow-hidden border-b border-zinc-900 bg-black md:flex md:h-[300px] xl:h-[440px]">
+	<div class="mx-auto flex h-full w-full max-w-[1600px] 2xl:max-w-[1800px]">
 	<!-- Zona negra: flexible, absorbe todo el ancho que el banner no necesita -->
 	<div class="relative flex flex-1 items-center justify-end overflow-hidden px-6 xl:px-16">
 		<!--
@@ -89,15 +142,29 @@
 					<img
 						src={movie.banner}
 						alt=""
-						class="absolute -inset-20 h-[calc(100%+10rem)] w-[calc(100%+10rem)] scale-125 object-cover opacity-15 blur-3xl"
+						class="absolute -inset-20 h-[calc(100%+10rem)] w-[calc(100%+10rem)] scale-125 object-cover opacity-25 blur-3xl"
 					/>
 				</div>
 			{/if}
 		{/key}
-		<div class="pointer-events-none absolute inset-0 bg-black/70"></div>
+		<div
+			class="pointer-events-none absolute inset-0 bg-black/70"
+			style="mask-image: {textShieldMask}; -webkit-mask-image: {textShieldMask};"
+		></div>
 
 		<div class="relative z-10 flex w-full max-w-xl flex-col gap-6">
 			<div class="min-w-0">
+				{#if movie.label}
+					<span
+						class="mb-3 inline-flex items-center gap-1.5 rounded-sm px-3 py-1 text-[10px] font-black uppercase tracking-widest text-black xl:text-xs {movie.label ===
+						'PREVENTA'
+							? 'bg-gradient-to-r from-zinc-200 via-zinc-300 to-zinc-400'
+							: 'bg-gradient-to-r from-champagne-400 via-champagne-500 to-champagne-500'}"
+					>
+						<Ticket class="size-3" />
+						{movie.label}
+					</span>
+				{/if}
 				<h2 class="font-display text-3xl font-black uppercase leading-[0.95] tracking-tight text-white xl:text-6xl">
 					{movie.title}
 				</h2>
@@ -126,13 +193,28 @@
 
 				{#if hasOwnClip}
 					<button
+						onclick={() => (isPlaying = !isPlaying)}
+						class="flex size-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur-md transition-colors hover:border-white/40 xl:size-14"
+						aria-label={isPlaying ? 'Pausar tráiler' : 'Reproducir tráiler'}
+					>
+						{#if isPlaying}<Pause class="size-4 xl:size-5" />{:else}<Play class="size-4 xl:size-5" />{/if}
+					</button>
+					<button
 						onclick={() => (isMuted = !isMuted)}
 						class="flex size-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur-md transition-colors hover:border-white/40 xl:size-14"
 						aria-label={isMuted ? 'Activar sonido' : 'Silenciar'}
 					>
 						{#if isMuted}<VolumeX class="size-4 xl:size-5" />{:else}<Volume2 class="size-4 xl:size-5" />{/if}
 					</button>
+					<button
+						onclick={toggleFullscreen}
+						class="flex size-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur-md transition-colors hover:border-white/40 xl:size-14"
+						aria-label="Ver tráiler en pantalla completa"
+					>
+						<Maximize2 class="size-4 xl:size-5" />
+					</button>
 				{:else}
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 					<a
 						href={youtubeFallbackUrl(movie)}
 						target="_blank"
@@ -149,16 +231,26 @@
 
 	<!-- Banner: columna a la proporción real de la imagen/clip cargado (ya no
 	     un 16:9 fijo, porque TMDB "original" varía por película), nunca
-	     recortado. Su borde izquierdo se disuelve hacia el negro (mask) y una
-	     segunda capa de degradado refuerza esa misma zona por encima. -->
+	     recortado. Ambos bordes se disuelven hacia negro con un solo mask
+	     (izquierdo: fusión con la zona de texto; derecho: viñeta contra el
+	     borde real de la pantalla, reforzada por bannerOverlayRight). -->
 	<div
 		class="relative hidden h-full shrink-0 md:block"
 		style="aspect-ratio: {bannerRatio}; mask-image: {bannerMask}; -webkit-mask-image: {bannerMask};"
 	>
 		{#key movie.id}
-			<TrailerBackground {movie} mode="cover" bind:isMuted bind:hasOwnClip bind:naturalRatio />
+			<TrailerBackground
+				{movie}
+				mode="cover"
+				bind:isMuted
+				bind:hasOwnClip
+				bind:naturalRatio
+				bind:isPlaying
+				bind:videoEl
+				loop={false}
+				onEnded={onClipEnded}
+			/>
 		{/key}
-		<div class="pointer-events-none absolute inset-y-0 left-0 w-[40%]" style="background: {bannerOverlayLeft};"></div>
 		<div class="pointer-events-none absolute inset-y-0 right-0 w-[15%]" style="background: {bannerOverlayRight};"></div>
 	</div>
 	</div>
@@ -177,6 +269,7 @@
 			</Button>
 
 			<div class="pointer-events-auto flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-2 backdrop-blur-md">
+				<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 				{#each { length: total } as _, i (i)}
 					<button
 						onclick={() => onGoTo?.(i)}

@@ -40,13 +40,20 @@
 		return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${m.title} tráiler oficial`)}`;
 	}
 
-	// Fusión reforzada: el borde izquierdo del banner se disuelve hacia negro
-	// en una franja más ancha, con varias paradas (curva, no una rampa recta),
-	// y una segunda capa de degradado encima refuerza esa misma zona.
+	// Fusión reforzada y simétrica: ambos bordes del banner se disuelven hacia
+	// negro (izquierda: la zona de texto: derecha: el margen negro que deja
+	// centrar la composición), con varias paradas (curva, no una rampa recta).
 	const bannerMask =
-		'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 10%, rgba(0,0,0,0.75) 20%, black 32%)';
-	const bannerOverlay =
+		'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 10%, rgba(0,0,0,0.75) 20%, black 32%, black 68%, rgba(0,0,0,0.75) 80%, rgba(0,0,0,0.35) 90%, transparent 100%)';
+	const bannerOverlayLeft =
 		'linear-gradient(to right, black 0%, rgba(0,0,0,0.6) 14%, rgba(0,0,0,0.2) 24%, transparent 34%)';
+	const bannerOverlayRight =
+		'linear-gradient(to left, black 0%, rgba(0,0,0,0.6) 14%, rgba(0,0,0,0.2) 24%, transparent 34%)';
+
+	// Aura: forma un marco — visible en ambos extremos exteriores de la zona
+	// negra, y totalmente oculta en la franja central donde vive el texto.
+	const auraMask =
+		'linear-gradient(to right, black 0%, transparent 20%, transparent 60%, black 100%)';
 </script>
 
 <!--
@@ -56,7 +63,10 @@
 	espacio — ahí vive la información, pegada hacia el lado del banner, con
 	un aura de color sutil detrás (igual técnica que HeroDesktop en las sedes).
 -->
-<section class="relative hidden w-full overflow-hidden border-b border-zinc-900 bg-black md:flex md:h-[300px] xl:h-[440px]">
+<section class="relative hidden w-full overflow-hidden border-b border-zinc-900 bg-black md:flex md:justify-center md:h-[300px] xl:h-[440px]">
+	<!-- Grupo centrado: info + banner se tratan como una sola composición,
+	     dejando margen negro simétrico en pantallas muy anchas. -->
+	<div class="flex h-full w-full max-w-[1700px]">
 	<!-- Zona negra: flexible, absorbe todo el ancho que el banner no necesita -->
 	<div class="relative flex flex-1 items-center justify-end overflow-hidden px-6 xl:px-16">
 		<!--
@@ -71,7 +81,7 @@
 					src={movie.banner}
 					alt=""
 					class="pointer-events-none absolute -inset-20 h-[calc(100%+10rem)] w-[calc(100%+10rem)] scale-125 object-cover opacity-15 blur-3xl"
-					style="mask-image: linear-gradient(to right, transparent 0%, transparent 55%, black 100%); -webkit-mask-image: linear-gradient(to right, transparent 0%, transparent 55%, black 100%);"
+					style="mask-image: {auraMask}; -webkit-mask-image: {auraMask};"
 				/>
 			{/if}
 		{/key}
@@ -139,7 +149,9 @@
 		{#key movie.id}
 			<TrailerBackground {movie} mode="cover" bind:isMuted bind:hasOwnClip bind:naturalRatio />
 		{/key}
-		<div class="pointer-events-none absolute inset-y-0 left-0 w-[40%]" style="background: {bannerOverlay};"></div>
+		<div class="pointer-events-none absolute inset-y-0 left-0 w-[40%]" style="background: {bannerOverlayLeft};"></div>
+		<div class="pointer-events-none absolute inset-y-0 right-0 w-[15%]" style="background: {bannerOverlayRight};"></div>
+	</div>
 	</div>
 
 	{#if total > 1}

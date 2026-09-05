@@ -34,22 +34,25 @@
 		return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${m.title} tráiler oficial`)}`;
 	}
 
-	// Fusión: el propio borde izquierdo del banner se disuelve hacia
-	// transparente, revelando el negro de la sección debajo — union limpia
-	// sin degradados superpuestos ni trucos de dirección.
-	const bannerMask = 'linear-gradient(to right, transparent 0%, black 10%)';
+	// Fusión reforzada: el borde izquierdo del banner se disuelve hacia negro
+	// en una franja más ancha, con varias paradas (curva, no una rampa recta),
+	// y una segunda capa de degradado encima refuerza esa misma zona.
+	const bannerMask =
+		'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 10%, rgba(0,0,0,0.75) 20%, black 32%)';
+	const bannerOverlay =
+		'linear-gradient(to right, black 0%, rgba(0,0,0,0.6) 14%, rgba(0,0,0,0.2) 24%, transparent 34%)';
 </script>
 
 <!--
 	Desktop estilo AMC + brutalismo cinematográfico: el banner se muestra
 	completo, a su proporción real (16:9, nunca recortado), en su propia
 	columna de ancho fijo. La zona negra es flexible y absorbe el resto del
-	espacio — ahí vive la información, centrada, con un aura de color sutil
-	detrás (igual técnica que HeroDesktop en las sedes).
+	espacio — ahí vive la información, pegada hacia el lado del banner, con
+	un aura de color sutil detrás (igual técnica que HeroDesktop en las sedes).
 -->
 <section class="relative hidden w-full overflow-hidden border-b border-zinc-900 bg-black md:flex md:h-[300px] xl:h-[440px]">
 	<!-- Zona negra: flexible, absorbe todo el ancho que el banner no necesita -->
-	<div class="relative flex flex-1 items-center justify-center overflow-hidden px-6 xl:px-16">
+	<div class="relative flex flex-1 items-center justify-end overflow-hidden px-6 xl:px-16">
 		<!-- Aura: glow de color derivado del banner, sutil -->
 		{#key movie.id}
 			{#if movie.banner}
@@ -113,8 +116,9 @@
 		</div>
 	</div>
 
-	<!-- Banner: columna a su proporción real (16:9), nunca recortado. El borde
-	     izquierdo se disuelve hacia el negro de la sección (fusión limpia). -->
+	<!-- Banner: columna a su proporción real (16:9), nunca recortado. Su borde
+	     izquierdo se disuelve hacia el negro (mask) y una segunda capa de
+	     degradado refuerza esa misma zona por encima. -->
 	<div
 		class="relative hidden h-full shrink-0 aspect-video md:block"
 		style="mask-image: {bannerMask}; -webkit-mask-image: {bannerMask};"
@@ -122,40 +126,41 @@
 		{#key movie.id}
 			<TrailerBackground {movie} mode="cover" bind:isMuted bind:hasOwnClip />
 		{/key}
-
-		{#if total > 1}
-			<!-- Navegación: flechas + puntos, centrados abajo del banner -->
-			<div class="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex items-center justify-center gap-4">
-				<Button
-					variant="ghost"
-					size="icon"
-					onclick={onPrev}
-					class="pointer-events-auto size-9 rounded-full bg-black/40 text-white backdrop-blur-md hover:bg-black/60 hover:text-white"
-					aria-label="Película anterior"
-				>
-					<ChevronLeft class="size-4" />
-				</Button>
-
-				<div class="pointer-events-auto flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-2 backdrop-blur-md">
-					{#each { length: total } as _, i (i)}
-						<button
-							onclick={() => onGoTo?.(i)}
-							class="h-1.5 rounded-full transition-all {i === currentIndex ? 'w-5 bg-champagne-500' : 'w-1.5 bg-white/40 hover:bg-white/70'}"
-							aria-label={`Ir a la película ${i + 1}`}
-						></button>
-					{/each}
-				</div>
-
-				<Button
-					variant="ghost"
-					size="icon"
-					onclick={onNext}
-					class="pointer-events-auto size-9 rounded-full bg-black/40 text-white backdrop-blur-md hover:bg-black/60 hover:text-white"
-					aria-label="Película siguiente"
-				>
-					<ChevronRight class="size-4" />
-				</Button>
-			</div>
-		{/if}
+		<div class="pointer-events-none absolute inset-y-0 left-0 w-[40%]" style="background: {bannerOverlay};"></div>
 	</div>
+
+	{#if total > 1}
+		<!-- Navegación: flechas + puntos, centrados en toda la pantalla (no solo en el banner) -->
+		<div class="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex items-center justify-center gap-4">
+			<Button
+				variant="ghost"
+				size="icon"
+				onclick={onPrev}
+				class="pointer-events-auto size-9 rounded-full bg-black/40 text-white backdrop-blur-md hover:bg-black/60 hover:text-white"
+				aria-label="Película anterior"
+			>
+				<ChevronLeft class="size-4" />
+			</Button>
+
+			<div class="pointer-events-auto flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-2 backdrop-blur-md">
+				{#each { length: total } as _, i (i)}
+					<button
+						onclick={() => onGoTo?.(i)}
+						class="h-1.5 rounded-full transition-all {i === currentIndex ? 'w-5 bg-zinc-200' : 'w-1.5 bg-white/40 hover:bg-white/70'}"
+						aria-label={`Ir a la película ${i + 1}`}
+					></button>
+				{/each}
+			</div>
+
+			<Button
+				variant="ghost"
+				size="icon"
+				onclick={onNext}
+				class="pointer-events-auto size-9 rounded-full bg-black/40 text-white backdrop-blur-md hover:bg-black/60 hover:text-white"
+				aria-label="Película siguiente"
+			>
+				<ChevronRight class="size-4" />
+			</Button>
+		</div>
+	{/if}
 </section>

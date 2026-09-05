@@ -26,3 +26,7 @@ vite.config.ts.timestamp-*
 
 # Recursos temporales de demo (pósters/fotos sin optimizar, no versionar)
 /resources-cinema
+
+# Clips de tráiler en preparación (destino final: bucket de Supabase Storage,
+# no el repo — video binario no debe vivir en git)
+/static/trailers

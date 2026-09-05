@@ -24,7 +24,7 @@
 	igual que hace TMDB/AMC.
 -->
 <section class="relative hidden w-full overflow-hidden border-b border-zinc-900 bg-black md:block md:h-[440px] lg:h-[520px]">
-	<div class="relative mx-auto h-full w-full max-w-[1600px]">
+	<div class="relative h-full w-full">
 		{#key movie.id}
 			<TrailerBackground {movie} mode="cover" bind:isMuted bind:hasOwnClip />
 		{/key}

@@ -9,6 +9,7 @@
 	import { onMount } from 'svelte';
 	import { goto, preloadCode, preloadData } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	let {
 		open = $bindable(false),
@@ -26,10 +27,15 @@
 		if (open) preloadCode('/cines/[sede]');
 	});
 
-	// Adelantamos la carga de la cartelera al pasar el mouse: para cuando el
-	// usuario hace click, SvelteKit ya tiene los datos en cache y la
-	// navegación se siente inmediata en vez de ~1s en blanco.
+	// Adelantamos la cartelera de cada sede. En desktop se dispara al pasar el
+	// mouse (segundos de ventaja); en tactil no hay hover, asi que `pointerdown`
+	// la arranca al apoyar el dedo y gana el hueco hasta que suelta (~100ms).
+	// Guardamos las ya pedidas para no repetir fetch si se disparan ambos.
+	const calentadas = new SvelteSet<string>();
+
 	function warmUp(cinema: CinemaLocation) {
+		if (calentadas.has(cinema.id)) return;
+		calentadas.add(cinema.id);
 		preloadData(resolve(`/cines/${cinema.id}`));
 	}
 
@@ -150,6 +156,7 @@
 							<button class="flex flex-col text-left py-4 hover:bg-zinc-900/30 transition-colors px-2 group"
 								onclick={() => selectCinema(cinema)}
 								onpointerenter={() => warmUp(cinema)}
+								onpointerdown={() => warmUp(cinema)}
 								onfocus={() => warmUp(cinema)}>
 								<span class="flex items-center gap-2">
 									<span class="text-white font-bold text-lg group-hover:text-champagne-400 transition-colors">

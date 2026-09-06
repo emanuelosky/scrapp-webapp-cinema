@@ -45,6 +45,7 @@
 		onClipStateChange={(v) => (activeHasClip = v)}
 		onClipEnded={next}
 		onNext={next}
+		onPrev={prev}
 		bind:lightboxOpen
 	/>
 	<NetworkHeroDesktop

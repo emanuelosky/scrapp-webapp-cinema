@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { bookingState } from '$lib/state/booking.svelte';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/stores';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Minus from '@lucide/svelte/icons/minus';
@@ -19,6 +20,11 @@
 	let currentDateStr = $derived(currentDate.toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase());
 	let currentTimeStr = $derived(currentDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }));
 
+	// Salir de las butacas devuelve a la sede donde estás, no al home multisede.
+	let backHref = $derived(
+		$page.params.sede ? resolve(`/cines/${$page.params.sede}`) : resolve('/')
+	);
+
 	function formatTime(seconds: number) {
 		const m = Math.floor(seconds / 60);
 		const s = seconds % 60;
@@ -28,7 +34,7 @@
 
 <header class="w-full bg-black border-b border-zinc-800 p-2 md:p-4 flex flex-col xl:flex-row gap-2 md:gap-4 sticky top-0 z-50 shadow-2xl">
 	<div class="flex-1 flex gap-3 md:gap-4 items-center border-r-0 xl:border-r border-zinc-800 pr-2 md:pr-4">
-		<a href={resolve('/')} class="p-1.5 md:p-2 bg-zinc-900 rounded-full hover:bg-zinc-800 transition text-zinc-400 hover:text-white shrink-0">
+		<a href={backHref} class="p-1.5 md:p-2 bg-zinc-900 rounded-full hover:bg-zinc-800 transition text-zinc-400 hover:text-white shrink-0" aria-label="Volver al cine">
 			<ArrowLeft class="size-4 md:size-5" />
 		</a>
 		{#if bookingState.activeSelection.movie}

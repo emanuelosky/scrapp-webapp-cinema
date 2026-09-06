@@ -7,10 +7,18 @@ export const ssr = false;
 export const load = async ({ fetch, params }) => {
     // 1. Fetch promo banner from backend
     const API_URL = import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:5174';
-    const sede = params.sede || 'candelaria';
-    
+    const sede = params.sede;
+
     let activePromo: PromoBanner | null = null;
-    
+
+    // Las promos son por sede (wbpp_promos filtra por location_id, no existe una
+    // "global"). En el home multisede `/` no hay sede, así que no mostramos
+    // ninguna: antes caía a 'candelaria' y le enseñaba la oferta de un cine
+    // concreto a quien todavía no había elegido cine.
+    if (!sede) {
+        return { activePromo: null };
+    }
+
     try {
         const res = await fetch(`${API_URL}/api/v1/promos?location_id=${sede}`);
         if (res.ok) {

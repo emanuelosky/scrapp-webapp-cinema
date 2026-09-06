@@ -37,7 +37,7 @@
 			};
 
 			await bookingState.checkout(mockPago);
-			goto(currentSede ? `/cines/${currentSede}/checkout/success` : '/checkout/success');
+			goto(resolve(`/cines/${currentSede}/checkout/success`));
 		} catch (e: any) {
 			alert('Error en checkout: ' + e.message);
 		} finally {

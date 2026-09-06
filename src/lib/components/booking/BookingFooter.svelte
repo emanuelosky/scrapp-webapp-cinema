@@ -31,8 +31,10 @@
 			onclick={async () => {
 				const success = await bookingState.addSelectionToCart();
 				if (success) {
-					const currentSede = $page.params.sede;
-					goto(currentSede ? `/cines/${currentSede}/concessions/${id || ''}` : `/concessions/${id || ''}`);
+					// Este footer solo vive dentro de /cines/[sede]/booking, así que
+					// la sede siempre está: el viejo fallback a /concessions/<id>
+					// apuntaba a una ruta que no existe.
+					goto(resolve(`/cines/${$page.params.sede}/concessions/${id || ''}`));
 				}
 			}}
 		>

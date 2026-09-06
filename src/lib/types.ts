@@ -26,7 +26,7 @@ export interface Movie {
 	releaseDate?: string;
 	duration?: string;
 	synopsis?: string;
-	genres?: string;
+	genres?: string[];
 }
 
 export interface PromoBanner {

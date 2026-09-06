@@ -24,33 +24,23 @@
 	import type { Movie } from '$lib/types';
 
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import { toast } from 'svelte-sonner';
 	import { today, now, type DateValue } from '@internationalized/date';
 	import { APP_TIMEZONE } from '$lib/utils/timezone';
 
-	// Resuelve el nombre real de la sede contra cinemaState.cinemas (cargado por SiteHeader);
-	// cae a la capitalización simple del slug mientras eso no haya cargado aún.
-	function normalize(s: string) {
-		return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
-	}
-
-	let sedeDisplayName = $derived.by(() => {
-		const paramSede = $page.params.sede;
-		if (!paramSede) return '';
-		const fallback = paramSede.charAt(0).toUpperCase() + paramSede.slice(1);
-		if (cinemaState.cinemas.length === 0) return fallback;
-		const target = normalize(paramSede);
-		const match = cinemaState.cinemas.find(c => normalize(c.short_name || c.name).includes(target));
-		return match?.name || match?.short_name || fallback;
+	// La URL manda: el slug [sede] ES el `cinema_locations.id`, así que la sede
+	// activa se espeja desde la ruta en vez de adivinarse con un match difuso
+	// de nombres. cinemaState resuelve el nombre bonito cuando el catálogo carga.
+	$effect(() => {
+		cinemaState.syncFromUrl($page.params.sede);
 	});
+
+	let sedeDisplayName = $derived(cinemaState.selectedCinemaName ?? '');
 
 	onMount(() => {
 		cinemaState.init();
-	});
-
-	$effect(() => {
-		if (sedeDisplayName && cinemaState.selectedCinema !== sedeDisplayName) {
-			cinemaState.selectedCinema = sedeDisplayName;
-		}
 	});
 
 	// Estado
@@ -161,9 +151,13 @@
 							const showtime = found.showtimesByDate[firstDate].find(s => s.time === payload.time || s.time.includes(payload.time));
 							if (showtime) {
 								console.log('🎟️ [Page] Iniciando booking directo para:', found.title, showtime.time);
+								const sede = $page.params.sede;
 								import('$lib/state/booking.svelte').then(({ bookingState }) => {
-									bookingState.startBooking(found, firstDate, showtime);
-									import('$app/navigation').then(({ goto }) => goto(`/booking/${found.id}`));
+									bookingState.startBooking(found, firstDate, showtime, sede);
+									// Estamos DENTRO de una sede: el destino siempre es
+									// /cines/<sede>/booking/... (antes iba a /booking/<id>,
+									// que no existe como ruta y daba 404).
+									goto(resolve(`/cines/${sede}/booking/${found.id}`));
 								});
 							} else {
 								console.log('⚠️ [Page] No se encontró el horario:', payload.time);
@@ -206,6 +200,39 @@
 		selectedMovie = movie;
 		isDialogOpen = true;
 	}
+
+	// El home multisede manda aquí con `?pelicula=<id>` cuando el usuario eligió
+	// una película antes que la sede. Abrimos su ficha (donde ya hay funciones
+	// reales de ESTA sede) y limpiamos el query param para que un refresh o un
+	// "atrás" no la reabran.
+	let handledPendingMovie = $state<string | null>(null);
+
+	$effect(() => {
+		const pending = $page.url.searchParams.get('pelicula');
+		if (!pending || handledPendingMovie === pending) return;
+
+		const found =
+			data.nowPlaying.find((m: Movie) => String(m.id) === pending) ||
+			comingSoonMovies.find((m: Movie) => String(m.id) === pending);
+
+		handledPendingMovie = pending;
+		if (found) {
+			openMovieDetails(found);
+		} else {
+			// El home junta la cartelera de TODAS las sedes, así que la película
+			// elegida puede no proyectarse en el cine que el usuario escogió.
+			// Sin este aviso aterrizaba en la sede sin explicación de por qué su
+			// película "desapareció".
+			toast.info('Esa película no está en cartelera en este cine.', {
+				description: 'Te dejamos la programación completa de esta sede.'
+			});
+		}
+
+		const cleaned = new URL($page.url);
+		cleaned.searchParams.delete('pelicula');
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		goto(cleaned.pathname + cleaned.search, { replaceState: true, noScroll: true, keepFocus: true });
+	});
 </script>
 
 <svelte:head>

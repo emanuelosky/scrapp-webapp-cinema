@@ -10,6 +10,12 @@ import { ghostSessionState } from './ghostSession.svelte';
 import { seatMapState } from './seatMap.svelte';
 
 export class BookingState {
+	// Sede (slug de la ruta) en la que se inició esta reserva. Se persiste junto
+	// al resto del estado para poder detectar una rehidratación cruzada: sin
+	// esto, una reserva empezada en Candelaria revivía tal cual en el selector
+	// de butacas de Lido, con funciones y butacas que no son de ese cine.
+	bookingSede = $state<string | null>(null);
+
 	get activeSelection() { return seatMapState.activeSelection; }
 	get cartItems() { return cartState.cartItems; }
 	get ghostSession() { return ghostSessionState.ghostSession; }
@@ -58,8 +64,9 @@ export class BookingState {
 		}
 	}
 
-	startBooking(movie: Movie, date: string, showtime: ShowtimeDetails) {
+	startBooking(movie: Movie, date: string, showtime: ShowtimeDetails, sede?: string | null) {
 		seatMapState.startBooking(movie, date, showtime);
+		this.bookingSede = sede ?? null;
 		ghostSessionState.ghostAvailableCount = null;
 	}
 
@@ -76,6 +83,7 @@ export class BookingState {
 		try {
 			const state = {
 				activeSelection: seatMapState.activeSelection,
+				bookingSede: this.bookingSede,
 				cartItems: cartState.cartItems,
 				ghostSession: ghostSessionState.ghostSession,
 				lastCompletedSale: cartState.lastCompletedSale,
@@ -97,6 +105,7 @@ export class BookingState {
 
 			if (state.timestamp && Date.now() - state.timestamp < 15 * 60 * 1000) {
 				if (state.activeSelection) seatMapState.activeSelection = state.activeSelection;
+				this.bookingSede = state.bookingSede ?? null;
 				if (state.cartItems) cartState.cartItems = state.cartItems;
 				if (state.ghostSession) ghostSessionState.ghostSession = state.ghostSession;
 				if (state.lastCompletedSale) cartState.lastCompletedSale = state.lastCompletedSale;
@@ -360,19 +369,23 @@ export class BookingState {
 		seatMapState.activeSelection.ticketQuantities = {};
 		localStorage.removeItem('scrapp_booking_state');
 
+		// Al expirar devolvemos al usuario a SU sede, no al home multisede:
+		// perder el cine tras 15 minutos de compra es una salida desorientadora.
+		const home = this.bookingSede ? `/cines/${this.bookingSede}` : '/';
+
 		setTimeout(() => {
 			let secondsLeft = 10;
 			const toastId = toast.error(`Tu tiempo expiró. El carrito se ha vaciado. Volviendo al inicio en ${secondsLeft}s...`, {
 				duration: 10000,
-				onAutoClose: () => { window.location.href = '/'; },
-				onDismiss: () => { window.location.href = '/'; }
+				onAutoClose: () => { window.location.href = home; },
+				onDismiss: () => { window.location.href = home; }
 			});
 
 			const interval = setInterval(() => {
 				secondsLeft--;
 				if (secondsLeft <= 0) {
 					clearInterval(interval);
-					window.location.href = '/';
+					window.location.href = home;
 				} else {
 					toast.error(`Tu tiempo expiró. El carrito se ha vaciado. Volviendo al inicio en ${secondsLeft}s...`, {
 						id: toastId,

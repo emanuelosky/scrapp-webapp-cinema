@@ -110,13 +110,13 @@
 			class="flex w-full h-10 items-center justify-between text-[10px] md:text-xs font-semibold text-zinc-400 relative px-4 md:px-8 lg:px-12 xl:px-16"
 		>
 				<button class="flex items-center gap-2 group transition-colors focus:outline-none z-20 bg-black pl-4 pr-2" onclick={() => isTheatreSelectorOpen = true}>
-					<MapPin class="shrink-0 size-3 md:size-3.5 {cinemaState.selectedCinema ? 'text-zinc-300 group-hover:text-white' : 'text-zinc-400 group-hover:text-white'}" />
+					<MapPin class="shrink-0 size-3 md:size-3.5 {cinemaState.selectedCinemaName ? 'text-zinc-300 group-hover:text-white' : 'text-zinc-400 group-hover:text-white'}" />
 					{#if cinemaState.isLoadingLocation}
 						<span class="flex items-center gap-2 text-zinc-300">
 							<Loader2 class="size-3 animate-spin shrink-0" /> Buscando...
 						</span>
-					{:else if cinemaState.selectedCinema}
-						<span class="text-zinc-300 group-hover:text-white transition-colors font-bold tracking-wide truncate max-w-[180px] sm:max-w-[250px] md:max-w-none text-left">Cine: {cinemaState.selectedCinema}</span>
+					{:else if cinemaState.selectedCinemaName}
+						<span class="text-zinc-300 group-hover:text-white transition-colors font-bold tracking-wide truncate max-w-[180px] sm:max-w-[250px] md:max-w-none text-left">Cine: {cinemaState.selectedCinemaName}</span>
 					{:else}
 						<span class="text-zinc-300 group-hover:text-white transition-colors truncate max-w-[180px] sm:max-w-none">Selecciona tu cine preferido</span>
 					{/if}

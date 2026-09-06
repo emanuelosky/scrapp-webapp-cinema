@@ -35,7 +35,7 @@
 	<h2
 		class="font-display text-2xl leading-tight font-black tracking-widest text-white uppercase drop-shadow-2xl text-center"
 	>
-		{cinemaState.selectedCinema ? `SEDE ${cinemaState.selectedCinema}` : 'SEDE SAMBIL CANDELARIA'}
+		{cinemaState.selectedCinemaName ? `SEDE ${cinemaState.selectedCinemaName}` : 'CINEPIC'}
 	</h2>
 
 	<div class="relative flex h-10 w-full items-center justify-center overflow-hidden mt-2">

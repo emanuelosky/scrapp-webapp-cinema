@@ -15,6 +15,7 @@
 		onClipStateChange,
 		onClipEnded,
 		onNext,
+		onPrev,
 		lightboxOpen = $bindable(false)
 	}: {
 		movie: Movie;
@@ -22,6 +23,7 @@
 		onClipStateChange?: (hasClip: boolean) => void;
 		onClipEnded?: () => void;
 		onNext?: () => void;
+		onPrev?: () => void;
 		lightboxOpen?: boolean;
 	} = $props();
 
@@ -30,6 +32,27 @@
 	let hasAudio = $state(false);
 	let isPlaying = $state(true);
 	let volume = $state(70);
+
+	let startX = $state(0);
+	let startY = $state(0);
+
+	function handlePointerDown(e: PointerEvent) {
+		startX = e.clientX;
+		startY = e.clientY;
+	}
+
+	function handlePointerUp(e: PointerEvent) {
+		const dx = e.clientX - startX;
+		const dy = e.clientY - startY;
+		
+		if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+			if (dx > 0) {
+				onPrev?.();
+			} else {
+				onNext?.();
+			}
+		}
+	}
 
 	$effect(() => {
 		if (lightboxOpen) isPlaying = false;
@@ -51,7 +74,12 @@
 </script>
 
 <!-- Mobile: banner como fondo ambiental, póster + info superpuestos -->
-<section class="relative h-[440px] w-full overflow-hidden border-b border-zinc-900 bg-black md:hidden">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<section 
+	class="relative h-[440px] w-full overflow-hidden border-b border-zinc-900 bg-black md:hidden"
+	onpointerdown={handlePointerDown}
+	onpointerup={handlePointerUp}
+>
 	{#key movie.id}
 		<div class="absolute inset-0">
 			<TrailerBackground

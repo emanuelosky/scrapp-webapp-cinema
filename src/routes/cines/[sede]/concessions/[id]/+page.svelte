@@ -221,7 +221,7 @@
 			</div>
 			<button 
 				class="w-full md:w-auto bg-champagne-500 hover:bg-champagne-400 text-black font-black uppercase tracking-widest py-3 px-8 text-sm transition-colors rounded-lg shadow-[0_0_20px_rgba(245,158,11,0.2)]"
-				onclick={() => goto(currentSede ? `/cines/${currentSede}/checkout/${id || ''}` : `/checkout/${id || ''}`)}
+				onclick={() => goto(resolve(`/cines/${currentSede}/checkout/${id || ''}`))}
 			>
 				Continuar
 			</button>

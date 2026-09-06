@@ -8,6 +8,7 @@
 	import type { Movie, ShowtimeDetails } from '$lib/types';
 	import { bookingState } from '$lib/state/booking.svelte';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { SvelteDate } from 'svelte/reactivity';
 
@@ -34,17 +35,18 @@
 
 	async function proceedToBooking() {
 		if (movie && selectedShowtime && selectedDate) {
-			bookingState.startBooking(movie, selectedDate, selectedShowtime);
-			open = false;
 			const currentSede = $page.params.sede;
-			if (currentSede) {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				await goto(`/cines/${currentSede}/booking/${movie.id}` as any);
-			} else {
-				// Fallback si por alguna razón no estamos en una ruta de sede
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				await goto(`/booking/${movie.id}` as any);
+			// Sin sede no hay butacas que mostrar: las funciones y el mapa de sala
+			// son por cine. Este diálogo solo se monta dentro de /cines/[sede],
+			// así que esto no debería ocurrir; antes caía a /booking/<id>, una
+			// ruta inexistente que mandaba al usuario a un 404.
+			if (!currentSede) {
+				console.error('[MovieDetailsDialog] No hay sede en la ruta; no se puede iniciar la reserva.');
+				return;
 			}
+			bookingState.startBooking(movie, selectedDate, selectedShowtime, currentSede);
+			open = false;
+			await goto(resolve(`/cines/${currentSede}/booking/${movie.id}`));
 		}
 	}
 

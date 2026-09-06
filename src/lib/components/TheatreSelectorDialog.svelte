@@ -7,7 +7,8 @@
 	import MapPin from '@lucide/svelte/icons/map-pin';
 	import { cinemaState, type CinemaLocation } from '$lib/state/cinema.svelte';
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto, preloadCode, preloadData } from '$app/navigation';
+	import { resolve } from '$app/paths';
 
 	let {
 		open = $bindable(false),
@@ -17,13 +18,37 @@
 	let searchQuery = $state('');
 	let showConsent = $state(false);
 
+	// Lo caro de ir a una sede no son los datos (~0.3s) sino descargar y evaluar
+	// el JS de la ruta /cines/[sede] la primera vez (~2s, con el hilo principal
+	// bloqueado). Ese código es el MISMO para todas las sedes, así que lo
+	// pedimos apenas se abre el diálogo, mientras el usuario lee la lista.
+	$effect(() => {
+		if (open) preloadCode('/cines/[sede]');
+	});
+
+	// Adelantamos la carga de la cartelera al pasar el mouse: para cuando el
+	// usuario hace click, SvelteKit ya tiene los datos en cache y la
+	// navegación se siente inmediata en vez de ~1s en blanco.
+	function warmUp(cinema: CinemaLocation) {
+		preloadData(resolve(`/cines/${cinema.id}`));
+	}
+
+	// Elegir una sede SIEMPRE navega: es la URL la que define la sede activa,
+	// así que quedarse en `/` tras elegir dejaba el header mintiendo.
+	// Si venimos de una tarjeta de película llevamos su id como query param
+	// para que la sede abra esa ficha; nunca saltamos directo a las butacas,
+	// porque sin función elegida `bookingState.movie` está vacío y el selector
+	// de butacas rebota de vuelta.
 	async function selectCinema(cinema: CinemaLocation) {
-		cinemaState.selectedCinema = cinema.name || cinema.short_name;
+		cinemaState.rememberPreference(cinema.id);
 		open = false;
-		if (pendingMovieId) {
-			// eslint-disable-next-line svelte/no-navigation-without-resolve
-			await goto(`/cines/${cinema.id}/booking/${pendingMovieId}`);
-		}
+		const sedeHome = resolve(`/cines/${cinema.id}`);
+		const target = pendingMovieId
+			? `${sedeHome}?pelicula=${encodeURIComponent(pendingMovieId)}`
+			: sedeHome;
+		// `sedeHome` ya viene de resolve(); la regla no sigue la variable.
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		await goto(target);
 	}
 
 	onMount(() => {
@@ -76,12 +101,11 @@
 							disabled={cinemaState.isLoadingLocation}
 							onclick={async () => {
 								const cinema = await cinemaState.findNearestCinema();
-								open = false;
+								// Si no hubo permiso o falló la red dejamos el diálogo
+								// abierto en la lista para que elija a mano, en vez de
+								// cerrarlo asumiendo una sede que el usuario no pidió.
 								showConsent = false;
-								if (pendingMovieId && cinema) {
-									// eslint-disable-next-line svelte/no-navigation-without-resolve
-									await goto(`/cines/${cinema.id}/booking/${pendingMovieId}`);
-								}
+								if (cinema) await selectCinema(cinema);
 							}}
 						>
 							{#if cinemaState.isLoadingLocation}
@@ -122,11 +146,20 @@
 							No se encontraron cines.
 						</div>
 					{:else}
-						{#each filteredCinemas as cinema (cinema.name)}
+						{#each filteredCinemas as cinema (cinema.id)}
 							<button class="flex flex-col text-left py-4 hover:bg-zinc-900/30 transition-colors px-2 group"
-								onclick={() => selectCinema(cinema)}>
-								<span class="text-white font-bold text-lg group-hover:text-champagne-400 transition-colors">
-									CINEPIC
+								onclick={() => selectCinema(cinema)}
+								onpointerenter={() => warmUp(cinema)}
+								onfocus={() => warmUp(cinema)}>
+								<span class="flex items-center gap-2">
+									<span class="text-white font-bold text-lg group-hover:text-champagne-400 transition-colors">
+										CINEPIC
+									</span>
+									{#if cinemaState.selectedCinemaId === cinema.id}
+										<span class="text-[9px] font-bold uppercase tracking-widest text-champagne-400 border border-champagne-400/40 rounded-sm px-1.5 py-0.5">Aquí</span>
+									{:else if cinemaState.preferredCinemaId === cinema.id}
+										<span class="text-[9px] font-bold uppercase tracking-widest text-zinc-500 border border-zinc-700 rounded-sm px-1.5 py-0.5">Tu último cine</span>
+									{/if}
 								</span>
 								<span class="text-zinc-500 text-sm mt-1">
 									{cinema.name}, {cinema.city || 'Caracas'}

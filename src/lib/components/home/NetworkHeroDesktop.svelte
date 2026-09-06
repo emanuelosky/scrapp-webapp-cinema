@@ -42,6 +42,27 @@
 	let isPlaying = $state(true);
 	let volume = $state(70);
 
+	let startX = $state(0);
+	let startY = $state(0);
+
+	function handlePointerDown(e: PointerEvent) {
+		startX = e.clientX;
+		startY = e.clientY;
+	}
+
+	function handlePointerUp(e: PointerEvent) {
+		const dx = e.clientX - startX;
+		const dy = e.clientY - startY;
+		
+		if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+			if (dx > 0) {
+				onPrev?.();
+			} else {
+				onNext?.();
+			}
+		}
+	}
+
 	// Si el lightbox se abre, pausamos el video de fondo
 	$effect(() => {
 		if (lightboxOpen) isPlaying = false;
@@ -110,7 +131,12 @@
 	el espacio extra en pantallas anchas lo absorbe la zona de texto (ya
 	negra, así que no se nota).
 -->
-<section class="relative hidden w-full overflow-hidden border-b border-zinc-900 bg-black md:flex md:h-[300px] xl:h-[440px]">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<section 
+	class="relative hidden w-full overflow-hidden border-b border-zinc-900 bg-black md:flex md:h-[300px] xl:h-[440px]"
+	onpointerdown={handlePointerDown} 
+	onpointerup={handlePointerUp}
+>
 	<div class="mx-auto flex h-full w-full max-w-[1600px] 2xl:max-w-[1800px]">
 	<!-- Zona negra: flexible, absorbe todo el ancho que el banner no necesita -->
 	<div class="relative flex flex-1 items-center justify-end overflow-hidden px-6 xl:px-16">
@@ -289,38 +315,46 @@
 	/>
 
 	{#if total > 1}
-		<!-- Navegación: flechas + puntos, centrados en toda la pantalla (no solo en el banner) -->
-		<div class="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex items-center justify-center gap-4">
-			<Button
-				variant="ghost"
-				size="icon"
-				onclick={onPrev}
-				class="pointer-events-auto size-9 rounded-full bg-black/40 text-white backdrop-blur-md hover:bg-black/60 hover:text-white"
-				aria-label="Película anterior"
-			>
-				<ChevronLeft class="size-4" />
-			</Button>
-
-			<div class="pointer-events-auto flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-2 backdrop-blur-md">
-				<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
-				{#each { length: total } as _, i (i)}
-					<button
-						onclick={() => onGoTo?.(i)}
-						class="h-1.5 rounded-full transition-all {i === currentIndex ? 'w-5 bg-zinc-200' : 'w-1.5 bg-white/40 hover:bg-white/70'}"
-						aria-label={`Ir a la película ${i + 1}`}
-					></button>
-				{/each}
+		<!-- Navegación: flechas laterales grandes + indicadores abajo -->
+		
+		<!-- Lado Izquierdo (Previous) -->
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div 
+			class="absolute inset-y-0 left-4 xl:left-8 z-20 w-20 xl:w-24 pointer-events-auto flex items-center justify-start group cursor-pointer"
+			onclick={onPrev}
+			aria-label="Película anterior"
+		>
+			<div class="flex items-center justify-center w-12 h-12 xl:w-14 xl:h-14 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white shadow-[0_0_20px_rgba(0,0,0,0.5)] opacity-40 transition-all duration-300 group-hover:opacity-100 group-hover:bg-white group-hover:text-black group-hover:scale-110 group-active:scale-95 -translate-x-2 group-hover:translate-x-0">
+				<ChevronLeft class="size-6 xl:size-7" strokeWidth={2.5} />
 			</div>
+		</div>
 
-			<Button
-				variant="ghost"
-				size="icon"
-				onclick={onNext}
-				class="pointer-events-auto size-9 rounded-full bg-black/40 text-white backdrop-blur-md hover:bg-black/60 hover:text-white"
-				aria-label="Película siguiente"
-			>
-				<ChevronRight class="size-4" />
-			</Button>
+		<!-- Lado Derecho (Next) -->
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div 
+			class="absolute inset-y-0 right-4 xl:right-8 z-20 w-20 xl:w-24 pointer-events-auto flex items-center justify-end group cursor-pointer"
+			onclick={onNext}
+			aria-label="Siguiente película"
+		>
+			<div class="flex items-center justify-center w-12 h-12 xl:w-14 xl:h-14 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white shadow-[0_0_20px_rgba(0,0,0,0.5)] opacity-40 transition-all duration-300 group-hover:opacity-100 group-hover:bg-white group-hover:text-black group-hover:scale-110 group-active:scale-95 translate-x-2 group-hover:translate-x-0">
+				<ChevronRight class="size-6 xl:size-7" strokeWidth={2.5} />
+			</div>
+		</div>
+
+		<!-- Puntos indicadores abajo -->
+		<div class="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex items-center justify-center gap-2">
+			{#each Array(total) as _, i}
+				<button
+					type="button"
+					onclick={() => onGoTo?.(i)}
+					class="pointer-events-auto h-1.5 transition-all hover:bg-white/80 {i === currentIndex
+						? 'w-6 rounded-full bg-white'
+						: 'w-1.5 rounded-full bg-white/40'}"
+					aria-label={`Ir a la película ${i + 1}`}
+				></button>
+			{/each}
 		</div>
 	{/if}
 </section>

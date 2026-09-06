@@ -47,7 +47,7 @@
 		<h2
 			class="mb-6 font-display text-4xl leading-none font-black tracking-tight text-white uppercase drop-shadow-2xl md:text-5xl lg:text-[3rem] xl:text-[3.5rem]"
 		>
-			{cinemaState.selectedCinema || 'Sambil Candelaria'}
+			{cinemaState.selectedCinemaName || 'Cinepic'}
 		</h2>
 
 		<div class="mx-auto mb-8 flex w-full max-w-sm items-center justify-center gap-3 text-sm text-white/90 md:text-base lg:max-w-md">

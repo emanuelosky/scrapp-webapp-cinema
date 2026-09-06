@@ -16,9 +16,24 @@
 			bookingState.loadFromLocalStorage();
 		}
 
+		const currentSede = $page.params.sede;
+		const sedeHome = currentSede ? resolve(`/cines/${currentSede}`) : resolve('/');
+
+		// Sin película en curso no hay nada que reservar: se llegó por URL directa
+		// o tras vencer el estado guardado.
 		if (!bookingState.movie) {
-			const currentSede = $page.params.sede;
-			goto(currentSede ? resolve(`/cines/${currentSede}`) : resolve('/'));
+			goto(sedeHome);
+			return;
+		}
+
+		// La reserva rehidratada puede venir de OTRA sede (el estado vive en
+		// localStorage y no distinguía cines): sus funciones y su mapa de sala no
+		// aplican aquí, así que devolvemos al usuario a la home de esta sede.
+		if (bookingState.bookingSede && bookingState.bookingSede !== currentSede) {
+			console.warn(
+				`[booking] Reserva de la sede "${bookingState.bookingSede}" abierta en "${currentSede}"; se descarta.`
+			);
+			goto(sedeHome);
 			return;
 		}
 

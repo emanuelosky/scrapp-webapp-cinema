@@ -1,4 +1,10 @@
 import { supabase } from '$lib/supabase';
+import { browser } from '$app/environment';
+
+// Preferencia de sede recordada entre visitas. Solo se usa para destacar
+// "tu cine" en el selector: nunca redirige por su cuenta, porque la URL es la
+// única fuente de verdad sobre en qué sede está parado el usuario.
+const PREFERRED_CINEMA_KEY = 'scrapp_preferred_cinema';
 
 // Helper: Fórmula de Haversine para calcular distancia en km
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -24,13 +30,67 @@ export interface CinemaLocation {
 }
 
 export class CinemaState {
-	selectedCinema = $state<string | null>(null);
+	// Slug de la sede en la que está el usuario AHORA MISMO. Espeja el
+	// parámetro [sede] de la URL (que coincide con `cinema_locations.id`) y
+	// vale null en el home multisede `/`. Solo `syncFromUrl` lo escribe: un
+	// click en el selector navega, y es la navegación la que actualiza esto.
+	// Así el header nunca puede decir "Sambil Candelaria" mientras estás en `/`.
+	selectedCinemaId = $state<string | null>(null);
+
+	// Última sede que el usuario eligió a propósito. Sobrevive recargas.
+	preferredCinemaId = $state<string | null>(null);
+
 	isLoadingLocation = $state(false);
 	cinemas = $state<CinemaLocation[]>([]);
 	isLoadingCinemas = $state(false);
 
+	// Deduplica las llamadas concurrentes a init(): SiteHeader, +page.ts y el
+	// selector la disparaban a la vez en el primer render, lanzando 3 queries
+	// idénticas a Supabase (la guarda `cinemas.length > 0` solo servía después
+	// de que la primera terminara).
+	#initPromise: Promise<void> | null = null;
+
+	constructor() {
+		if (browser) {
+			try {
+				this.preferredCinemaId = localStorage.getItem(PREFERRED_CINEMA_KEY);
+			} catch {
+				// localStorage puede lanzar en modo privado o con cookies bloqueadas.
+			}
+		}
+	}
+
+	/** La sede activa resuelta contra el catálogo, o null si estamos en `/`. */
+	get selectedCinema(): CinemaLocation | null {
+		if (!this.selectedCinemaId) return null;
+		return this.cinemas.find((c) => c.id === this.selectedCinemaId) ?? null;
+	}
+
+	/** Nombre para mostrar de la sede activa. Null en el home multisede. */
+	get selectedCinemaName(): string | null {
+		if (!this.selectedCinemaId) return null;
+		const match = this.selectedCinema;
+		if (match) return match.name || match.short_name || null;
+		// El catálogo aún no cargó: mostramos el slug capitalizado en vez de un
+		// hueco vacío, y el nombre real entra solo cuando `cinemas` se llene.
+		return this.selectedCinemaId.charAt(0).toUpperCase() + this.selectedCinemaId.slice(1);
+	}
+
+	/** True si el slug existe en el catálogo (solo confiable ya cargado). */
+	isKnownCinema(id: string): boolean {
+		return this.cinemas.some((c) => c.id === id);
+	}
+
 	async init() {
 		if (this.cinemas.length > 0) return;
+		this.#initPromise ??= this.#fetchCinemas().finally(() => {
+			// Liberamos el slot para permitir reintentos si la query falló.
+			this.#initPromise = null;
+		});
+		await this.#initPromise;
+	}
+
+	async #fetchCinemas() {
 		this.isLoadingCinemas = true;
 		try {
 			const { data, error } = await supabase
@@ -48,6 +108,33 @@ export class CinemaState {
 		}
 	}
 
+	/**
+	 * Espeja el parámetro [sede] de la ruta actual. Se llama desde la página de
+	 * sede (con su slug) y desde el home (con null, para limpiar).
+	 */
+	syncFromUrl(sede: string | null | undefined) {
+		const next = sede ?? null;
+		if (this.selectedCinemaId !== next) {
+			this.selectedCinemaId = next;
+		}
+	}
+
+	/** Recuerda la sede que el usuario eligió a propósito. */
+	rememberPreference(id: string) {
+		this.preferredCinemaId = id;
+		if (browser) {
+			try {
+				localStorage.setItem(PREFERRED_CINEMA_KEY, id);
+			} catch {
+				// Sin persistencia disponible: la preferencia solo dura la sesión.
+			}
+		}
+	}
+
+	/**
+	 * Devuelve la sede más cercana al usuario. No toca `selectedCinemaId`: quien
+	 * llama decide si navegar (y es esa navegación la que cambia la sede activa).
+	 */
 	async findNearestCinema(): Promise<CinemaLocation | null> {
 		if (this.isLoadingLocation) return null;
 
@@ -94,12 +181,11 @@ export class CinemaState {
 				}
 			}
 
-			this.selectedCinema = closestCinema.name || closestCinema.short_name || 'Sambil Candelaria';
 			return closestCinema;
 		} catch (error) {
 			console.error('Error getting location or finding cinema', error);
-			// Fallback if permission denied or fetch fails
-			this.selectedCinema = 'Sambil Candelaria';
+			// Sin permiso o sin red: no inventamos una sede. Quien llama deja el
+			// selector abierto para que el usuario elija a mano.
 			return null;
 		} finally {
 			this.isLoadingLocation = false;

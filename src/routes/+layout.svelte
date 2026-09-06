@@ -7,8 +7,10 @@
 	import SessionTimeoutModal from '$lib/components/booking/SessionTimeoutModal.svelte';
 	import EpikWidget from '$lib/components/chat/EpikWidget.svelte';
 	import ScrollToTop from '$lib/components/home/ScrollToTop.svelte';
+	import NavigationProgress from '$lib/components/navigation/NavigationProgress.svelte';
 	import { chatState } from '$lib/state/chat.svelte';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
 
 	let { children } = $props();
@@ -61,7 +63,7 @@
 					} else if ($page.url.pathname !== '/' && $page.url.pathname.startsWith('/cines/') && !$page.url.pathname.endsWith($page.params.sede || '')) {
 						// If we are in a sede but deeply nested, go to the sede home
 						const currentSede = $page.params.sede;
-						goto(`/cines/${currentSede}`).then(() => {
+						goto(resolve(`/cines/${currentSede}`)).then(() => {
 							setTimeout(() => {
 								document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
 							}, 350);
@@ -76,25 +78,30 @@
 				if (payload.movieId) {
 					chatState.clearAction();
 					chatState.close();
-					if (payload.showtime && payload.date) {
-						// Reserva directa con función preseleccionada
-						const movieObj = {
-							id: payload.movieId,
-							title: payload.movieTitle || 'Película',
-							genres: [],
-							poster_url: undefined,
-							synopsis: undefined
-						};
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						bookingState.startBooking(movieObj as any, payload.date, payload.showtime);
-					}
 					const currentSede = $page.params.sede;
-					if (currentSede) {
+					if (!currentSede) {
+						// Sin sede no hay funciones ni butacas que mostrar: mandamos al
+						// home multisede con la película pendiente para que el usuario
+						// elija cine primero. (Antes iba a /booking/<id>, ruta que no
+						// existe: el chat terminaba en un 404.)
+						// La ruta base va resuelta; el query param se concatena aparte,
+						// que es lo que la regla no sabe reconocer.
 						// eslint-disable-next-line svelte/no-navigation-without-resolve
-						goto(`/cines/${currentSede}/booking/${payload.movieId}`);
+						goto(`${resolve('/')}?pelicula=${encodeURIComponent(payload.movieId)}`);
 					} else {
-						// eslint-disable-next-line svelte/no-navigation-without-resolve
-						goto(`/booking/${payload.movieId}`);
+						if (payload.showtime && payload.date) {
+							// Reserva directa con función preseleccionada
+							const movieObj = {
+								id: payload.movieId,
+								title: payload.movieTitle || 'Película',
+								genres: [],
+								poster_url: undefined,
+								synopsis: undefined
+							};
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							bookingState.startBooking(movieObj as any, payload.date, payload.showtime, currentSede);
+						}
+						goto(resolve(`/cines/${currentSede}/booking/${payload.movieId}`));
 					}
 				}
 			} else if (action.type === 'movie_details') {
@@ -102,7 +109,7 @@
 					// eslint-disable-next-line svelte/no-navigation-without-resolve
 					goto('/');
 				} else if ($page.params.sede && $page.url.pathname !== `/cines/${$page.params.sede}`) {
-					goto(`/cines/${$page.params.sede}`);
+					goto(resolve(`/cines/${$page.params.sede}`));
 				}
 			}
 		}
@@ -110,6 +117,7 @@
 </script>
 
 <div class="relative min-h-screen bg-black font-sans text-zinc-50 antialiased">
+	<NavigationProgress />
 	<Toaster theme="dark" position="bottom-right" />
 	{@render children()}
 	<SessionTimeoutModal />

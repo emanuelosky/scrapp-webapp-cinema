@@ -18,40 +18,35 @@ web, adaptándolo de formato.
 > ese acuerdo que cubre explícitamente uso en sitio web público. No es algo
 > que este documento pueda resolver por sí solo.
 
-### Estado actual (2026-09-05)
+### Estado actual (2026-09-06)
 
-Ya existe un lote real de clips procesados en `static/trailers/` (generados
-por `scripts_y_pruebas/process_trailers.mjs`, vía Antigravity — ver
-`.agent-tasks/04-resultado.md`):
+**Migrado a Supabase Storage** (ver `.agent-tasks/05-migrate-trailers-to-supabase-storage.md`
+y sus resultados) — ya no se sirve nada desde `static/trailers/` (esa
+carpeta y el shim `localTrailers.ts` se borraron del repo). Las 9
+películas confirmadas contra el catálogo real tienen
+`wbpp_movies.trailer_asset_url` poblado con una URL pública del bucket
+`webapp_assets`; el `laodisea.webm` que pesaba 15.8 MB quedó
+reprocesado y corregido (0.56 MB).
 
-| Película (slug de archivo) | Hero (16:9 corto) | Póster (vertical) |
-|---|---|---|
-| clayface | ✅ 1.6 MB | ⚠️ vacío (0 bytes, falta reprocesar) |
-| coyotevsacme | ✅ 1.5 MB | ✅ 223 KB |
-| dunapartetres | ✅ 1.4 MB | ✅ 157 KB |
-| hechizo | ✅ 1.2 MB | ✅ 211 KB |
-| icecreamman | ✅ 1.8 MB | ✅ 166 KB |
-| juegosdelhambre | ✅ 1.3 MB | ✅ 176 KB |
-| laguerradelosultimos | ✅ 1.6 MB | ✅ 211 KB |
-| lanochedeldemonio | ✅ 2.8 MB | ✅ 157 KB |
-| **laodisea** | ⚠️ **15.8 MB** (fuera de rango, ver nota) | ✅ 437 KB (también alto) |
-| mashayeloso | ✅ 1.4 MB | ✅ 153 KB |
-| pawpatrol | ✅ 1.3 MB | ✅ 163 KB |
-| soloporunanoche | ✅ 1.4 MB | ✅ 169 KB |
-| spiderman | ✅ 1.4 MB | ✅ 146 KB |
+Slugs migrados: `coyotevsacme`, `elheladero`, `laguerradelosultimos`,
+`lanochedeldemonio`, `laodisea`, `mashaylosos`, `lapatrullacanina`,
+`unanochealano`, `spiderman`. Pendiente: `hechizo` (nunca se confirmó a
+qué película real corresponde) y `clayface`/`dunapartetres`/
+`juegosdelhambre` (confirmado que no existen en el catálogo actual,
+descartados).
 
-**12 de 13 están listos para probar hoy mismo** (todo menos `clayface`, que
-solo tiene el clip de hero). Verificado con `ffprobe`: son VP9 en `.webm`,
-854×480, ~15s, ~24fps — coincide con la spec de Antigravity.
+**Gestión de aquí en adelante:** panel en `scrapp-administrative-v2` →
+`/admin/webapp` → pestaña "Tráilers" — permite ver el estado de cada
+película (hero/póster asignado o no), subir/reemplazar un clip ya
+procesado, y limpiar uno existente. Ya no hace falta un ticket manual
+por cada cambio de asignación.
 
-> **Atención — `laodisea.webm` (hero) pesa 15.8 MB, ~11× más que el resto**
-> con la misma resolución y duración (854×480, 15s). `ffprobe` muestra un
-> bitrate de ~8.4 Mbps contra ~750 kbps del resto — probablemente el
-> encoder eligió una calidad más alta para una escena con mucho movimiento
-> y no había un tope de bitrate explícito. Hay que reprocesar este archivo
-> específico con el comando de la sección 3 (que sí fija un bitrate máximo)
-> antes de usarlo en producción — a este peso anula por completo el
-> beneficio de la carga perezosa.
+**Interruptor de desarrollo:** `HERO_TRAILERS_ENABLED` en
+`src/lib/config/heroTrailers.ts` apaga la carga de clips por completo
+(el hero cae al banner estático siempre) sin tocar lógica — útil
+mientras se itera sobre otras partes del home sin gastar la cuota de
+egress del bucket en cada reload. Confirmar su valor antes de dar por
+buena una prueba visual del hero.
 
 ## 2. Los 3 niveles de fallback (ya implementados)
 
@@ -67,9 +62,21 @@ del archivo cargado (leída del propio navegador), así que un clip que no
 sea exactamente 16:9 tampoco se recorta ni se deforma.
 
 1. **Clip propio (`trailer_asset_url`)** — si existe, se reproduce en loop,
-   silenciado. El ícono debajo del hero pasa a ser un toggle de sonido en
-   vez de un enlace. Se carga de forma perezosa (`IntersectionObserver`):
-   nunca descarga el video hasta que el hero entra en pantalla.
+   silenciado, con un banner mínimo de `HERO_BANNER_MIN_MS` (4s) antes de
+   pasar al video, para que el cambio sea consistente y nunca dependa de
+   qué tan rápido cargó el clip. La carga es perezosa por partida doble:
+   `IntersectionObserver` (el hero debe estar en pantalla) Y
+   `document.hasFocus()` (la pestaña debe tener foco real) — ninguna de
+   las dos requiere gesto del usuario, son automáticas. El ícono debajo
+   del hero pasa a ser pausa/reanudar + volumen (si el clip trae audio,
+   detectado en runtime, ver `TrailerBackground.svelte`) + un botón para
+   abrir el reproductor centrado (`TrailerLightbox.svelte`): video con
+   scrubber real y controles propios (no el reproductor nativo del
+   navegador), con la "aura" del banner de fondo, y debajo un panel con
+   título, "me gusta" (corazón), calificación por estrellas y una caja
+   para escribir una opinión — estos tres últimos solo se guardan en
+   `localStorage` del navegador por ahora, no hay backend ni cuentas de
+   usuario reales detrás todavía (ver nota al final del documento).
 2. **Enlace de YouTube (`trailer_url`)** — si no hay clip propio pero sí hay
    el tráiler oficial de YouTube (ya se obtiene automáticamente vía TMDB al
    enriquecer metadata en Xelaris), el ícono debajo del hero abre YouTube en
@@ -126,12 +133,19 @@ ffmpeg -i entrada.mp4 -ss 00:00:05 -t 4 \
 Para **reprocesar `laodisea.webm`** específicamente, correr el comando de
 hero de arriba sobre su fuente original.
 
-### Dónde alojar los archivos (no Supabase, por ahora)
+### Dónde alojar los archivos
 
-Se descartó Supabase Storage a propósito para esta fase — el plan gratuito
-no da margen de ancho de banda para servir video con el tráfico de una
-demo, y sacarlo del alcance actual era la prioridad. Opciones evaluadas
-para alojar esto de forma barata/gratuita mientras el proyecto crece:
+**Actualización:** el equipo decidió migrar a Supabase Storage de todos
+modos (ver `.agent-tasks/05-migrate-trailers-to-supabase-storage.md`),
+a propósito y sabiendo el costo, para generar datos reales de
+rendimiento de red/carga asíncrona antes de decidir el hosting
+definitivo. La recomendación de fondo para producción **sigue siendo
+Cloudflare R2** (sección de abajo) — Supabase Storage cobra por cada GB
+servido (egress), a diferencia de R2. Mientras se decide, `HERO_TRAILERS_ENABLED`
+(ver "Estado actual" arriba) permite apagar la descarga de clips sin
+tocar código cuando no se esté probando activamente esto.
+
+Opciones evaluadas para alojar esto de forma barata/gratuita mientras el proyecto crece:
 
 1. **Cloudflare R2 (recomendado).** Almacenamiento compatible con S3: 10 GB
    gratis de almacenamiento, y lo más importante — **cero costo de salida
@@ -159,24 +173,16 @@ para alojar esto de forma barata/gratuita mientras el proyecto crece:
 de commitear video al repo — el resto del pipeline (`trailer_asset_url`
 apuntando a una URL pública) no cambia, solo cambia de dónde viene esa URL.
 
-## 4. Pendiente de decidir: convención de nombre de archivo vs. columna en BD
+## 4. Resuelto: columna en BD, no convención de nombre
 
-Hay dos formas de que el frontend sepa qué clip usar para cada película, y
-hoy conviven sin haberse resuelto cuál es la definitiva:
-
-- **Convención por nombre** (lo que ya implementó Antigravity): el archivo
-  se llama como el título en minúsculas sin espacios/acentos
-  (`coyotevsacme.webm`) y el frontend arma la ruta al vuelo. Cero trabajo
-  de base de datos, pero se rompe si el título cambia, y no distingue
-  películas con el mismo título simplificado.
-- **Columna en Supabase** (`wbpp_movies.trailer_asset_url`, el diseño
-  original de `.agent-tasks/03-add-trailer-asset-column.md`): más robusto
-  y sobrevive cambios de título, pero requiere un paso manual (o futuro
-  campo en el panel) para pegar la URL por película.
-
-Para probar los 12 clips que ya existen, la convención por nombre alcanza
-sin trabajo adicional. La columna en BD sigue siendo la recomendación para
-cuando esto deje de ser una prueba y el catálogo crezca.
+Se decidió y ya se aplicó: **`wbpp_movies.trailer_asset_url`** (columna en
+Supabase, ver `.agent-tasks/03-add-trailer-asset-column.md`) es la única
+fuente de verdad. El shim por convención de nombre de archivo
+(`localTrailers.ts`, que emparejaba el título contra un slug de archivo
+local) se eliminó del repo — sobrevive a cambios de título y ya no
+depende de adivinar el nombre del archivo. Asignar/reemplazar/quitar el
+clip de una película se hace desde el panel (sección "Estado actual"),
+no editando código.
 
 ## 5. Mantenimiento continuo
 
@@ -193,7 +199,21 @@ o 3 del fallback) — no es bloqueante, es una mejora incremental.
 
 ## 6. Futuro (fuera de alcance actual)
 
-- **Campo dedicado en el panel administrativo** para subir el clip
-  directamente desde Xelaris en vez de pegar la URL a mano.
+- ~~Campo dedicado en el panel administrativo para subir el clip~~ —
+  **ya implementado** (`/admin/webapp` → pestaña "Tráilers" en
+  `scrapp-administrative-v2`).
 - **Cloudflare Stream** u otra solución de streaming real si el volumen de
   tráfico de video lo justifica.
+- **Backend real para "me gusta"/calificación/opinión.** Hoy
+  (`TrailerLightbox.svelte`) esos tres datos viven en `localStorage` del
+  navegador — sirven para probar la experiencia, pero no se sincronizan
+  a ningún servidor ni están atados a una cuenta. Pasar esto a datos
+  reales (para un futuro programa de loyalty) requiere: autenticación de
+  usuarios en la webapp pública (hoy no existe) y tablas nuevas en
+  Supabase. El reemplazo en el componente es acotado (mismas funciones
+  de leer/guardar, cambian de `localStorage` a llamadas a una API).
+- **Revisar las frases de la pantalla de "tráiler terminado."** El
+  arreglo `QUOTES` en `TrailerLightbox.svelte` tiene citas textuales de
+  películas de otros estudios, sin relación con el catálogo propio del
+  cine — vale la pena reemplazarlas por texto propio o frases genéricas
+  para evitar un uso de diálogo con derechos de otros sin licencia clara.

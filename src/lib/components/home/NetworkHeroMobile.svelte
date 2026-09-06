@@ -1,8 +1,8 @@
 <script lang="ts">
 	import TrailerBackground from '$lib/components/home/TrailerBackground.svelte';
+	import TrailerVolumeControl from '$lib/components/home/TrailerVolumeControl.svelte';
+	import TrailerLightbox from '$lib/components/home/TrailerLightbox.svelte';
 	import { Button } from '$lib/components/ui/button';
-	import Volume2 from '@lucide/svelte/icons/volume-2';
-	import VolumeX from '@lucide/svelte/icons/volume-x';
 	import Play from '@lucide/svelte/icons/play';
 	import Pause from '@lucide/svelte/icons/pause';
 	import Maximize2 from '@lucide/svelte/icons/maximize-2';
@@ -13,18 +13,27 @@
 		movie,
 		onSelectMovie,
 		onClipStateChange,
-		onClipEnded
+		onClipEnded,
+		onNext,
+		lightboxOpen = $bindable(false)
 	}: {
 		movie: Movie;
 		onSelectMovie: (m: Movie) => void;
 		onClipStateChange?: (hasClip: boolean) => void;
 		onClipEnded?: () => void;
+		onNext?: () => void;
+		lightboxOpen?: boolean;
 	} = $props();
 
 	let isMuted = $state(true);
 	let hasOwnClip = $state(false);
+	let hasAudio = $state(false);
 	let isPlaying = $state(true);
-	let videoEl = $state<HTMLVideoElement | null>(null);
+	let volume = $state(70);
+
+	$effect(() => {
+		if (lightboxOpen) isPlaying = false;
+	});
 
 	$effect(() => {
 		onClipStateChange?.(hasOwnClip);
@@ -33,21 +42,6 @@
 	$effect(() => {
 		void movie.id;
 		isPlaying = true;
-	});
-
-	function toggleFullscreen() {
-		videoEl?.requestFullscreen?.();
-	}
-
-	$effect(() => {
-		function onFullscreenChange() {
-			if (!videoEl) return;
-			const isFs = document.fullscreenElement === videoEl;
-			videoEl.controls = isFs;
-			if (isFs) isMuted = false;
-		}
-		document.addEventListener('fullscreenchange', onFullscreenChange);
-		return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
 	});
 
 	function youtubeFallbackUrl(m: Movie): string {
@@ -65,8 +59,8 @@
 				mode="cover"
 				bind:isMuted
 				bind:hasOwnClip
+				bind:hasAudio
 				bind:isPlaying
-				bind:videoEl
 				loop={false}
 				onEnded={onClipEnded}
 			/>
@@ -122,17 +116,13 @@
 				>
 					{#if isPlaying}<Pause class="size-4" />{:else}<Play class="size-4" />{/if}
 				</button>
+				{#if hasAudio}
+					<TrailerVolumeControl bind:isMuted bind:volume size="sm" />
+				{/if}
 				<button
-					onclick={() => (isMuted = !isMuted)}
+					onclick={() => (lightboxOpen = true)}
 					class="flex size-11 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white backdrop-blur-md"
-					aria-label={isMuted ? 'Activar sonido' : 'Silenciar'}
-				>
-					{#if isMuted}<VolumeX class="size-4" />{:else}<Volume2 class="size-4" />{/if}
-				</button>
-				<button
-					onclick={toggleFullscreen}
-					class="flex size-11 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white backdrop-blur-md"
-					aria-label="Ver tráiler en pantalla completa"
+					aria-label="Ver tráiler en reproductor grande"
 				>
 					<Maximize2 class="size-4" />
 				</button>
@@ -149,4 +139,14 @@
 			{/if}
 		</div>
 	</div>
+
+	<TrailerLightbox 
+		bind:open={lightboxOpen} 
+		{movie} 
+		bind:isMuted 
+		bind:volume 
+		{hasAudio} 
+		onSelectMovie={() => { lightboxOpen = false; onSelectMovie(movie); }}
+		onNext={() => { lightboxOpen = false; onNext?.(); }}
+	/>
 </section>

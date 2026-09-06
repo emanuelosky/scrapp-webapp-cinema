@@ -1,8 +1,9 @@
 <script lang="ts">
 	import TrailerBackground from '$lib/components/home/TrailerBackground.svelte';
+	import TrailerVolumeControl from '$lib/components/home/TrailerVolumeControl.svelte';
+	import TrailerLightbox from '$lib/components/home/TrailerLightbox.svelte';
 	import { Button } from '$lib/components/ui/button';
-	import Volume2 from '@lucide/svelte/icons/volume-2';
-	import VolumeX from '@lucide/svelte/icons/volume-x';
+	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import Play from '@lucide/svelte/icons/play';
 	import Pause from '@lucide/svelte/icons/pause';
 	import Maximize2 from '@lucide/svelte/icons/maximize-2';
@@ -20,7 +21,8 @@
 		onPrev,
 		onGoTo,
 		onClipStateChange,
-		onClipEnded
+		onClipEnded,
+		lightboxOpen = $bindable(false)
 	}: {
 		movie: Movie;
 		onSelectMovie: (m: Movie) => void;
@@ -31,12 +33,19 @@
 		onGoTo?: (i: number) => void;
 		onClipStateChange?: (hasClip: boolean) => void;
 		onClipEnded?: () => void;
+		lightboxOpen?: boolean;
 	} = $props();
 
 	let isMuted = $state(true);
 	let hasOwnClip = $state(false);
+	let hasAudio = $state(false);
 	let isPlaying = $state(true);
-	let videoEl = $state<HTMLVideoElement | null>(null);
+	let volume = $state(70);
+
+	// Si el lightbox se abre, pausamos el video de fondo
+	$effect(() => {
+		if (lightboxOpen) isPlaying = false;
+	});
 
 	// Avisa al orquestador (NetworkHero) si la película activa tiene clip
 	// propio reproduciéndose, para que pause la rotación automática mientras
@@ -45,32 +54,15 @@
 		onClipStateChange?.(hasOwnClip);
 	});
 
-	// Cada película arranca reproduciéndose — sin esto, pausar una y avanzar
-	// a la siguiente (que es una instancia nueva de TrailerBackground, por el
-	// {#key movie.id}) heredaría el "pausado" del estado local de este padre.
+	// Cada película arranca reproduciéndose — sin esto, pasar a la
+	// siguiente (que es una instancia nueva de TrailerBackground, por el
+	// {#key movie.id}) arrastraría el "pausado" del estado local de este
+	// padre desde la película anterior.
 	$effect(() => {
 		void movie.id;
 		isPlaying = true;
 	});
 
-	function toggleFullscreen() {
-		videoEl?.requestFullscreen?.();
-	}
-
-	// Al entrar a pantalla completa, mostramos los controles nativos del
-	// video (play/pausa/volumen/progreso) y activamos el sonido — es un
-	// gesto explícito del usuario, así que no choca con las políticas de
-	// autoplay del navegador.
-	$effect(() => {
-		function onFullscreenChange() {
-			if (!videoEl) return;
-			const isFs = document.fullscreenElement === videoEl;
-			videoEl.controls = isFs;
-			if (isFs) isMuted = false;
-		}
-		document.addEventListener('fullscreenchange', onFullscreenChange);
-		return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
-	});
 	// TMDB ya no nos da un tamaño fijo (usamos "original", que varía por
 	// película) — la columna del banner adopta la proporción real de la
 	// imagen/clip cargado en vez de forzar 16:9. Ese valor cae de vuelta a
@@ -169,17 +161,43 @@
 					{movie.title}
 				</h2>
 				{#if movie.formats || movie.rating || movie.duration}
-					<div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold uppercase tracking-widest text-zinc-300">
-						{#if movie.rating}<span class="flex size-6 items-center justify-center rounded-sm bg-white text-[11px] font-black text-black">{movie.rating}</span>{/if}
-						{#if movie.formats?.video}<span>{movie.formats.video}</span>{/if}
-						{#if movie.formats?.language}<span>{movie.formats.language}</span>{/if}
-						{#if movie.duration}<span>{movie.duration}</span>{/if}
+					{@const formatParts = [movie.formats?.video, movie.formats?.language, movie.duration].filter(
+						Boolean
+					)}
+					<!-- Separadores: líneas verticales sutiles con extremos difuminados en
+					     vez de solo espaciado — marcan mejor dónde termina cada dato
+					     (clasificación, formato, idioma, duración). -->
+					<div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs font-semibold uppercase tracking-widest text-zinc-300">
+						{#if movie.rating}
+							<span class="flex size-6 items-center justify-center rounded-sm bg-white text-[11px] font-black text-black">{movie.rating}</span>
+							{#if formatParts.length > 0}
+								<span class="h-4 w-px shrink-0 bg-gradient-to-b from-transparent via-zinc-500 to-transparent" aria-hidden="true"></span>
+							{/if}
+						{/if}
+						{#each formatParts as part, i (i)}
+							<span>{part}</span>
+							{#if i < formatParts.length - 1}
+								<span class="h-4 w-px shrink-0 bg-gradient-to-b from-transparent via-zinc-500 to-transparent" aria-hidden="true"></span>
+							{/if}
+						{/each}
 					</div>
 				{/if}
 				{#if movie.synopsis}
-					<p class="mt-4 line-clamp-2 text-sm leading-relaxed text-zinc-300 xl:text-base">
-						{movie.synopsis}
-					</p>
+					<!-- Cajón con su propio scroll en vez de "leer más": el texto
+					     completo siempre está ahí, sin competir por espacio con los
+					     botones de abajo. El mask-image difumina el final hacia
+					     transparente cuando el texto no entra — se funde con el fondo
+					     negro en vez de cortarse en seco justo antes de "Comprar
+					     Boletos". El scrollbar (ScrollArea de shadcn) es invisible por
+					     defecto y se tiñe de plateado solo al pasar el mouse (`group`). -->
+					<ScrollArea
+						class="group mt-4 h-24 pr-3 xl:h-32"
+						style="mask-image: linear-gradient(to bottom, black 65%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 65%, transparent 100%);"
+					>
+						<p class="text-sm leading-relaxed text-zinc-300 xl:text-base">
+							{movie.synopsis}
+						</p>
+					</ScrollArea>
 				{/if}
 			</div>
 
@@ -191,29 +209,7 @@
 					Comprar Boletos
 				</Button>
 
-				{#if hasOwnClip}
-					<button
-						onclick={() => (isPlaying = !isPlaying)}
-						class="flex size-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur-md transition-colors hover:border-white/40 xl:size-14"
-						aria-label={isPlaying ? 'Pausar tráiler' : 'Reproducir tráiler'}
-					>
-						{#if isPlaying}<Pause class="size-4 xl:size-5" />{:else}<Play class="size-4 xl:size-5" />{/if}
-					</button>
-					<button
-						onclick={() => (isMuted = !isMuted)}
-						class="flex size-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur-md transition-colors hover:border-white/40 xl:size-14"
-						aria-label={isMuted ? 'Activar sonido' : 'Silenciar'}
-					>
-						{#if isMuted}<VolumeX class="size-4 xl:size-5" />{:else}<Volume2 class="size-4 xl:size-5" />{/if}
-					</button>
-					<button
-						onclick={toggleFullscreen}
-						class="flex size-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur-md transition-colors hover:border-white/40 xl:size-14"
-						aria-label="Ver tráiler en pantalla completa"
-					>
-						<Maximize2 class="size-4 xl:size-5" />
-					</button>
-				{:else}
+				{#if !hasOwnClip}
 					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 					<a
 						href={youtubeFallbackUrl(movie)}
@@ -244,16 +240,53 @@
 				mode="cover"
 				bind:isMuted
 				bind:hasOwnClip
+				bind:hasAudio
 				bind:naturalRatio
 				bind:isPlaying
-				bind:videoEl
 				loop={false}
 				onEnded={onClipEnded}
 			/>
 		{/key}
 		<div class="pointer-events-none absolute inset-y-0 right-0 w-[15%]" style="background: {bannerOverlayRight};"></div>
+
+		<!-- Controles del tráiler: viven sobre el propio banner/video (no en
+		     la columna de texto) — pausa, volumen (si el clip trae audio) y
+		     abrir el reproductor centrado. -->
+		{#if hasOwnClip}
+			<div class="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex items-center justify-end gap-2 px-4 xl:px-6">
+				<button
+					type="button"
+					onclick={() => (isPlaying = !isPlaying)}
+					class="pointer-events-auto flex size-11 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur-md transition-colors hover:border-white/40 xl:size-12"
+					aria-label={isPlaying ? 'Pausar tráiler' : 'Reproducir tráiler'}
+				>
+					{#if isPlaying}<Pause class="size-4" />{:else}<Play class="size-4" />{/if}
+				</button>
+				{#if hasAudio}
+					<TrailerVolumeControl bind:isMuted bind:volume />
+				{/if}
+				<button
+					type="button"
+					onclick={() => (lightboxOpen = true)}
+					class="pointer-events-auto flex size-11 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white backdrop-blur-md transition-colors hover:border-white/40 xl:size-12"
+					aria-label="Ver tráiler en reproductor grande"
+				>
+					<Maximize2 class="size-4" />
+				</button>
+			</div>
+		{/if}
 	</div>
 	</div>
+
+	<TrailerLightbox 
+		bind:open={lightboxOpen} 
+		{movie} 
+		bind:isMuted 
+		bind:volume 
+		{hasAudio} 
+		onSelectMovie={() => { lightboxOpen = false; onSelectMovie(movie); }}
+		onNext={() => { lightboxOpen = false; onNext?.(); }}
+	/>
 
 	{#if total > 1}
 		<!-- Navegación: flechas + puntos, centrados en toda la pantalla (no solo en el banner) -->

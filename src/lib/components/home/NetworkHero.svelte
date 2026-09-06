@@ -12,6 +12,7 @@
 	// (lo reporta la variante mobile o desktop, la que esté visible). Se
 	// resetea al cambiar de película para no arrastrar el estado anterior.
 	let activeHasClip = $state(false);
+	let lightboxOpen = $state(false);
 	$effect(() => {
 		void activeMovie?.id;
 		activeHasClip = false;
@@ -31,7 +32,7 @@
 	// el avance lo dispara onClipEnded al terminar el tráiler (o el usuario
 	// con las flechas), para no cortarlo a la mitad.
 	$effect(() => {
-		if (movies.length <= 1 || activeHasClip) return;
+		if (movies.length <= 1 || activeHasClip || lightboxOpen) return;
 		const interval = setInterval(next, 12000);
 		return () => clearInterval(interval);
 	});
@@ -43,6 +44,8 @@
 		{onSelectMovie}
 		onClipStateChange={(v) => (activeHasClip = v)}
 		onClipEnded={next}
+		onNext={next}
+		bind:lightboxOpen
 	/>
 	<NetworkHeroDesktop
 		movie={activeMovie}
@@ -54,5 +57,6 @@
 		onGoTo={goTo}
 		onClipStateChange={(v) => (activeHasClip = v)}
 		onClipEnded={next}
+		bind:lightboxOpen
 	/>
 {/if}

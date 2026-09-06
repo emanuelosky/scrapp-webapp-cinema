@@ -1,10 +1,12 @@
 <script lang="ts">
 	import type { Movie } from '$lib/types';
+	import { HERO_TRAILERS_ENABLED, HERO_BANNER_MIN_MS } from '$lib/config/heroTrailers';
 
 	let {
 		movie,
 		isMuted = $bindable(true),
 		hasOwnClip = $bindable(false),
+		hasAudio = $bindable(false),
 		mode = 'contain',
 		naturalRatio = $bindable(null),
 		loop = true,
@@ -15,6 +17,7 @@
 		movie: Movie | null;
 		isMuted?: boolean;
 		hasOwnClip?: boolean;
+		hasAudio?: boolean;
 		mode?: 'contain' | 'cover';
 		naturalRatio?: number | null;
 		loop?: boolean;
@@ -28,17 +31,39 @@
 	let containerEl = $state<HTMLDivElement | null>(null);
 	let shouldLoadVideo = $state(false);
 	let videoFailed = $state(false);
+	let isIntersecting = $state(false);
+	let hasFocus = $state(typeof document !== 'undefined' ? document.hasFocus() : true);
+	let bannerMinTimeElapsed = $state(false);
 
-	// Carga asíncrona: el clip solo se pide cuando el hero entra en pantalla,
-	// nunca bloquea el render inicial de la página.
+	// Ahorro de cuota del bucket: además de esperar a que el hero esté en
+	// pantalla, esperamos a que la pestaña tenga el foco real del usuario
+	// (document.hasFocus() — nativo del navegador, nada clickeable/tocable
+	// para el visitante). Sin esto, cada reload durante desarrollo (con la
+	// pestaña de fondo mientras se trabaja en el editor) vuelve a descargar
+	// el clip completo aunque nadie lo esté viendo. Un visitante real casi
+	// siempre tiene la pestaña enfocada, así que esto nunca le agrega demora.
 	$effect(() => {
-		if (!containerEl || !movie?.trailerAssetUrl) return;
+		function onFocus() {
+			hasFocus = true;
+		}
+		function onBlur() {
+			hasFocus = false;
+		}
+		window.addEventListener('focus', onFocus);
+		window.addEventListener('blur', onBlur);
+		return () => {
+			window.removeEventListener('focus', onFocus);
+			window.removeEventListener('blur', onBlur);
+		};
+	});
+
+	// Carga asíncrona: el clip solo se pide cuando el hero entra en pantalla
+	// Y la pestaña tiene foco, nunca bloquea el render inicial de la página.
+	$effect(() => {
+		if (!HERO_TRAILERS_ENABLED || !containerEl || !movie?.trailerAssetUrl) return;
 		const observer = new IntersectionObserver(
 			(entries) => {
-				if (entries[0]?.isIntersecting) {
-					shouldLoadVideo = true;
-					observer.disconnect();
-				}
+				isIntersecting = !!entries[0]?.isIntersecting;
 			},
 			{ rootMargin: '200px' }
 		);
@@ -46,19 +71,58 @@
 		return () => observer.disconnect();
 	});
 
+	$effect(() => {
+		if (isIntersecting && hasFocus) shouldLoadVideo = true;
+	});
+
+	// El banner se ve primero SIEMPRE, un tiempo mínimo fijo, para que el
+	// paso a video sea consistente en todas las películas y nunca dependa
+	// de qué tan rápido cargó el clip (evita el "flash" de pasar directo
+	// al video apenas está listo). Se reinicia solo al cambiar de película
+	// porque el padre remonta este componente entero (`{#key movie.id}`).
+	$effect(() => {
+		const timer = setTimeout(() => {
+			bannerMinTimeElapsed = true;
+		}, HERO_BANNER_MIN_MS);
+		return () => clearTimeout(timer);
+	});
+
 	// Reinicia el estado de falla al cambiar de película o de clip candidato.
 	$effect(() => {
 		void movie?.trailerAssetUrl;
 		videoFailed = false;
+		hasAudio = false;
 	});
 
+	// Detección de audio: no existe una API estándar única para esto entre
+	// navegadores, así que combinamos las señales disponibles. Nuestros
+	// clips actuales se procesan con -an (sin audio) a propósito — esto
+	// hace que el control de volumen desaparezca solo mientras sea así, y
+	// aparezca automáticamente el día que un clip sí traiga audio.
+	function detectAudio(video: HTMLVideoElement): boolean {
+		const v = video as HTMLVideoElement & {
+			mozHasAudio?: boolean;
+			audioTracks?: { length: number };
+			webkitAudioDecodedByteCount?: number;
+		};
+		if (typeof v.mozHasAudio === 'boolean') return v.mozHasAudio;
+		if (v.audioTracks && v.audioTracks.length > 0) return true;
+		if (typeof v.webkitAudioDecodedByteCount === 'number' && v.webkitAudioDecodedByteCount > 0) return true;
+		return false;
+	}
+
 	$effect(() => {
-		hasOwnClip = !!movie?.trailerAssetUrl && shouldLoadVideo && !videoFailed;
+		hasOwnClip =
+			HERO_TRAILERS_ENABLED &&
+			!!movie?.trailerAssetUrl &&
+			shouldLoadVideo &&
+			!videoFailed &&
+			bannerMinTimeElapsed;
 	});
 
 	function onVideoError() {
-		// El emparejamiento de clips es aproximado (ver localTrailers.ts) —
-		// si el archivo no existe o falla, volvemos silenciosamente al banner.
+		// Si trailerAssetUrl falla al cargar (archivo borrado del bucket, red,
+		// etc.), volvemos silenciosamente al banner estático.
 		videoFailed = true;
 	}
 
@@ -94,6 +158,13 @@
 		if (video.videoWidth && video.videoHeight) {
 			naturalRatio = video.videoWidth / video.videoHeight;
 		}
+		hasAudio = detectAudio(video);
+		// webkitAudioDecodedByteCount solo refleja datos reales una vez que
+		// arrancó a decodificar — reintentamos un momento después de que
+		// empieza a reproducir para no perder un falso negativo temprano.
+		setTimeout(() => {
+			if (videoEl && !hasAudio) hasAudio = detectAudio(videoEl);
+		}, 500);
 	}
 </script>
 

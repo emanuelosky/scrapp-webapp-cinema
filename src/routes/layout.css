@@ -11,6 +11,12 @@
   --color-champagne-500: #D4AF37;
   --color-champagne-600: #B38B22;
   --color-champagne-700: #997415;
+  --color-silverplate-200: #F1F3F5;
+  --color-silverplate-300: #DCE1E6;
+  --color-silverplate-400: #B8C0C8;
+  --color-silverplate-500: #94A0AA;
+  --color-silverplate-600: #6B747C;
+  --color-silverplate-700: #4A5157;
   --font-sans: 'Montserrat', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-display: 'Bebas Neue', 'Antonio', sans-serif;
   --color-border: hsl(var(--border));

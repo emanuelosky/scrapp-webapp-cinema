@@ -3,10 +3,19 @@ import type { Movie } from '$lib/types';
 
 // Catálogo combinado: trae las películas en cartelera de todas las sedes activas
 // y las une en un solo listado (sin duplicar), para el carrusel "Películas en Cinepic" del home.
-export const load = async ({ fetch }) => {
+export const load = async ({ fetch, depends }) => {
 	const API_URL = import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:5174';
 
-	await cinemaState.init();
+	// Permite que +layout.svelte recargue este load si la verificación del
+	// catálogo detecta que la semilla estaba desactualizada. Sin esto, la
+	// corrección llegaría al selector de sedes pero `nowPlaying` se quedaría
+	// con las funciones de una sede ya retirada durante toda la visita.
+	depends('app:cinemas');
+
+	// Arrancamos con la semilla del bundle, que está disponible de forma
+	// síncrona, y lanzamos la verificación contra Supabase SIN esperarla: ese
+	// viaje en serie era el hueco de ~300ms antes de la primera cartelera.
+	cinemaState.verifyCatalog();
 	const activeCinemas = cinemaState.cinemas;
 
 	const perCinemaData = await Promise.all(

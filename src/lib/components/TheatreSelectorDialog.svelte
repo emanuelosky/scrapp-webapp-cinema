@@ -58,7 +58,7 @@
 	}
 
 	onMount(() => {
-		cinemaState.init();
+		cinemaState.verifyCatalog();
 	});
 
 	const filteredCinemas = $derived(

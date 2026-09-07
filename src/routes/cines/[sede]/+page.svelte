@@ -40,7 +40,7 @@
 	let sedeDisplayName = $derived(cinemaState.selectedCinemaName ?? '');
 
 	onMount(() => {
-		cinemaState.init();
+		cinemaState.verifyCatalog();
 	});
 
 	// Estado

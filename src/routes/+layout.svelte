@@ -9,11 +9,45 @@
 	import ScrollToTop from '$lib/components/home/ScrollToTop.svelte';
 	import NavigationProgress from '$lib/components/navigation/NavigationProgress.svelte';
 	import { chatState } from '$lib/state/chat.svelte';
-	import { goto } from '$app/navigation';
+	import { cinemaState } from '$lib/state/cinema.svelte';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
+	import { toast } from 'svelte-sonner';
 
 	let { children } = $props();
+
+	// Protocolo de divergencia del catálogo de sedes.
+	//
+	// El home arranca con la semilla fija de `cinemasSeed.ts` para no pagar el
+	// viaje a Supabase antes de pedir carteleras. Cuando la verificación
+	// termina y NO coincide, hay que corregir lo que ya se pintó con la lista
+	// vieja — no basta con actualizar el selector.
+	//
+	// Deliberadamente NO es reactivo: solo debe correr una vez por sesión, y
+	// `invalidateAll()` vuelve a disparar el efecto al actualizar `$page`.
+	let catalogoYaCorregido = false;
+
+	$effect(() => {
+		if (cinemaState.catalogStatus !== 'divergente' || catalogoYaCorregido) return;
+		catalogoYaCorregido = true;
+
+		const sedeActual = $page.params.sede;
+		if (sedeActual && cinemaState.sedesRetiradas.includes(sedeActual)) {
+			// El caso grave: el usuario está parado en una sede que ya no opera.
+			// El BFF no valida sedes activas, así que le seguiría entregando
+			// funciones comprables de un cine cerrado. Lo sacamos de ahí.
+			toast.error('Este cine ya no está disponible.', {
+				description: 'Te llevamos a la cartelera general.'
+			});
+			goto(resolve('/'), { replaceState: true });
+			return;
+		}
+
+		// Recalcula los load() que declararon `depends('app:cinemas')`, para que
+		// el home deje de mostrar funciones de una sede que ya no existe.
+		invalidateAll();
+	});
 
 	onMount(() => {
 		if (browser) {

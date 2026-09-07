@@ -1,9 +1,10 @@
 import { supabase } from '$lib/supabase';
 import { browser } from '$app/environment';
+import { SEED_CINEMAS, catalogSignature } from '$lib/config/cinemasSeed';
 
 // Preferencia de sede recordada entre visitas. Solo se usa para destacar
-// "tu cine" en el selector: nunca redirige por su cuenta, porque la URL es la
-// única fuente de verdad sobre en qué sede está parado el usuario.
+// "tu último cine" en el selector: nunca redirige por su cuenta, porque la URL
+// es la única fuente de verdad sobre en qué sede está parado el usuario.
 const PREFERRED_CINEMA_KEY = 'scrapp_preferred_cinema';
 
 // Helper: Fórmula de Haversine para calcular distancia en km
@@ -29,26 +30,43 @@ export interface CinemaLocation {
 	is_active: boolean;
 }
 
+/**
+ * - `semilla`: todavía usamos la copia del bundle; nadie ha confirmado nada.
+ * - `confirmado`: Supabase respondió y coincide con la semilla.
+ * - `divergente`: Supabase respondió y NO coincide. Hay que redesplegar.
+ * - `error`: no se pudo verificar (sin red, key rotada...). Seguimos con la
+ *   semilla porque es mejor que un home vacío, pero no damos nada por cierto.
+ */
+export type CatalogStatus = 'semilla' | 'confirmado' | 'divergente' | 'error';
+
 export class CinemaState {
 	// Slug de la sede en la que está el usuario AHORA MISMO. Espeja el
 	// parámetro [sede] de la URL (que coincide con `cinema_locations.id`) y
-	// vale null en el home multisede `/`. Solo `syncFromUrl` lo escribe: un
-	// click en el selector navega, y es la navegación la que actualiza esto.
-	// Así el header nunca puede decir "Sambil Candelaria" mientras estás en `/`.
+	// vale null en el home multisede `/`. Solo `syncFromUrl` lo escribe.
 	selectedCinemaId = $state<string | null>(null);
 
 	// Última sede que el usuario eligió a propósito. Sobrevive recargas.
 	preferredCinemaId = $state<string | null>(null);
 
+	// Arranque optimista con la semilla: el home puede pedir carteleras en el
+	// primer tick, sin esperar el viaje a Supabase. La verificación de abajo
+	// lo corrige si hace falta.
+	cinemas = $state<CinemaLocation[]>([...SEED_CINEMAS]);
+	catalogStatus = $state<CatalogStatus>('semilla');
+
+	// Sedes que la semilla anunciaba y la base de datos ya no tiene activas.
+	// Es el caso peligroso: si el usuario está parado en una de ellas hay que
+	// sacarlo, porque el BFF le seguiría vendiendo funciones (no valida si la
+	// sede está activa).
+	sedesRetiradas = $state<string[]>([]);
+
 	isLoadingLocation = $state(false);
-	cinemas = $state<CinemaLocation[]>([]);
 	isLoadingCinemas = $state(false);
 
-	// Deduplica las llamadas concurrentes a init(): SiteHeader, +page.ts y el
-	// selector la disparaban a la vez en el primer render, lanzando 3 queries
-	// idénticas a Supabase (la guarda `cinemas.length > 0` solo servía después
-	// de que la primera terminara).
-	#initPromise: Promise<void> | null = null;
+	// Una sola verificación por arranque, compartida por todos los que la
+	// esperen. No se libera al terminar: reintentar en cada navegación
+	// devolvería el catálogo a "no verificado" a mitad de sesión.
+	#verifyPromise: Promise<void> | null = null;
 
 	constructor() {
 		if (browser) {
@@ -71,26 +89,24 @@ export class CinemaState {
 		if (!this.selectedCinemaId) return null;
 		const match = this.selectedCinema;
 		if (match) return match.name || match.short_name || null;
-		// El catálogo aún no cargó: mostramos el slug capitalizado en vez de un
-		// hueco vacío, y el nombre real entra solo cuando `cinemas` se llene.
 		return this.selectedCinemaId.charAt(0).toUpperCase() + this.selectedCinemaId.slice(1);
 	}
 
-	/** True si el slug existe en el catálogo (solo confiable ya cargado). */
 	isKnownCinema(id: string): boolean {
 		return this.cinemas.some((c) => c.id === id);
 	}
 
-	async init() {
-		if (this.cinemas.length > 0) return;
-		this.#initPromise ??= this.#fetchCinemas().finally(() => {
-			// Liberamos el slot para permitir reintentos si la query falló.
-			this.#initPromise = null;
-		});
-		await this.#initPromise;
+	/**
+	 * Arranca la verificación del catálogo contra Supabase (una sola vez por
+	 * sesión) y devuelve la promesa. Quien necesite CERTEZA debe esperarla;
+	 * quien solo quiera pintar rápido puede ignorarla y usar la semilla.
+	 */
+	verifyCatalog(): Promise<void> {
+		this.#verifyPromise ??= this.#fetchAndCompare();
+		return this.#verifyPromise;
 	}
 
-	async #fetchCinemas() {
+	async #fetchAndCompare() {
 		this.isLoadingCinemas = true;
 		try {
 			const { data, error } = await supabase
@@ -98,11 +114,50 @@ export class CinemaState {
 				.select('id, name, short_name, city, latitude, longitude, is_active')
 				.eq('is_active', true)
 				.order('sort_order', { ascending: true });
-			if (!error && data) {
-				this.cinemas = data;
+
+			// Guarda contra la forma del error: si esto devuelve algo que no es
+			// un arreglo, nos quedamos con la semilla en vez de romper los
+			// .map()/.filter() de los load() y del selector.
+			if (error || !Array.isArray(data)) {
+				this.catalogStatus = 'error';
+				console.error('[catalogo] No se pudo verificar cinema_locations; seguimos con la semilla.', error);
+				return;
 			}
-		} catch(e) {
-			console.error(e);
+
+			const frescas = data as CinemaLocation[];
+			const iguales = catalogSignature(frescas) === catalogSignature(SEED_CINEMAS);
+
+			// La red SIEMPRE pisa a la semilla, nunca al revés.
+			this.cinemas = frescas;
+
+			if (iguales) {
+				this.catalogStatus = 'confirmado';
+				this.sedesRetiradas = [];
+				return;
+			}
+
+			const idsFrescos = frescas.map((c) => c.id);
+			this.sedesRetiradas = SEED_CINEMAS.filter((c) => !idsFrescos.includes(c.id)).map((c) => c.id);
+			this.catalogStatus = 'divergente';
+
+			console.warn(
+				'[catalogo] La semilla de sedes NO coincide con Supabase. Hay que actualizar ' +
+					'src/lib/config/cinemasSeed.ts y redesplegar.\n' +
+					'  semilla:  ' + SEED_CINEMAS.map((c) => c.id).join(', ') + '\n' +
+					'  supabase: ' + frescas.map((c) => c.id).join(', ') +
+					(this.sedesRetiradas.length ? '\n  retiradas: ' + this.sedesRetiradas.join(', ') : '')
+			);
+
+			// TODO (pendiente de infraestructura): esto debería levantar una
+			// alerta hacia nosotros, no solo un console.warn que nadie mira.
+			// Cuando exista un canal (Sentry, un webhook a Slack, o una tabla
+			// `deploy_alerts` en Supabase), reportar aquí:
+			//   { evento: 'catalogo_desactualizado', semilla, supabase, retiradas }
+			// Mientras tanto el guardarraíl real es `npm run check:sedes`, que
+			// corre en CI y falla el build antes de que esto llegue a un cliente.
+		} catch (e) {
+			this.catalogStatus = 'error';
+			console.error('[catalogo] Error verificando cinema_locations; seguimos con la semilla.', e);
 		} finally {
 			this.isLoadingCinemas = false;
 		}
@@ -132,8 +187,9 @@ export class CinemaState {
 	}
 
 	/**
-	 * Devuelve la sede más cercana al usuario. No toca `selectedCinemaId`: quien
-	 * llama decide si navegar (y es esa navegación la que cambia la sede activa).
+	 * Devuelve la sede más cercana al usuario. Espera la verificación del
+	 * catálogo a propósito: mandar a alguien al "cine más cercano" según una
+	 * lista del bundle que quizá ya no es válida sería peor que tardar 300ms.
 	 */
 	async findNearestCinema(): Promise<CinemaLocation | null> {
 		if (this.isLoadingLocation) return null;
@@ -158,8 +214,8 @@ export class CinemaState {
 			// Animación extra
 			await new Promise(resolve => setTimeout(resolve, 1000));
 
-			// Fetch active cinemas from database if not loaded
-			await this.init();
+			// Aquí sí exigimos catálogo verificado.
+			await this.verifyCatalog();
 
 			if (this.cinemas.length === 0) {
 				throw new Error('No cinemas found');

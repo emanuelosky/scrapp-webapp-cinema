@@ -10,10 +10,10 @@ export const load = async ({ fetch, params }) => {
     let comingSoonMovies: Movie[] = [];
     let activeDates: string[] = [];
 
-    // Las dos peticiones arrancan a la vez: validar el slug contra el catálogo
-    // de sedes y traer la cartelera son independientes. Encadenarlas sumaba el
-    // viaje a Supabase al de la API antes de pintar nada.
-    const catalogReady = cinemaState.init();
+    // Las dos peticiones arrancan a la vez: verificar el catálogo de sedes y
+    // traer la cartelera son independientes. Encadenarlas sumaba el viaje a
+    // Supabase al de la API antes de pintar nada.
+    const catalogReady = cinemaState.verifyCatalog();
     const moviesReq = fetch(`${API_URL}/api/v1/movies?location_id=${sede}`).catch((e) => {
         console.error('Network error fetching movies:', e);
         return null;
@@ -21,10 +21,11 @@ export const load = async ({ fetch, params }) => {
 
     // Un slug inventado (/cines/loquesea) devolvía catálogo vacío y además
     // escribía "Loquesea" como sede activa en el header global. Cortamos acá.
-    // Solo validamos si el catálogo cargó: si Supabase no respondió preferimos
-    // seguir y mostrar la sede vacía antes que un 404 falso por caída de red.
+    // ESPERAMOS la verificación a propósito: soltar un 404 contra la semilla
+    // del bundle rechazaría el link de una sede nueva que sí existe en la base
+    // pero todavía no está en el último deploy.
     await catalogReady;
-    if (cinemaState.cinemas.length > 0 && !cinemaState.isKnownCinema(sede)) {
+    if (cinemaState.catalogStatus !== 'error' && !cinemaState.isKnownCinema(sede)) {
         error(404, `No encontramos el cine "${sede}".`);
     }
 

@@ -2,10 +2,12 @@
 	import HeroScrolly from '$lib/components/home/HeroScrolly.svelte';
 	import NowPlayingCarousel from '$lib/components/home/NowPlayingCarousel.svelte';
 	import NetworkHero from '$lib/components/home/NetworkHero.svelte';
+	import ComingSoonDialog from '$lib/components/ComingSoonDialog.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import SiteHeader from '$lib/components/navigation/SiteHeader.svelte';
 	import TheatreSelectorDialog from '$lib/components/TheatreSelectorDialog.svelte';
-	import { onMount } from 'svelte';
+	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
+	
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { cinemaState } from '$lib/state/cinema.svelte';
@@ -65,38 +67,41 @@
 
 	type FilterType = 'hoy' | 'eventos' | 'proximamente';
 	let selectedFilter = $state<FilterType>('hoy');
-	let showFullButton = $state(true);
+	let showFullButton = $state(false);
+	
+	const filterKeys: FilterType[] = ['hoy', 'eventos', 'proximamente'];
+	const filterLabels: Record<FilterType, string> = {
+		hoy: 'HOY EN PANTALLA',
+		eventos: 'EVENTOS',
+		proximamente: 'PRÓXIMAMENTE'
+	};
 
-	onMount(() => {
-		if (!sectionRef) return;
+	function getPrevFilter(current: FilterType): FilterType {
+		const idx = filterKeys.indexOf(current);
+		return filterKeys[(idx - 1 + filterKeys.length) % filterKeys.length];
+	}
+
+	function getNextFilter(current: FilterType): FilterType {
+		const idx = filterKeys.indexOf(current);
+		return filterKeys[(idx + 1) % filterKeys.length];
+	}
+
+	let touchStartY = $state(0);
+	function handleTouchStart(e: TouchEvent) {
+		touchStartY = e.touches[0].clientY;
+	}
+	function handleTouchEnd(e: TouchEvent) {
+		const touchEndY = e.changedTouches[0].clientY;
+		const diff = touchStartY - touchEndY;
 		
-		let intervalId: ReturnType<typeof setInterval>;
-
-		const observer = new IntersectionObserver((entries) => {
-			if (entries[0].isIntersecting) {
-				// Mantenemos el botón abierto 5 segundos al entrar en pantalla
-				setTimeout(() => {
-					showFullButton = false;
-				}, 5000);
-				
-				// Y luego lo recordamos expandiéndolo 4 segundos cada 20 segundos
-				intervalId = setInterval(() => {
-					showFullButton = true;
-					setTimeout(() => {
-						showFullButton = false;
-					}, 4000);
-				}, 20000);
-				
-				observer.disconnect();
+		if (Math.abs(diff) > 20) {
+			if (diff > 0) {
+				selectedFilter = getNextFilter(selectedFilter);
+			} else {
+				selectedFilter = getPrevFilter(selectedFilter);
 			}
-		}, { threshold: 0.2 });
-		observer.observe(sectionRef);
-		
-		return () => {
-			observer.disconnect();
-			if (intervalId) clearInterval(intervalId);
-		};
-	});
+		}
+	}
 
 	// "Hoy en pantalla": películas con al menos una función HOY (movie.showtimes
 	// ya viene resuelto así desde el backend, unido entre todas las sedes en
@@ -138,19 +143,70 @@
 	<NetworkHero movies={featuredMovies} onSelectMovie={openMovieDetails} />
 
 	<!-- Catálogo combinado de todas las sedes -->
-	<section class="w-full mt-12" bind:this={sectionRef}>
-		<div class="mb-8 w-full border-b border-zinc-800">
-			<div class="flex flex-col items-start justify-between gap-4 pb-4 px-8 md:flex-row md:items-center md:px-16 lg:px-24">
-				<h3 class="font-display text-3xl tracking-wider text-white md:text-4xl shrink-0" style="transform: scaleY(1.1); transform-origin: left bottom;">
+	<section class="w-full relative z-20 bg-black pt-12 md:pt-16" style="margin-top: -2px;" bind:this={sectionRef}>
+		<div class="mb-4 md:mb-8 w-full border-b border-zinc-800">
+			<!-- Mobile Header: Double Column with Infinite Picker -->
+			<div class="flex lg:hidden flex-row items-center justify-between w-full px-5 md:px-8 pb-6">
+				<!-- Left Column: Title (Mobile vs Tablet) -->
+				<div class="flex md:hidden flex-col items-start justify-center gap-1.5">
+					<span class="text-[13px] sm:text-[15px] tracking-[0.2em] uppercase font-bold text-zinc-500">Películas en</span>
+					<img src="/logo.svg" alt="Cinepic" class="h-7 sm:h-9 object-contain object-left" />
+				</div>
+				
+				<!-- Tablet Title -->
+				<div class="hidden md:flex items-center shrink-0 ml-2">
+					<h3 class="font-display text-[34px] lg:text-[40px] tracking-wider text-white mt-1.5 uppercase leading-none" style="transform: scaleY(1.15); transform-origin: left center;">
+						PELÍCULAS EN CINEPIC
+					</h3>
+				</div>
+
+				<!-- Right Column Group: Divider + Picker -->
+				<div class="flex items-center gap-4 sm:gap-8">
+					<!-- Subtle Vertical Divider -->
+					<div class="h-16 sm:h-20 w-px bg-gradient-to-b from-transparent via-zinc-700 to-transparent"></div>
+
+					<!-- Infinite Slot Machine Picker -->
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div 
+						class="flex flex-col items-end justify-center relative h-24 sm:h-28 w-[170px] sm:w-[200px]"
+						ontouchstart={handleTouchStart}
+						ontouchend={handleTouchEnd}
+					>
+						<!-- Previous Option -->
+						<button onclick={() => selectedFilter = getPrevFilter(selectedFilter)} class="text-[11px] sm:text-[12px] uppercase tracking-widest text-zinc-600 hover:text-zinc-400 transition-colors absolute top-0 w-full text-right pr-6">
+							{filterLabels[getPrevFilter(selectedFilter)]}
+						</button>
+
+						<!-- Active Option (Center) -->
+						<div class="flex items-center justify-end gap-2.5 w-full py-2 border-y border-zinc-800 absolute top-1/2 -translate-y-1/2">
+							<span class="text-[12px] sm:text-[14px] font-bold text-white uppercase tracking-widest mt-[1px]" style="transform: scaleY(1.1); transform-origin: right center;">
+								{filterLabels[selectedFilter]}
+							</span>
+							<ChevronsUpDown class="size-5 text-zinc-500" />
+						</div>
+
+						<!-- Next Option -->
+						<button onclick={() => selectedFilter = getNextFilter(selectedFilter)} class="text-[11px] sm:text-[12px] uppercase tracking-widest text-zinc-600 hover:text-zinc-400 transition-colors absolute bottom-0 w-full text-right pr-6">
+							{filterLabels[getNextFilter(selectedFilter)]}
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- Desktop Header -->
+			<div class="hidden lg:flex flex-row items-center justify-between gap-2 pb-4 px-16 xl:px-24">
+				<h3 class="font-display text-4xl tracking-wider text-white shrink-0" style="transform: scaleY(1.1); transform-origin: left bottom;">
 					PELÍCULAS EN CINEPIC
 				</h3>
 				
-				<div class="flex items-center gap-6 overflow-x-auto w-full md:w-auto scrollbar-hide py-1">
+				<div class="flex items-center gap-4 w-auto">
 					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 					<a
 						href="/cartelera"
 						class="shrink-0 flex items-center justify-center rounded-full bg-zinc-200 text-black shadow-xl transition-all duration-500 hover:bg-white overflow-hidden h-9 {showFullButton ? 'w-[160px] px-5' : 'w-9 px-0'}"
 						title="Ver Cartelera"
+						onmouseenter={() => showFullButton = true}
+						onmouseleave={() => showFullButton = false}
 					>
 						{#if showFullButton}
 							<span class="whitespace-nowrap font-bold tracking-wider text-[11px] leading-none mt-[1px]" style="transform: scaleY(1.2); transform-origin: center;">VER CARTELERA</span>
@@ -162,8 +218,9 @@
 						{/if}
 					</a>
 
-					<div class="hidden md:block w-px h-6 bg-zinc-800 ml-2"></div>
+					<div class="w-px h-6 bg-zinc-800 mx-2"></div>
 
+					<!-- Desktop Filters -->
 					<div class="flex items-center gap-4 text-sm font-bold tracking-wider text-zinc-500">
 						<button 
 							onclick={() => selectedFilter = 'hoy'}

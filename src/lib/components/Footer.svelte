@@ -31,9 +31,9 @@
 			</div>
 
 			<!-- Col 2: Explorar -->
-			<div class="flex flex-col gap-4">
+			<div class="flex flex-col items-center md:items-start gap-4">
 				<h4 class="text-white font-bold uppercase tracking-wider text-sm mb-2">Explorar</h4>
-				<ul class="flex flex-col gap-3">
+				<ul class="flex flex-col items-center md:items-start gap-3">
 					<li><button onclick={() => toast('Oops. Esta función todavía no está disponible.')} class="text-zinc-400 hover:text-white transition-colors text-sm">Ver Cartelera</button></li>
 					<li><button onclick={() => toast('Oops. Esta función todavía no está disponible.')} class="text-zinc-400 hover:text-white transition-colors text-sm">Ver Combos</button></li>
 					<li><button onclick={() => toast('Oops. Esta función todavía no está disponible.')} class="text-zinc-400 hover:text-white transition-colors text-sm">Próximos Estrenos</button></li>
@@ -41,18 +41,18 @@
 			</div>
 
 			<!-- Col 3: Tu Cuenta -->
-			<div class="flex flex-col gap-4">
+			<div class="flex flex-col items-center md:items-start gap-4">
 				<h4 class="text-white font-bold uppercase tracking-wider text-sm mb-2">Tu Cuenta</h4>
-				<ul class="flex flex-col gap-3">
+				<ul class="flex flex-col items-center md:items-start gap-3">
 					<li><button onclick={() => toast('Oops. Esta función todavía no está disponible.')} class="text-zinc-400 hover:text-white transition-colors text-sm">Iniciar Sesión</button></li>
 					<li><button onclick={() => toast('Oops. Esta función todavía no está disponible.')} class="text-zinc-400 hover:text-white transition-colors text-sm">Crear Cuenta</button></li>
 				</ul>
 			</div>
 
 			<!-- Col 4: Legal -->
-			<div class="flex flex-col gap-4">
+			<div class="flex flex-col items-center md:items-start gap-4">
 				<h4 class="text-white font-bold uppercase tracking-wider text-sm mb-2">Legal</h4>
-				<ul class="flex flex-col gap-3">
+				<ul class="flex flex-col items-center md:items-start gap-3">
 					<li>
 						<button onclick={() => toast('Oops. Esta función todavía no está disponible.')} class="text-zinc-400 hover:text-white transition-colors text-sm flex items-center gap-2">
 							<FileText size={14} />

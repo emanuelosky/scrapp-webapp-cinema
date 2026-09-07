@@ -56,7 +56,7 @@
 					goto(currentSede ? resolve(`/cines/${currentSede}`) : resolve('/'));
 				}}
 			>
-				Comprar más entradas
+				Comprar más boletos
 			</button>
 		</div>
 	</div>

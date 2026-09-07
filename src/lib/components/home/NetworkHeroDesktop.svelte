@@ -133,7 +133,7 @@
 -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <section 
-	class="relative hidden w-full overflow-hidden border-b border-zinc-900 bg-black md:flex md:h-[300px] xl:h-[440px]"
+	class="relative hidden w-full overflow-hidden border-b border-zinc-900 bg-black lg:flex lg:h-[380px] xl:h-[440px]"
 	onpointerdown={handlePointerDown} 
 	onpointerup={handlePointerUp}
 >

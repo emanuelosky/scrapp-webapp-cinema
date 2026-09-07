@@ -61,10 +61,7 @@
 					</div>
 				{/if}
 
-				<!-- Overlay Gradient & Title for Center Item -->
-				<div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-4 flex flex-col items-center justify-end text-center transition-opacity duration-500 {i === currentIndex ? 'opacity-100' : 'opacity-0'}">
-					<h3 class="text-white font-bold text-xs sm:text-sm md:text-lg lg:text-xl drop-shadow-md leading-tight">{movie.title}</h3>
-				</div>
+
 			</div>
 		{/each}
 	{/if}

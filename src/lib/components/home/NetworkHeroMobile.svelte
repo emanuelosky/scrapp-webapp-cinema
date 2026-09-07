@@ -3,10 +3,13 @@
 	import TrailerVolumeControl from '$lib/components/home/TrailerVolumeControl.svelte';
 	import TrailerLightbox from '$lib/components/home/TrailerLightbox.svelte';
 	import { Button } from '$lib/components/ui/button';
+	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import Play from '@lucide/svelte/icons/play';
 	import Pause from '@lucide/svelte/icons/pause';
 	import Maximize2 from '@lucide/svelte/icons/maximize-2';
 	import Ticket from '@lucide/svelte/icons/ticket';
+	import VolumeX from '@lucide/svelte/icons/volume-x';
+	import Volume2 from '@lucide/svelte/icons/volume-2';
 	import type { Movie } from '$lib/types';
 
 	let {
@@ -76,7 +79,7 @@
 <!-- Mobile: banner como fondo ambiental, póster + info superpuestos -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <section 
-	class="relative h-[440px] w-full overflow-hidden border-b border-zinc-900 bg-black md:hidden"
+	class="relative h-[440px] md:h-[500px] w-full overflow-hidden bg-black lg:hidden"
 	onpointerdown={handlePointerDown}
 	onpointerup={handlePointerUp}
 >
@@ -101,7 +104,7 @@
 			<img
 				src={movie.poster}
 				alt={movie.title}
-				class="aspect-[2/3] w-20 shrink-0 rounded-sm object-cover shadow-2xl"
+				class="aspect-[2/3] w-20 md:w-32 shrink-0 rounded-sm object-cover shadow-2xl"
 			/>
 			<div class="min-w-0 flex-1">
 				{#if movie.label}
@@ -115,15 +118,25 @@
 						{movie.label}
 					</span>
 				{/if}
-				<h2 class="font-display text-2xl font-black uppercase leading-tight tracking-tight text-white drop-shadow-lg">
+				<h2 class="font-display text-2xl md:text-4xl font-black uppercase leading-tight tracking-tight text-white drop-shadow-lg">
 					{movie.title}
 				</h2>
 				{#if movie.formats || movie.rating || movie.duration}
-					<div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-300">
+					<div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] md:text-[11px] font-semibold uppercase tracking-widest text-zinc-300">
 						{#if movie.rating}<span class="flex size-4 items-center justify-center rounded-sm bg-white text-[9px] font-black text-black">{movie.rating}</span>{/if}
 						{#if movie.formats?.video}<span>{movie.formats.video}</span>{/if}
 						{#if movie.duration}<span>{movie.duration}</span>{/if}
 					</div>
+				{/if}
+				{#if movie.synopsis}
+					<ScrollArea
+						class="hidden md:block mt-3 h-20 pr-3"
+						style="mask-image: linear-gradient(to bottom, black 60%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);"
+					>
+						<p class="text-[13px] leading-relaxed text-zinc-300 font-medium drop-shadow-md">
+							{movie.synopsis}
+						</p>
+					</ScrollArea>
 				{/if}
 			</div>
 		</div>
@@ -131,7 +144,7 @@
 		<div class="flex items-center gap-3">
 			<Button
 				onclick={() => onSelectMovie(movie)}
-				class="h-11 flex-1 rounded-full border border-white/10 bg-white/10 text-xs font-bold tracking-wide text-white backdrop-blur-md transition-all hover:bg-white/20"
+				class="h-11 md:h-12 flex-1 rounded-full border border-white/10 bg-white/10 text-xs md:text-sm font-bold tracking-wide text-white backdrop-blur-md transition-all hover:bg-white/20"
 			>
 				Comprar Boletos
 			</Button>
@@ -142,17 +155,26 @@
 					class="flex size-11 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white backdrop-blur-md"
 					aria-label={isPlaying ? 'Pausar tráiler' : 'Reproducir tráiler'}
 				>
-					{#if isPlaying}<Pause class="size-4" />{:else}<Play class="size-4" />{/if}
+					{#if isPlaying}<Pause class="size-4 md:size-5" />{:else}<Play class="size-4 md:size-5" />{/if}
 				</button>
 				{#if hasAudio}
-					<TrailerVolumeControl bind:isMuted bind:volume size="sm" />
+					<button
+						onclick={() => (isMuted = !isMuted)}
+						class="flex size-11 md:size-12 shrink-0 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white backdrop-blur-md transition-all hover:bg-black/60"
+					>
+						{#if isMuted}
+							<VolumeX class="size-4 md:size-5" />
+						{:else}
+							<Volume2 class="size-4 md:size-5" />
+						{/if}
+					</button>
 				{/if}
 				<button
 					onclick={() => (lightboxOpen = true)}
-					class="flex size-11 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white backdrop-blur-md"
+					class="flex size-11 md:size-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white backdrop-blur-md"
 					aria-label="Ver tráiler en reproductor grande"
 				>
-					<Maximize2 class="size-4" />
+					<Maximize2 class="size-4 md:size-5" />
 				</button>
 			{:else}
 				<a

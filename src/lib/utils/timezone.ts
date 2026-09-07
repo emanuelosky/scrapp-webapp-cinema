@@ -1,7 +1,13 @@
 /**
- * Utilidades para centralizar la zona horaria a America/Caracas.
- * Garantiza que la hora y el "día de hoy" se calculen correctamente,
- * sin importar la zona horaria del servidor o del navegador.
+ * ATENCIÓN: `APP_TIMEZONE` es solo el fallback para cuando todavía no se
+ * conoce la sede (home multisede, catálogo sin cargar, error de red) — NO es
+ * "la" zona horaria de la app. Cada sede tiene la suya en
+ * `cinema_locations.timezone`, expuesta como `cinemaState.activeTimezone`.
+ * Usar esta constante directamente para filtrar horarios de una sede
+ * específica es el bug que causó esta refactorización: asumía que todo cine
+ * está en Caracas, lo cual deja de ser cierto en cuanto haya una sede en otro
+ * país. Antes de importar esto, pregúntate si en realidad quieres
+ * `cinemaState.activeTimezone`.
  */
 
 export const APP_TIMEZONE = import.meta.env.VITE_APP_TIMEZONE || 'America/Caracas';

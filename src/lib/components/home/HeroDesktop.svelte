@@ -73,7 +73,7 @@
 				onclick={scrollToMovies}
 				class="flex h-12 w-auto items-center justify-center rounded-full bg-white/5 backdrop-blur-md border border-white/10 px-8 text-sm font-bold text-white/90 shadow-xl transition-all duration-300 hover:scale-105 hover:bg-white/10 hover:border-white/30 hover:text-white md:text-base tracking-wide"
 			>
-				Comprar Entradas
+				Comprar Boletos
 			</Button>
 			<Button
 				class="flex h-12 w-auto items-center justify-center rounded-full bg-white/5 backdrop-blur-md border border-white/10 px-8 text-sm font-bold text-white/90 shadow-xl transition-all duration-300 hover:scale-105 hover:bg-white/10 hover:border-white/30 hover:text-white md:text-base tracking-wide"

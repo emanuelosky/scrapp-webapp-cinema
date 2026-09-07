@@ -10,25 +10,126 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
+      admin_authorizations: {
+        Row: {
+          action_type: string
+          auth_method: string | null
+          authorized_at: string | null
+          authorized_by: string | null
+          authorized_by_name: string | null
+          created_at: string
+          details: Json
+          id: string
+          order_id_temporal: string | null
+          pos_terminal_name: string | null
+          pos_user_id: string | null
+          pos_user_name: string
+          rejection_reason: string | null
+          status: string
+        }
+        Insert: {
+          action_type: string
+          auth_method?: string | null
+          authorized_at?: string | null
+          authorized_by?: string | null
+          authorized_by_name?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          order_id_temporal?: string | null
+          pos_terminal_name?: string | null
+          pos_user_id?: string | null
+          pos_user_name: string
+          rejection_reason?: string | null
+          status?: string
+        }
+        Update: {
+          action_type?: string
+          auth_method?: string | null
+          authorized_at?: string | null
+          authorized_by?: string | null
+          authorized_by_name?: string | null
+          created_at?: string
+          details?: Json
+          id?: string
+          order_id_temporal?: string | null
+          pos_terminal_name?: string | null
+          pos_user_id?: string | null
+          pos_user_name?: string
+          rejection_reason?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_authorizations_pos_user_id_fkey"
+            columns: ["pos_user_id"]
+            isOneToOne: false
+            referencedRelation: "pos_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_settings: {
         Row: {
           data: Json
           id: string
+          location_id: string
           updated_at: string
         }
         Insert: {
           data?: Json
           id: string
+          location_id?: string
           updated_at?: string
         }
         Update: {
           data?: Json
           id?: string
+          location_id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      b2c_jobs: {
+        Row: {
+          attempts: number
+          created_at: string | null
+          error_text: string | null
+          ghost_username: string
+          id: string
+          job_type: Database["public"]["Enums"]["b2c_job_type"]
+          payload: Json
+          responses: Json[] | null
+          status: Database["public"]["Enums"]["b2c_job_status"]
+          updated_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string | null
+          error_text?: string | null
+          ghost_username: string
+          id?: string
+          job_type: Database["public"]["Enums"]["b2c_job_type"]
+          payload: Json
+          responses?: Json[] | null
+          status?: Database["public"]["Enums"]["b2c_job_status"]
+          updated_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string | null
+          error_text?: string | null
+          ghost_username?: string
+          id?: string
+          job_type?: Database["public"]["Enums"]["b2c_job_type"]
+          payload?: Json
+          responses?: Json[] | null
+          status?: Database["public"]["Enums"]["b2c_job_status"]
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -39,6 +140,7 @@ export type Database = {
           id: string
           image_url: string
           is_active: boolean
+          location_id: string
           media_type: string
           sort_order: number
           title: string | null
@@ -49,6 +151,7 @@ export type Database = {
           id?: string
           image_url: string
           is_active?: boolean
+          location_id?: string
           media_type?: string
           sort_order?: number
           title?: string | null
@@ -59,9 +162,133 @@ export type Database = {
           id?: string
           image_url?: string
           is_active?: boolean
+          location_id?: string
           media_type?: string
           sort_order?: number
           title?: string | null
+        }
+        Relationships: []
+      }
+      cinema_locations: {
+        Row: {
+          address: string | null
+          boleteria_base_url: string | null
+          boleteria_cookie: string | null
+          boleteria_cookie_at: string | null
+          boleteria_password: string | null
+          boleteria_username: string | null
+          candy_base_url: string | null
+          candy_cookie: string | null
+          candy_cookie_at: string | null
+          candy_empresa: string | null
+          candy_password: string | null
+          candy_username: string | null
+          city: string
+          created_at: string
+          id: string
+          is_active: boolean
+          latitude: number | null
+          longitude: number | null
+          name: string
+          pos_base_url: string
+          pos_caja: string | null
+          pos_empresa: string | null
+          pos_fallback_urls: string[] | null
+          pos_id_complejo: string | null
+          pos_id_punto_venta: string | null
+          pos_impresora: string | null
+          pos_password: string | null
+          pos_token: string | null
+          pos_token_at: string | null
+          pos_username: string | null
+          short_name: string
+          sort_order: number
+          timezone: string
+          updated_at: string
+          webapp_allowed_tariffs: string[] | null
+          webapp_default_tariffs: string[] | null
+          webapp_kiosk_retention: number
+          webapp_theme_id: string
+        }
+        Insert: {
+          address?: string | null
+          boleteria_base_url?: string | null
+          boleteria_cookie?: string | null
+          boleteria_cookie_at?: string | null
+          boleteria_password?: string | null
+          boleteria_username?: string | null
+          candy_base_url?: string | null
+          candy_cookie?: string | null
+          candy_cookie_at?: string | null
+          candy_empresa?: string | null
+          candy_password?: string | null
+          candy_username?: string | null
+          city?: string
+          created_at?: string
+          id: string
+          is_active?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          pos_base_url?: string
+          pos_caja?: string | null
+          pos_empresa?: string | null
+          pos_fallback_urls?: string[] | null
+          pos_id_complejo?: string | null
+          pos_id_punto_venta?: string | null
+          pos_impresora?: string | null
+          pos_password?: string | null
+          pos_token?: string | null
+          pos_token_at?: string | null
+          pos_username?: string | null
+          short_name: string
+          sort_order?: number
+          timezone: string
+          updated_at?: string
+          webapp_allowed_tariffs?: string[] | null
+          webapp_default_tariffs?: string[] | null
+          webapp_kiosk_retention?: number
+          webapp_theme_id?: string
+        }
+        Update: {
+          address?: string | null
+          boleteria_base_url?: string | null
+          boleteria_cookie?: string | null
+          boleteria_cookie_at?: string | null
+          boleteria_password?: string | null
+          boleteria_username?: string | null
+          candy_base_url?: string | null
+          candy_cookie?: string | null
+          candy_cookie_at?: string | null
+          candy_empresa?: string | null
+          candy_password?: string | null
+          candy_username?: string | null
+          city?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          pos_base_url?: string
+          pos_caja?: string | null
+          pos_empresa?: string | null
+          pos_fallback_urls?: string[] | null
+          pos_id_complejo?: string | null
+          pos_id_punto_venta?: string | null
+          pos_impresora?: string | null
+          pos_password?: string | null
+          pos_token?: string | null
+          pos_token_at?: string | null
+          pos_username?: string | null
+          short_name?: string
+          sort_order?: number
+          timezone?: string
+          updated_at?: string
+          webapp_allowed_tariffs?: string[] | null
+          webapp_default_tariffs?: string[] | null
+          webapp_kiosk_retention?: number
+          webapp_theme_id?: string
         }
         Relationships: []
       }
@@ -191,24 +418,30 @@ export type Database = {
         }
         Relationships: []
       }
-      kds_force_kitchen: {
+      kds_force_items: {
         Row: {
           created_at: string
+          es_combo: boolean | null
           id: number
-          nombre: string | null
-          producto_id: number | null
+          item_id: string
+          nombre: string
+          recipe_json: Json | null
         }
         Insert: {
           created_at?: string
+          es_combo?: boolean | null
           id?: number
-          nombre?: string | null
-          producto_id?: number | null
+          item_id: string
+          nombre: string
+          recipe_json?: Json | null
         }
         Update: {
           created_at?: string
+          es_combo?: boolean | null
           id?: number
-          nombre?: string | null
-          producto_id?: number | null
+          item_id?: string
+          nombre?: string
+          recipe_json?: Json | null
         }
         Relationships: []
       }
@@ -222,6 +455,7 @@ export type Database = {
           item_id_full: string
           item_name: string
           kds_id: string
+          location_id: string
           metadata: Json | null
           order_id_temporal: string
           pos_id: string | null
@@ -241,6 +475,7 @@ export type Database = {
           item_id_full: string
           item_name: string
           kds_id: string
+          location_id?: string
           metadata?: Json | null
           order_id_temporal: string
           pos_id?: string | null
@@ -260,6 +495,7 @@ export type Database = {
           item_id_full?: string
           item_name?: string
           kds_id?: string
+          location_id?: string
           metadata?: Json | null
           order_id_temporal?: string
           pos_id?: string | null
@@ -392,6 +628,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           nickname: string | null
+          password: string | null
           pin_code: string | null
           theme_settings: Json | null
           username: string
@@ -407,6 +644,7 @@ export type Database = {
           id: string
           is_active?: boolean | null
           nickname?: string | null
+          password?: string | null
           pin_code?: string | null
           theme_settings?: Json | null
           username: string
@@ -422,6 +660,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           nickname?: string | null
+          password?: string | null
           pin_code?: string | null
           theme_settings?: Json | null
           username?: string
@@ -1169,6 +1408,8 @@ export type Database = {
           synopsis: string | null
           title: string
           tmdb_id: number | null
+          trailer_asset_url: string | null
+          trailer_hover_asset_url: string | null
           trailer_url: string | null
           updated_at: string
         }
@@ -1191,6 +1432,8 @@ export type Database = {
           synopsis?: string | null
           title: string
           tmdb_id?: number | null
+          trailer_asset_url?: string | null
+          trailer_hover_asset_url?: string | null
           trailer_url?: string | null
           updated_at?: string
         }
@@ -1213,6 +1456,8 @@ export type Database = {
           synopsis?: string | null
           title?: string
           tmdb_id?: number | null
+          trailer_asset_url?: string | null
+          trailer_hover_asset_url?: string | null
           trailer_url?: string | null
           updated_at?: string
         }
@@ -1245,6 +1490,69 @@ export type Database = {
         }
         Relationships: []
       }
+      wbpp_promos: {
+        Row: {
+          bg_color_class: string
+          created_at: string
+          days_of_week: number[] | null
+          end_time: string | null
+          icon: string
+          id: string
+          is_active: boolean
+          location_id: string
+          message: string
+          name: string
+          start_time: string | null
+          text_color_class: string
+          updated_at: string
+        }
+        Insert: {
+          bg_color_class?: string
+          created_at?: string
+          days_of_week?: number[] | null
+          end_time?: string | null
+          icon?: string
+          id?: string
+          is_active?: boolean
+          location_id?: string
+          message: string
+          name: string
+          start_time?: string | null
+          text_color_class?: string
+          updated_at?: string
+        }
+        Update: {
+          bg_color_class?: string
+          created_at?: string
+          days_of_week?: number[] | null
+          end_time?: string | null
+          icon?: string
+          id?: string
+          is_active?: boolean
+          location_id?: string
+          message?: string
+          name?: string
+          start_time?: string | null
+          text_color_class?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wbpp_promos_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "cinema_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wbpp_promos_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "cinema_locations_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wbpp_showtimes: {
         Row: {
           created_at: string
@@ -1252,6 +1560,7 @@ export type Database = {
           id: string
           is_active: boolean
           language: string
+          location_id: string
           movie_id: string
           numero_funcion: string | null
           numero_sala: string | null
@@ -1269,6 +1578,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           language?: string
+          location_id?: string
           movie_id: string
           numero_funcion?: string | null
           numero_sala?: string | null
@@ -1286,6 +1596,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           language?: string
+          location_id?: string
           movie_id?: string
           numero_funcion?: string | null
           numero_sala?: string | null
@@ -1299,6 +1610,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "wbpp_showtimes_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "cinema_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wbpp_showtimes_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "cinema_locations_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "wbpp_showtimes_movie_id_fkey"
             columns: ["movie_id"]
             isOneToOne: false
@@ -1309,6 +1634,63 @@ export type Database = {
       }
     }
     Views: {
+      cinema_locations_public: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string | null
+          id: string | null
+          is_active: boolean | null
+          latitude: number | null
+          longitude: number | null
+          name: string | null
+          short_name: string | null
+          sort_order: number | null
+          timezone: string | null
+          updated_at: string | null
+          webapp_allowed_tariffs: string[] | null
+          webapp_default_tariffs: string[] | null
+          webapp_kiosk_retention: number | null
+          webapp_theme_id: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          name?: string | null
+          short_name?: string | null
+          sort_order?: number | null
+          timezone?: string | null
+          updated_at?: string | null
+          webapp_allowed_tariffs?: string[] | null
+          webapp_default_tariffs?: string[] | null
+          webapp_kiosk_retention?: number | null
+          webapp_theme_id?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          name?: string | null
+          short_name?: string | null
+          sort_order?: number | null
+          timezone?: string | null
+          updated_at?: string | null
+          webapp_allowed_tariffs?: string[] | null
+          webapp_default_tariffs?: string[] | null
+          webapp_kiosk_retention?: number | null
+          webapp_theme_id?: string | null
+        }
+        Relationships: []
+      }
       v_combo_theoretical_stock: {
         Row: {
           combo_id: string | null
@@ -1440,6 +1822,8 @@ export type Database = {
       registrar_venta_completa: { Args: { payload: Json }; Returns: Json }
     }
     Enums: {
+      b2c_job_status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"
+      b2c_job_type: "CHECKOUT" | "PRINT"
       scrapp_tipo_item: "boleto" | "candy" | "combo" | "combo_componente"
       transfer_status:
         | "DRAFT"
@@ -1479,12 +1863,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1508,11 +1892,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1533,11 +1917,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1558,11 +1942,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1575,11 +1959,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1591,6 +1975,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      b2c_job_status: ["PENDING", "PROCESSING", "COMPLETED", "FAILED"],
+      b2c_job_type: ["CHECKOUT", "PRINT"],
       scrapp_tipo_item: ["boleto", "candy", "combo", "combo_componente"],
       transfer_status: [
         "DRAFT",

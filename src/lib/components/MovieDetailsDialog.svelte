@@ -7,22 +7,26 @@
 	import AlertCircle from '@lucide/svelte/icons/alert-circle';
 	import type { Movie, ShowtimeDetails } from '$lib/types';
 	import { bookingState } from '$lib/state/booking.svelte';
+	import { cinemaState } from '$lib/state/cinema.svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
-	import { SvelteDate } from 'svelte/reactivity';
+	import { today, now, parseDate } from '@internationalized/date';
+
+	// Este diálogo solo se monta dentro de /cines/[sede], así que
+	// cinemaState.activeTimezone siempre refleja la sede correcta (el padre ya
+	// llamó syncFromUrl). Todo el cálculo de fecha/hora de aquí debe usar esta
+	// zona — nunca el reloj crudo del navegador del visitante, que puede estar
+	// en otro país y desalinear "hoy" o el corte de 30 min de gracia.
 
 	let { open = $bindable(false), movie, initialDate = null, initialExpandSynopsis = false }: { open: boolean; movie: Movie | null; initialDate?: string | null; initialExpandSynopsis?: boolean } = $props();
 
 	let availableDates = $derived.by(() => {
 		if (!movie?.showtimesByDate) return [];
-		const today = new SvelteDate();
-		today.setHours(0, 0, 0, 0);
-
-		return Object.keys(movie.showtimesByDate).filter(dateStr => {
-			const d = new SvelteDate(dateStr + "T00:00:00");
-			return d.getTime() >= today.getTime();
-		}).sort();
+		// Comparación de strings ISO (YYYY-MM-DD): el orden lexicográfico ya
+		// coincide con el cronológico, sin necesidad de construir un Date.
+		const todayStr = today(cinemaState.activeTimezone).toString();
+		return Object.keys(movie.showtimesByDate).filter(dateStr => dateStr >= todayStr).sort();
 	});
 	let selectedDate = $state<string | null>(null);
 	let selectedShowtime = $state<ShowtimeDetails | null>(null);
@@ -67,9 +71,9 @@
 				}
 
 				// Buscar la primera fecha que tenga funciones válidas (que no hayan pasado)
-			const now = new SvelteDate();
-			const currentTotalMins = now.getHours() * 60 + now.getMinutes();
-			const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+			const tzNow = now(cinemaState.activeTimezone);
+			const currentTotalMins = tzNow.hour * 60 + tzNow.minute;
+			const todayStr = today(cinemaState.activeTimezone).toString();
 
 			let foundDate = availableDates[0];
 			
@@ -121,10 +125,10 @@
 		const shows = movie.showtimesByDate[selectedDate] || [];
 		const groups: Record<string, ShowtimeDetails[]> = {};
 		
-		const now = new SvelteDate();
-		const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+		const todayStr = today(cinemaState.activeTimezone).toString();
 		const isToday = selectedDate === todayStr;
-		const currentTotalMins = now.getHours() * 60 + now.getMinutes();
+		const tzNow = now(cinemaState.activeTimezone);
+		const currentTotalMins = tzNow.hour * 60 + tzNow.minute;
 
 		for (const s of shows) {
 			if (isToday) {
@@ -153,15 +157,12 @@
 	let formatKeys = $derived(Object.keys(groupedShowtimes).sort());
 
 	function formatDateLabel(dateStr: string) {
-		const d = new SvelteDate(dateStr + "T12:00:00");
-		const today = new SvelteDate();
-		today.setHours(12, 0, 0, 0);
-		
-		const diffTime = d.getTime() - today.getTime();
-		const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-		
-		const formatter = new Intl.DateTimeFormat('es-VE', { weekday: 'short', day: 'numeric', month: 'short' });
-		const formatted = formatter.format(d).replace(/\./g, '');
+		const tz = cinemaState.activeTimezone;
+		const d = parseDate(dateStr);
+		const diffDays = d.compare(today(tz));
+
+		const formatter = new Intl.DateTimeFormat('es-VE', { weekday: 'short', day: 'numeric', month: 'short', timeZone: tz });
+		const formatted = formatter.format(d.toDate(tz)).replace(/\./g, '');
 		const parts = formatted.split(' ');
 		if (parts.length >= 3) {
 			parts[0] = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);

@@ -19,7 +19,7 @@
 				<span class="text-lg md:text-xl font-black {bookingState.selectedSeats.length === bookingState.totalTickets && bookingState.totalTickets > 0 ? 'text-green-500' : 'text-champagne-500'}">{bookingState.selectedSeats.length}</span>
 			</div>
 			{#if bookingState.totalTickets === 0}
-				<span class="text-[9px] md:text-xs text-champagne-500 flex items-center justify-center md:justify-start gap-1 mt-0.5 md:mt-1"><Info class="size-3 hidden md:block" /> Selecciona tickets o marca una butaca</span>
+				<span class="text-[9px] md:text-xs text-champagne-500 flex items-center justify-center md:justify-start gap-1 mt-0.5 md:mt-1"><Info class="size-3 hidden md:block" /> Selecciona boletos o marca una butaca</span>
 			{:else if bookingState.selectedSeats.length < bookingState.totalTickets}
 				<span class="text-[9px] md:text-xs text-champagne-500 flex items-center justify-center md:justify-start gap-1 mt-0.5 md:mt-1"><Info class="size-3 hidden md:block" /> Faltan {bookingState.totalTickets - bookingState.selectedSeats.length} butacas por elegir</span>
 			{/if}

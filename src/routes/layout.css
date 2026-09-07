@@ -17,6 +17,13 @@
   --color-silverplate-500: #94A0AA;
   --color-silverplate-600: #6B747C;
   --color-silverplate-700: #4A5157;
+  /* Golden Rose — mismo acento que la sede VVIP (theme.lido en scrapp-extension-v2
+     /src/ui/cfd/index.html: --c-gold-light/--c-gold/--c-gold-deep). Más acorde a
+     la paleta real de marca (negro/gris/blanco) que el ámbar/champagne, que es
+     un dorado genérico sin origen en ningún theme real del producto. */
+  --color-goldenrose-300: #E39C9C;
+  --color-goldenrose-500: #B56965;
+  --color-goldenrose-700: #85413F;
   --font-sans: 'Montserrat', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-display: 'Bebas Neue', 'Antonio', sans-serif;
   --color-border: hsl(var(--border));

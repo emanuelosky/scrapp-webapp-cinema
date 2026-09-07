@@ -1,6 +1,7 @@
 /**
  * Verifica que la semilla de sedes del bundle (src/lib/config/cinemasSeed.ts)
- * siga coincidiendo con la tabla `cinema_locations` de Supabase.
+ * siga coincidiendo con `cinema_locations_public` (la vista pública; la tabla
+ * base ya no es legible con la anon key, ver .agent-tasks/06-resultado.md).
  *
  * Por qué existe: el home arranca con esa lista fija para ahorrarse el viaje a
  * Supabase, y el BFF NO valida si una sede está activa (comprobado: pedirle la
@@ -57,8 +58,13 @@ async function main() {
 
 	let res;
 	try {
+		// La anon key ya no puede leer la tabla base `cinema_locations` (guarda
+		// credenciales de POS/taquilla/dulcería): se bloqueó tras confirmar que
+		// cualquiera podía leerlas desde el bundle del cliente. Este script usa
+		// la misma anon key pública que el navegador, así que consulta la vista
+		// `cinema_locations_public` — es la misma fuente que ve el cliente real.
 		res = await fetch(
-			`${url}/rest/v1/cinema_locations?select=id,name,short_name,city,latitude,longitude,is_active&is_active=eq.true&order=sort_order.asc`,
+			`${url}/rest/v1/cinema_locations_public?select=id,name,short_name,city,latitude,longitude,is_active,timezone&is_active=eq.true&order=sort_order.asc`,
 			{ headers: { apikey: key, Authorization: `Bearer ${key}` } }
 		);
 	} catch (e) {

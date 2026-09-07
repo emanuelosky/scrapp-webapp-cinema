@@ -6,7 +6,7 @@
 	let heroButtonTextIndex = $state(0);
 	const heroButtonTexts = [
 		{ text: '¿Todavía no sabes qué hacer?', duration: 30000, isLink: false },
-		{ text: '¡Compra tus entradas!', duration: 90000, isLink: true }
+		{ text: '¡Compra tus boletos!', duration: 90000, isLink: true }
 	];
 	
 	onMount(() => {

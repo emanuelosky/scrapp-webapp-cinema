@@ -28,7 +28,6 @@
 	import { resolve } from '$app/paths';
 	import { toast } from 'svelte-sonner';
 	import { today, now, type DateValue } from '@internationalized/date';
-	import { APP_TIMEZONE } from '$lib/utils/timezone';
 
 	// La URL manda: el slug [sede] ES el `cinema_locations.id`, así que la sede
 	// activa se espeja desde la ruta en vez de adivinarse con un match difuso
@@ -53,7 +52,9 @@
 	let customDate = $state<DateValue | undefined>();
 
 	let selectedDateStr = $derived.by(() => {
-		const tz = APP_TIMEZONE;
+		// La zona de la SEDE, no una constante global: "hoy" no puede depender
+		// de un huso fijo una vez haya cines en más de un país.
+		const tz = cinemaState.activeTimezone;
 		if (selectedDateTab === 'hoy') return today(tz).toString();
 		if (selectedDateTab === 'manana') return today(tz).add({ days: 1 }).toString();
 		if (customDate) return customDate.toString();
@@ -68,9 +69,10 @@
 	let randomTodayPhrase = $state(todayPhrases[0]);
 
 	let nowPlaying = $derived.by(() => {
-		const tzNow = now(APP_TIMEZONE);
+		const tz = cinemaState.activeTimezone;
+		const tzNow = now(tz);
 		const currentStr = `${tzNow.hour.toString().padStart(2, '0')}:${tzNow.minute.toString().padStart(2, '0')}:00`;
-		const todayStr = today(APP_TIMEZONE).toString();
+		const todayStr = today(tz).toString();
 
 		return data.nowPlaying
 			.map(movie => {

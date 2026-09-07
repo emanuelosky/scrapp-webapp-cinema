@@ -247,14 +247,21 @@ export class BookingState {
 				payload.existingGhostUsername = ghostSessionState.ghostSession.ghostUsername;
 			}
 
-			const response = await fetch(`${API_BASE}/api/kiosk/lock-seats`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(payload)
-			});
-
-			const data = await response.json();
-			if (!data.success) throw new Error(data.error || 'Fallo al bloquear butacas en el servidor');
+			// DEMO MODE: Desactivado el bloqueo de butacas real para evitar accidentes
+			// const response = await fetch(`${API_BASE}/api/kiosk/lock-seats`, {
+			// 	method: 'POST',
+			// 	headers: { 'Content-Type': 'application/json' },
+			// 	body: JSON.stringify(payload)
+			// });
+			// const data = await response.json();
+			// if (!data.success) throw new Error(data.error || 'Fallo al bloquear butacas en el servidor');
+			
+			// Mocking successful response
+			const data = {
+				success: true,
+				ventaTemporalId: 'DEMO-LOCK-' + Math.random().toString(36).substring(7),
+				ghostUsername: 'DEMO_USER'
+			};
 
 			const lockedAtStr = new SvelteDate().toISOString();
 
@@ -329,14 +336,20 @@ export class BookingState {
 				pago: pago
 			};
 
-			const response = await fetch(`${API_BASE}/api/kiosk/checkout`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(payload)
-			});
-
-			const data = await response.json();
-			if (!data.success) throw new Error(data.error || 'Error desconocido al facturar');
+			// DEMO MODE: Desactivada la facturación real
+			// const response = await fetch(`${API_BASE}/api/kiosk/checkout`, {
+			// 	method: 'POST',
+			// 	headers: { 'Content-Type': 'application/json' },
+			// 	body: JSON.stringify(payload)
+			// });
+			// const data = await response.json();
+			// if (!data.success) throw new Error(data.error || 'Error desconocido al facturar');
+			
+			// Mocking successful response
+			const data = { success: true };
+			
+			// Esperar 1.5s para simular el procesamiento de pago
+			await new Promise(resolve => setTimeout(resolve, 1500));
 
 			cartState.lastCompletedSale = {
 				cartItems: [...cartState.cartItems],

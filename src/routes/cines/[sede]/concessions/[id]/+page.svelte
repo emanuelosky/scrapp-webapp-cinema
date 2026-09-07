@@ -155,7 +155,7 @@
 					<!-- Tickets from all movies -->
 					<div class="space-y-4">
 						<div class="flex items-center justify-between text-xs tracking-widest text-zinc-500 uppercase">
-							<span>Entradas</span>
+							<span>Boletos</span>
 							<button
 								class="font-bold tracking-normal text-[#00c0f3] capitalize hover:underline"
 								onclick={() => goto(currentSede ? resolve(`/cines/${currentSede}`) : resolve('/'))}

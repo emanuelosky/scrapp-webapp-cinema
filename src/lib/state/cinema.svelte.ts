@@ -28,7 +28,18 @@ export interface CinemaLocation {
 	latitude: number | null;
 	longitude: number | null;
 	is_active: boolean;
+	// Identificador IANA (ej. 'America/Caracas'). Todas las sedes de hoy están
+	// en Venezuela, pero "hoy"/"ya pasó esta función" debe resolverse contra
+	// la hora de PARED de la sede, no la del navegador del visitante ni una
+	// constante global — así una sede en otro país no hereda el huso de otra.
+	timezone: string;
 }
+
+// Fallback SOLO para cuando todavía no se conoce la sede (semilla sin cargar,
+// verificación fallida, o una fila vieja de la BD sin esta columna todavía).
+// Nunca se debe asumir como la zona horaria "real" de ninguna sede en
+// particular — cada `CinemaLocation.timezone` es la fuente de verdad.
+const FALLBACK_TIMEZONE = 'America/Caracas';
 
 /**
  * - `semilla`: todavía usamos la copia del bundle; nadie ha confirmado nada.
@@ -92,6 +103,17 @@ export class CinemaState {
 		return this.selectedCinemaId.charAt(0).toUpperCase() + this.selectedCinemaId.slice(1);
 	}
 
+	/**
+	 * Zona horaria (IANA) que debe regir todo cálculo de "hoy" o "ya pasó esta
+	 * función" en la pantalla actual. Es la de la sede activa; en el home
+	 * multisede o mientras el catálogo no ha cargado, cae al fallback — nunca
+	 * a la del navegador del visitante, que no tiene relación con dónde está
+	 * físicamente la sala de cine.
+	 */
+	get activeTimezone(): string {
+		return this.selectedCinema?.timezone ?? FALLBACK_TIMEZONE;
+	}
+
 	isKnownCinema(id: string): boolean {
 		return this.cinemas.some((c) => c.id === id);
 	}
@@ -109,9 +131,14 @@ export class CinemaState {
 	async #fetchAndCompare() {
 		this.isLoadingCinemas = true;
 		try {
+			// La tabla base `cinema_locations` guarda credenciales del POS/taquilla/
+			// dulcería junto a los datos de sede, y ya no es legible con la anon key
+			// pública (bloqueado tras encontrar que cualquiera podía leerlas desde
+			// el bundle del cliente). `cinema_locations_public` es la vista sin esas
+			// columnas — es la única fuente que el cliente debe consultar.
 			const { data, error } = await supabase
-				.from('cinema_locations')
-				.select('id, name, short_name, city, latitude, longitude, is_active')
+				.from('cinema_locations_public')
+				.select('id, name, short_name, city, latitude, longitude, is_active, timezone')
 				.eq('is_active', true)
 				.order('sort_order', { ascending: true });
 
@@ -120,7 +147,7 @@ export class CinemaState {
 			// .map()/.filter() de los load() y del selector.
 			if (error || !Array.isArray(data)) {
 				this.catalogStatus = 'error';
-				console.error('[catalogo] No se pudo verificar cinema_locations; seguimos con la semilla.', error);
+				console.error('[catalogo] No se pudo verificar cinema_locations_public; seguimos con la semilla.', error);
 				return;
 			}
 
@@ -157,7 +184,7 @@ export class CinemaState {
 			// corre en CI y falla el build antes de que esto llegue a un cliente.
 		} catch (e) {
 			this.catalogStatus = 'error';
-			console.error('[catalogo] Error verificando cinema_locations; seguimos con la semilla.', e);
+			console.error('[catalogo] Error verificando cinema_locations_public; seguimos con la semilla.', e);
 		} finally {
 			this.isLoadingCinemas = false;
 		}

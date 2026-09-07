@@ -26,7 +26,8 @@ export const SEED_CINEMAS: CinemaLocation[] = [
 		city: 'Caracas',
 		latitude: 10.505293,
 		longitude: -66.900959,
-		is_active: true
+		is_active: true,
+		timezone: 'America/Caracas'
 	},
 	{
 		id: 'lido',
@@ -35,14 +36,19 @@ export const SEED_CINEMAS: CinemaLocation[] = [
 		city: 'Caracas',
 		latitude: 10.493921,
 		longitude: -66.858711,
-		is_active: true
+		is_active: true,
+		timezone: 'America/Caracas'
 	}
 ];
 
-/** Firma canónica de un catálogo, para comparar semilla contra base de datos. */
+/**
+ * Firma canónica de un catálogo, para comparar semilla contra base de datos.
+ * Incluye `timezone`: un cambio ahí es tan grave como una sede que desaparece
+ * — mal huso horario significa vender (o esconder) funciones que no tocan.
+ */
 export function catalogSignature(cinemas: CinemaLocation[]): string {
 	return cinemas
-		.map((c) => `${c.id}|${c.name}|${c.short_name ?? ''}|${c.city ?? ''}|${c.latitude ?? ''}|${c.longitude ?? ''}`)
+		.map((c) => `${c.id}|${c.name}|${c.short_name ?? ''}|${c.city ?? ''}|${c.latitude ?? ''}|${c.longitude ?? ''}|${c.timezone ?? ''}`)
 		.sort()
 		.join('\n');
 }

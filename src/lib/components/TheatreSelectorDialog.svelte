@@ -13,8 +13,9 @@
 
 	let {
 		open = $bindable(false),
-		pendingMovieId
-	}: { open?: boolean; pendingMovieId?: string } = $props();
+		pendingMovieId,
+		destination = 'home'
+	}: { open?: boolean; pendingMovieId?: string; destination?: 'home' | 'cartelera' } = $props();
 
 	let searchQuery = $state('');
 	let showConsent = $state(false);
@@ -48,7 +49,8 @@
 	async function selectCinema(cinema: CinemaLocation) {
 		cinemaState.rememberPreference(cinema.id);
 		open = false;
-		const sedeHome = resolve(`/cines/${cinema.id}`);
+		const sedeHome =
+			destination === 'cartelera' ? resolve(`/cines/${cinema.id}/cartelera`) : resolve(`/cines/${cinema.id}`);
 		const target = pendingMovieId
 			? `${sedeHome}?pelicula=${encodeURIComponent(pendingMovieId)}`
 			: sedeHome;

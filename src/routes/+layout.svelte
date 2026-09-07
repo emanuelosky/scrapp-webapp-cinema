@@ -82,10 +82,18 @@
 				const payload = action.payload as { section?: string };
 				if (payload.section) {
 					chatState.clearAction();
-					
+
+					// "Cartelera" ahora es una ruta real, no una sección para hacer
+					// scroll: navega a la cartelera de la sede activa, o a la
+					// agregada de todas las sedes si el usuario está en el home.
+					if (payload.section === 'cartelera') {
+						const currentSede = $page.params.sede;
+						goto(currentSede ? resolve(`/cines/${currentSede}/cartelera`) : resolve('/cartelera'));
+						return;
+					}
+
 					let targetId = payload.section;
 					if (targetId === 'home') targetId = 'top';
-					if (targetId === 'cartelera') targetId = 'peliculas-en-este-cine';
 
 					if ($page.url.pathname !== '/' && !$page.url.pathname.startsWith('/cines/')) {
 						// eslint-disable-next-line svelte/no-navigation-without-resolve

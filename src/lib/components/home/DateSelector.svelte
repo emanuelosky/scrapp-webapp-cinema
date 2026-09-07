@@ -9,8 +9,17 @@
 	let {
 		selectedDateTab = $bindable('hoy'),
 		customDate = $bindable<DateValue | undefined>(),
-		activeDates = []
-	}: { selectedDateTab: 'hoy'|'manana'|'custom', customDate: DateValue | undefined, activeDates: string[] } = $props();
+		activeDates = [],
+		accentClass = 'text-champagne-500'
+	}: {
+		selectedDateTab: 'hoy'|'manana'|'custom',
+		customDate: DateValue | undefined,
+		activeDates: string[],
+		/** Color del ícono de calendario -- por defecto el champagne del resto
+		 * de la app; algunas vistas (cartelera) piden mantenerse estrictamente
+		 * en negro/gris/blanco, sin ningún acento de color. */
+		accentClass?: string
+	} = $props();
 
 	let isCalendarOpen = $state(false);
 
@@ -26,7 +35,7 @@
 </script>
 
 <div class="flex items-center gap-3">
-	<span class="text-base sm:text-lg font-black text-zinc-300 hidden sm:flex items-center gap-2"><CalendarDays class="size-5 text-champagne-500" /> Ver para:</span>
+	<span class="text-base sm:text-lg font-black text-zinc-300 hidden sm:flex items-center gap-2"><CalendarDays class="size-5 {accentClass}" /> Ver para:</span>
 	<div class="flex w-full sm:w-[360px] bg-zinc-900 border border-white/10 rounded-full h-11 p-1 shadow-inner overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
 		<button 
 			class="flex-1 min-w-max px-3 whitespace-nowrap rounded-full font-bold transition-all text-xs sm:text-sm {selectedDateTab === 'hoy' ? 'bg-white text-black shadow-md' : 'text-zinc-400 hover:text-white'}"

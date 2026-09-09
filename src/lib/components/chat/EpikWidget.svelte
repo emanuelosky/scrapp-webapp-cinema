@@ -1,16 +1,16 @@
 <script lang="ts">
+	import { chatEndpoint, chatHeaders } from '$lib/api';
 	import { chatState } from '$lib/state/chat.svelte';
 	import { cartState } from '$lib/state/cart.svelte';
 	import X from '@lucide/svelte/icons/x';
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';
 	import Square from '@lucide/svelte/icons/square';
-	import { fade, fly, scale } from 'svelte/transition';
+	import { fade, fly } from 'svelte/transition';
 	import { Chat } from '@ai-sdk/svelte';
 	import { DefaultChatTransport } from 'ai';
 	import { marked } from 'marked';
 	import DOMPurify from 'dompurify';
 	import { browser } from '$app/environment';
-	import { page } from '$app/stores';
 	import Sparkles from '@lucide/svelte/icons/sparkles';
 	import Film from '@lucide/svelte/icons/film';
 	import ThumbsUp from '@lucide/svelte/icons/thumbs-up';
@@ -63,10 +63,8 @@
 
 	const chat = new Chat({
 		transport: new DefaultChatTransport({
-			api: (import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:5173') + '/api/chat',
-			headers: {
-				'x-epik-secret': import.meta.env.VITE_EPIK_SECRET || 'scrapp_epik_secret_2026_dev'
-			},
+			api: chatEndpoint(),
+			headers: chatHeaders(),
 			body: {
 				get contextMovies() { return chatState.contextData; },
 				get contextCart() {
@@ -215,14 +213,7 @@
 		// Limpiar texto de enlaces Markdown técnicos para que el tooltip se vea natural
 		const cleanText = rawText.replace(/\[.*?\]\(https:\/\/action\.epik\/.*?\)/g, '').trim();
 
-		if (cleanText) {
-			bubbleQuote = cleanText;
-			showBubble = true;
-			clearTimeout(bubbleTimer);
-			bubbleTimer = setTimeout(() => {
-				showBubble = false;
-			}, 8000);
-		}
+		chatState.showBubble(cleanText);
 	}
 
 	// Auto-scroll to bottom smoothly
@@ -331,7 +322,7 @@
 		const text = input.trim();
 		console.log('📤 [EPIK Client] Intentando enviar mensaje:', text, 'Estado actual:', chat.status);
 		if (!text || chat.status === 'streaming' || chat.status === 'submitted') return;
-		console.log('🚀 [EPIK Client] Enviando a:', (import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:5173') + '/api/chat');
+		console.log('🚀 [EPIK Client] Enviando a:', chatEndpoint());
 		chat.sendMessage({ role: 'user', parts: [{ type: 'text', text }] });
 		input = '';
 	}
@@ -349,17 +340,9 @@
 	function quickSend(text: string) {
 		console.log('📤 [EPIK Client] QuickSend:', text, 'Estado actual:', chat.status);
 		if (chat.status === 'streaming' || chat.status === 'submitted') return;
-		console.log('🚀 [EPIK Client] Enviando a:', (import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:5173') + '/api/chat');
+		console.log('🚀 [EPIK Client] Enviando a:', chatEndpoint());
 		chat.sendMessage({ role: 'user', parts: [{ type: 'text', text }] });
 	}
-
-	const quotes = [
-		"Hola, soy EPIK. Pregúntame lo que necesites.",
-		"Que la Fuerza te acompañe... a elegir película.",
-		"Hasta la vista, baby... ¡Ah no, acabo de llegar! ¿Te ayudo?",
-		"E.T. llama a casa... o mejor compra boletos aquí.",
-		"Soy el rey del mundo... y de los horarios de cine."
-	];
 
 	const welcomeQuotes = [
 		"Mi amigo Wall-e me dejó encargado de ayudarte, ¡indícame qué necesitas!",
@@ -369,31 +352,6 @@
 		"¡Hola! Tengo mis cotufas listas, ¿qué funciones o combos quieres ver?"
 	];
 	let welcomeMessage = $state(welcomeQuotes[Math.floor(Math.random() * welcomeQuotes.length)]);
-
-	let showBubble = $state(false);
-	let bubbleQuote = $state(quotes[0]);
-	let bubbleTimer: ReturnType<typeof setTimeout>;
-
-	function triggerBubble() {
-		if (chatState.isOpen) return;
-		bubbleQuote = quotes[Math.floor(Math.random() * quotes.length)];
-		showBubble = true;
-
-		clearTimeout(bubbleTimer);
-		bubbleTimer = setTimeout(() => {
-			showBubble = false;
-		}, 8000);
-	}
-
-	$effect(() => {
-		const initialTimer = setTimeout(triggerBubble, 3000);
-		const intervalTimer = setInterval(triggerBubble, 120000);
-		return () => {
-			clearTimeout(initialTimer);
-			clearTimeout(bubbleTimer);
-			clearInterval(intervalTimer);
-		};
-	});
 
 	const isLoading = $derived(chat.status === 'streaming' || chat.status === 'submitted');
 	let loadingSeconds = $state(0);
@@ -418,8 +376,6 @@
 			if (loadingTimer) clearInterval(loadingTimer);
 		};
 	});
-
-	let scrollY = $state(0);
 
 	// Reacción del usuario a una respuesta de EPIK (👍/👎 con íconos, no emojis,
 	// para no salirse de la estética). Por ahora vive solo en memoria del
@@ -453,8 +409,6 @@
 		return groups;
 	});
 </script>
-
-<svelte:window bind:scrollY={scrollY} />
 
 {#if chatState.isOpen}
 	<!-- Backdrop in mobile, invisible in desktop to let user interact with the page -->
@@ -750,44 +704,6 @@
 				{/if}
 			</form>
 		</div>
-	</div>
-{:else}
-	{@const isCheckoutFlow = $page.url.pathname.includes('/booking') || $page.url.pathname.includes('/checkout') || $page.url.pathname.includes('/concessions')}
-	<div class="fixed right-6 md:right-8 z-[90] flex items-end justify-end gap-4 pointer-events-none transition-all duration-300 {isCheckoutFlow ? 'bottom-32 md:bottom-40' : (scrollY > 800 ? 'bottom-[5.5rem] md:bottom-[6.5rem]' : 'bottom-6 md:bottom-8')}">
-		<!-- Bubble -->
-		{#if showBubble}
-			<div
-				class="mb-3 relative max-w-[220px] bg-white border-2 border-black text-black font-bold px-4 py-3 shadow-[4px_4px_0_rgba(0,0,0,1)] pointer-events-auto rounded-sm"
-				transition:fly={{ y: 20, opacity: 0, duration: 300 }}
-			>
-				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-				{@html browser ? DOMPurify.sanitize(marked.parseInline(bubbleQuote) as string) : marked.parseInline(bubbleQuote)}
-				<!-- Triangle pointing right to the FAB -->
-				<div class="absolute top-1/2 -right-2 -translate-y-1/2 w-0 h-0 border-t-[8px] border-t-transparent border-l-[8px] border-l-white border-b-[8px] border-b-transparent filter drop-shadow-[2px_0_0_rgba(0,0,0,1)]"></div>
-			</div>
-		{/if}
-
-		<!-- Floating Action Button -->
-		<button
-			class="pointer-events-auto flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-zinc-200 via-zinc-300 to-zinc-500 border border-zinc-400 text-white shadow-[0_0_30px_rgba(228,228,231,0.25)] hover:scale-105 hover:shadow-[0_0_40px_rgba(228,228,231,0.4)] transition-all group shrink-0 relative"
-			onclick={() => { showBubble = false; chatState.open(); }}
-			transition:scale={{ start: 0.9, duration: 200 }}
-		>
-			<div class="relative flex items-center justify-center w-full h-full">
-				<!-- Favicon Logo E -->
-				<img src="/favicon.png" alt="EPIK" class="w-8 h-8 md:w-10 md:h-10 object-contain group-hover:scale-110 transition-transform duration-300 drop-shadow-md" />
-
-				<!-- Destellos IA Animados (Fuera del contenedor para mayor impacto) -->
-				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="absolute -inset-6 w-[calc(100%+3rem)] h-[calc(100%+3rem)] pointer-events-none z-10 opacity-100 drop-shadow-[0_0_8px_rgba(255,255,255,0.9)]">
-					<!-- Sparkle Top Right -->
-					<path d="M 65 20 Q 80 20 80 5 Q 80 20 95 20 Q 80 20 80 35 Q 80 20 65 20 Z" fill="white" class="animate-pulse origin-center" style="animation-duration: 1.5s;" />
-					<!-- Sparkle Bottom Left -->
-					<path d="M 5 80 Q 18 80 18 67 Q 18 80 31 80 Q 18 80 18 93 Q 18 80 5 80 Z" fill="white" class="animate-pulse origin-center" style="animation-duration: 2.5s;" />
-					<!-- Sparkle Top Left -->
-					<path d="M 10 25 Q 18 25 18 17 Q 18 25 26 25 Q 18 25 18 33 Q 18 25 10 25 Z" fill="white" class="animate-pulse origin-center" style="animation-duration: 2s;" />
-				</svg>
-			</div>
-		</button>
 	</div>
 {/if}
 

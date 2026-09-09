@@ -5,7 +5,7 @@
 	import { browser } from '$app/environment';
 	import { bookingState } from '$lib/state/booking.svelte';
 	import SessionTimeoutModal from '$lib/components/booking/SessionTimeoutModal.svelte';
-	import EpikWidget from '$lib/components/chat/EpikWidget.svelte';
+	import EpikChat from '$lib/components/chat/EpikChat.svelte';
 	import ScrollToTop from '$lib/components/home/ScrollToTop.svelte';
 	import NavigationProgress from '$lib/components/navigation/NavigationProgress.svelte';
 	import { chatState } from '$lib/state/chat.svelte';
@@ -51,6 +51,15 @@
 
 	onMount(() => {
 		if (browser) {
+			// Fuera la pantalla de arranque de app.html: la app ya está en
+			// pantalla. Se desvanece (400 ms, igual que su transición) y
+			// después se saca del DOM.
+			const splash = document.getElementById('app-splash');
+			if (splash) {
+				splash.dataset.leaving = 'true';
+				setTimeout(() => splash.remove(), 450);
+			}
+
 			const handleVisibilityChange = () => {
 				if (document.visibilityState === 'visible') {
 					bookingState.syncState();
@@ -164,7 +173,7 @@
 	{@render children()}
 	<SessionTimeoutModal />
 	<ScrollToTop />
-	<EpikWidget />
+	<EpikChat />
 	{#if bookingState.ghostSession}
 		<div class="fixed bottom-1 right-1 text-[9px] md:text-[10px] text-zinc-700 font-mono tracking-tighter select-text z-[100] pointer-events-none" title="Sesión Ghost Activa">
 			G:{bookingState.ghostSession.ventaTemporalId}

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ProgressiveImage from '$lib/components/ui/ProgressiveImage.svelte';
+	import { blurSource, imageThumb } from '$lib/utils/images';
 	import * as Carousel from '$lib/components/ui/carousel';
 	import type { Movie } from '$lib/types';
 
@@ -110,7 +112,7 @@
 									<!-- Dynamic Hover Glow from Poster -->
 									{#if movie.poster}
 										<div class="absolute -inset-2 z-[-1] opacity-0 transition-all duration-700 group-hover:opacity-20 pointer-events-none">
-											<img src={movie.poster} alt="" class="w-full h-full object-cover blur-[20px] scale-105" />
+											<img src={blurSource(movie.poster, movie.posterSizes)} alt="" aria-hidden="true" loading="lazy" decoding="async" class="w-full h-full object-cover blur-[20px] scale-105" />
 										</div>
 									{/if}
 
@@ -118,8 +120,9 @@
 										class="relative z-10 w-full overflow-hidden rounded-sm bg-zinc-900 cursor-pointer transition-all duration-500 group-hover:scale-[1.03] group-hover:shadow-[0_0_30px_rgba(255,255,255,0.05)]"
 									>
 										{#if movie.poster}
-											<img
+											<ProgressiveImage
 												src={movie.poster}
+												placeholderSrc={imageThumb(movie.poster, movie.posterSizes)}
 												alt={movie.title}
 												class="aspect-[2/3] w-full object-cover transition-all duration-500"
 											/>

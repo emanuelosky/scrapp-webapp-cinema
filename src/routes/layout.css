@@ -1,4 +1,8 @@
 @import "tailwindcss";
+/* Fuentes autoalojadas: los .woff2 viven en static/fonts y se precargan
+   desde app.html. Antes venían de Google Fonts (dos dominios ajenos en la
+   ruta crítica + salto de tipografía al llegar). */
+@import "./fonts.css";
 
 @plugin 'tailwindcss-animate';
 @plugin '@tailwindcss/typography';

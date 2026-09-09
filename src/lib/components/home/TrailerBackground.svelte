@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { imageThumb } from '$lib/utils/images';
+	import ProgressiveImage from '$lib/components/ui/ProgressiveImage.svelte';
 	import type { Movie } from '$lib/types';
 	import { HERO_TRAILERS_ENABLED, HERO_BANNER_MIN_MS } from '$lib/config/heroTrailers';
 
@@ -191,9 +193,10 @@
 		></video>
 	{:else if movie?.banner}
 		{#key movie.id}
-			<img
+			<ProgressiveImage
 				src={movie.banner}
 				alt={movie.title}
+				placeholderSrc={imageThumb(movie.banner, movie.bannerSizes, 'w300')}
 				class="w-full h-full {fitClass}"
 				onload={onImageLoad}
 			/>

@@ -1,17 +1,96 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="es" class="dark">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>CINEPIC</title>
+		<meta name="theme-color" content="#000000" />
+
 		<meta name="text-scale" content="scale" />
-		<link rel="preconnect" href="https://fonts.googleapis.com">
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-		<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@100..700&family=Bebas+Neue&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+
+		<!-- Fuentes autoalojadas (static/fonts). Antes venían de Google Fonts:
+		     eso costaba DNS + TLS a dos dominios ajenos ANTES de poder pedir el
+		     .woff2, y el texto se pintaba con la tipografía de respaldo y luego
+		     saltaba a Bebas/Montserrat (el FOUT). Sirviéndolas desde el mismo
+		     origen y precargando el subconjunto latino (el único que usa el
+		     español), llegan a tiempo para el primer pintado. -->
+		<link rel="preload" href="%sveltekit.assets%/fonts/bebas-neue-latin.woff2" as="font" type="font/woff2" crossorigin />
+		<link rel="preload" href="%sveltekit.assets%/fonts/montserrat-latin.woff2" as="font" type="font/woff2" crossorigin />
+
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
 		%sveltekit.head%
+
+		<style>
+			/* Pantalla de arranque. Vive aquí, en el HTML, con estilos en línea
+			   a propósito: es lo ÚNICO que puede verse antes de que baje y
+			   ejecute el JavaScript de la app. Al ser una SPA (ssr = false),
+			   sin esto el visitante mira un rectángulo negro mudo durante todo
+			   ese tiempo. La quita el layout raíz al montar. */
+			#app-splash {
+				position: fixed;
+				inset: 0;
+				z-index: 9999;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				gap: 1.75rem;
+				background: #000;
+				opacity: 1;
+				transition: opacity 0.4s ease;
+			}
+			#app-splash[data-leaving='true'] {
+				opacity: 0;
+				pointer-events: none;
+			}
+			#app-splash img {
+				width: 148px;
+				max-width: 45vw;
+				height: auto;
+				animation: app-splash-pulse 1.8s ease-in-out infinite;
+			}
+			/* Barra indeterminada: no promete un porcentaje que no sabemos. */
+			#app-splash .bar {
+				position: relative;
+				width: 132px;
+				max-width: 40vw;
+				height: 2px;
+				overflow: hidden;
+				background: #1a1a1a;
+			}
+			#app-splash .bar::after {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background: #fff;
+				transform: translateX(-100%);
+				animation: app-splash-slide 1.15s ease-in-out infinite;
+			}
+			@keyframes app-splash-pulse {
+				0%, 100% { opacity: 0.55; }
+				50% { opacity: 1; }
+			}
+			@keyframes app-splash-slide {
+				0% { transform: translateX(-100%); }
+				100% { transform: translateX(100%); }
+			}
+			@media (prefers-reduced-motion: reduce) {
+				#app-splash img,
+				#app-splash .bar::after {
+					animation: none;
+				}
+				#app-splash .bar::after {
+					transform: none;
+					opacity: 0.4;
+				}
+			}
+		</style>
 	</head>
 	<body data-sveltekit-preload-data="hover">
+		<div id="app-splash">
+			<img src="%sveltekit.assets%/logo.svg" alt="CINEPIC" />
+			<div class="bar"></div>
+		</div>
 		<div class="contents">%sveltekit.body%</div>
 	</body>
 </html>

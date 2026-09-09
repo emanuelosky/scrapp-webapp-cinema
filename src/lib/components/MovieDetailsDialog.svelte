@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ProgressiveImage from '$lib/components/ui/ProgressiveImage.svelte';
+	import { blurSource, imageThumb } from '$lib/utils/images';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import Clock from '@lucide/svelte/icons/clock';
 	import Calendar from '@lucide/svelte/icons/calendar';
@@ -184,12 +186,12 @@
 				<div class="md:w-[45%] h-[250px] md:h-full relative shrink-0 bg-black flex items-center justify-center overflow-hidden">
 					<!-- Blurred Background Layer para Escritorio -->
 					<div class="hidden md:block absolute inset-0 z-0">
-						<img src={movie.poster} alt="" class="w-full h-full object-cover blur-2xl opacity-40 scale-110" />
+						<img src={blurSource(movie.poster, movie.posterSizes)} alt="" aria-hidden="true" decoding="async" class="w-full h-full object-cover blur-2xl opacity-40 scale-110" />
 						<div class="absolute inset-0 bg-black/40"></div>
 					</div>
 
 					<!-- Mobile Image (Banner preferred) -->
-					<img src={movie.banner || movie.poster} alt={movie.title} class="w-full h-full object-cover md:hidden relative z-10 {movie.banner ? 'object-center' : 'object-top'}" />
+					<ProgressiveImage src={movie.banner || movie.poster} alt={movie.title} placeholderSrc={imageThumb(movie.banner || movie.poster, movie.bannerSizes ?? movie.posterSizes, 'w300')} class="w-full h-full object-cover md:hidden relative z-10 {movie.banner ? 'object-center' : 'object-top'}" />
 					
 					<!-- Desktop Image (Poster object-contain para no cortar, con mask para difuminar bordes) -->
 					<img 
@@ -208,7 +210,7 @@
 				<div class="md:w-[55%] flex flex-col md:h-full overflow-visible md:overflow-hidden relative">
 					<!-- Blurred Background Layer -->
 					<div class="absolute inset-0 z-0 overflow-hidden">
-						<img src={movie.banner || movie.poster} class="w-full h-full object-cover blur-[80px] opacity-40 scale-110" alt="" />
+						<img src={blurSource(movie.banner || movie.poster, movie.bannerSizes ?? movie.posterSizes)} class="w-full h-full object-cover blur-[80px] opacity-40 scale-110" alt="" aria-hidden="true" decoding="async" />
 						<div class="absolute inset-0 bg-black/90"></div>
 					</div>
 

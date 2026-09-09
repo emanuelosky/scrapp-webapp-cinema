@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { bookingState } from '$lib/state/booking.svelte';
-	import { API_BASE } from '$lib/utils/api';
+	import { ghostReleaseUrl, warmupGhostPool } from '$lib/api';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
@@ -39,10 +39,10 @@
 
 		bookingState.loadSeats();
 
-		fetch(`${API_BASE}/api/kiosk/ghost-pool/warmup`, { method: 'POST' })
-			.then(() => bookingState.fetchGhostStatus())
-			.catch(console.error);
-			
+		// Empujón preventivo a la reserva temporal, y en cuanto responde se
+		// consulta el estado real del pool.
+		warmupGhostPool().then(() => bookingState.fetchGhostStatus());
+
 		const ghostInterval = setInterval(() => {
 			if (!bookingState.ghostStatusCode) {
 				bookingState.fetchGhostStatus();
@@ -56,7 +56,7 @@
 					const { ghostUsername } = JSON.parse(ghostSession);
 					if (ghostUsername) {
 						navigator.sendBeacon(
-							`${API_BASE}/api/kiosk/ghost-pool/release`,
+							ghostReleaseUrl(),
 							JSON.stringify({ username: ghostUsername })
 						);
 						sessionStorage.removeItem('scrapp_ghost_session');

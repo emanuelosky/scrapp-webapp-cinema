@@ -1,7 +1,7 @@
 import { browser } from '$app/environment';
 import { SvelteDate } from 'svelte/reactivity';
 import { toast } from 'svelte-sonner';
-import { API_BASE } from '$lib/utils/api';
+import { fetchKioskSettings, fetchSeatMap, fetchTariffs, type TariffsResponse } from '$lib/api';
 import type { Movie, ShowtimeDetails } from '$lib/types';
 import type { CartItem } from './booking.types';
 
@@ -119,8 +119,24 @@ export class BookingState {
 		return false;
 	}
 
+	applyTariffs(tariffs: TariffsResponse) {
+		const allowedIds = tariffs.allowedTariffs ?? [];
+		seatMapState.activeSelection.defaultTariffsIds = tariffs.defaultTariffs ?? [];
+		seatMapState.activeSelection.allPosTariffs = (tariffs.posTariffs ?? []).map((t: Record<string, unknown>) => ({
+			id: t.id as string,
+			nombre: (t.nombre || '') as string,
+			serie: (t.serie || t.prefix || '') as string,
+			precio: Number(t.precio || t.valor || t.monto || 0)
+		}));
+		seatMapState.activeSelection.tariffs = seatMapState.activeSelection.allPosTariffs.filter((t) =>
+			allowedIds.includes(t.id)
+		);
+	}
+
 	async loadSeats() {
-		if (!seatMapState.activeSelection.selectedShowtime || !seatMapState.activeSelection.selectedShowtime.id) return;
+		const showtime = seatMapState.activeSelection.selectedShowtime;
+		if (!showtime?.id) return;
+		const showtimeId = showtime.id;
 		seatMapState.isProcessing = true;
 		seatMapState.loadingMessage = 'Conectando con el cine...';
 		try {
@@ -131,75 +147,38 @@ export class BookingState {
 				try {
 					if (i > 0) seatMapState.loadingMessage = 'Despertando el servidor del cine. Esto puede tomar hasta 50 segundos, por favor espera...';
 
-					try {
-						const settingsRes = await fetch(`${API_BASE}/api/kiosk/settings`);
-						if (settingsRes.ok) {
-							const { settings } = await settingsRes.json();
-							if (settings && settings.retention_time_minutes) {
-								ghostSessionState.retentionTimeMinutes = settings.retention_time_minutes;
-							}
+					// Los ajustes son opcionales: si fallan, la carga del mapa sigue.
+					const settings = await fetchKioskSettings();
+					if (settings?.retention_time_minutes) {
+						ghostSessionState.retentionTimeMinutes = settings.retention_time_minutes;
+					}
+
+					const data = await fetchSeatMap(showtimeId);
+					if (data?.matrix) {
+						seatMapState.matrix = data.matrix;
+						seatMapState.lastSyncTimestamp = Date.now();
+						this.loadFromLocalStorage();
+
+						// El mapa suele traer las tarifas incrustadas; si no, se piden aparte.
+						if (data.tariffsData?.success) {
+							this.applyTariffs(data.tariffsData);
+						} else {
+							const fallback = await fetchTariffs(showtimeId);
+							if (fallback?.success) this.applyTariffs(fallback);
 						}
-					} catch (e) { /* ignored */ }
 
-					const res = await fetch(`${API_BASE}/api/pos/fetch-seats/${seatMapState.activeSelection.selectedShowtime.id}`);
-					const contentType = res.headers.get('content-type');
-					if (res.ok && contentType && contentType.includes('application/json')) {
-						const data = await res.json();
-						if (data.matrix) {
-							seatMapState.matrix = data.matrix;
-							seatMapState.lastSyncTimestamp = Date.now();
-							this.loadFromLocalStorage();
-
-							if (data.tariffsData && data.tariffsData.success) {
-								const tariffsData = data.tariffsData;
-								const allowedIds = tariffsData.allowedTariffs || [];
-								const defaultIds = tariffsData.defaultTariffs || [];
-								const allTariffs = tariffsData.posTariffs || [];
-								seatMapState.activeSelection.defaultTariffsIds = defaultIds;
-								seatMapState.activeSelection.allPosTariffs = allTariffs.map((t: Record<string, unknown>) => ({
-									id: t.id as string,
-									nombre: (t.nombre || '') as string,
-									serie: (t.serie || t.prefix || '') as string,
-									precio: Number(t.precio || t.valor || t.monto || 0)
-								}));
-								seatMapState.activeSelection.tariffs = seatMapState.activeSelection.allPosTariffs.filter(t => allowedIds.includes(t.id));
-							} else {
-								try {
-									const tariffsRes = await fetch(`${API_BASE}/api/tarifas?showtimeId=${seatMapState.activeSelection.selectedShowtime.id}`);
-									if (tariffsRes.ok) {
-										const tariffsData = await tariffsRes.json();
-										if (tariffsData.success) {
-											const allowedIds = tariffsData.allowedTariffs || [];
-											const defaultIds = tariffsData.defaultTariffs || [];
-											const allTariffs = tariffsData.posTariffs || [];
-											seatMapState.activeSelection.defaultTariffsIds = defaultIds;
-											seatMapState.activeSelection.allPosTariffs = allTariffs.map((t: Record<string, unknown>) => ({
-												id: t.id as string,
-												nombre: (t.nombre || '') as string,
-												serie: (t.serie || t.prefix || '') as string,
-												precio: Number(t.precio || t.valor || t.monto || 0)
-											}));
-											seatMapState.activeSelection.tariffs = seatMapState.activeSelection.allPosTariffs.filter(t => allowedIds.includes(t.id));
-										}
-									}
-								} catch (e) {
-									console.error('Error fetching fallback tariffs:', e);
-								}
-							}
-
-							seatMapState.loadingMessage = '';
-							seatMapState.isProcessing = false;
-							return;
-						}
+						seatMapState.loadingMessage = '';
+						seatMapState.isProcessing = false;
+						return;
 					}
 					throw new Error('Servidor no disponible aún');
 				} catch {
 					if (i === maxRetries - 1) {
 						seatMapState.matrix = seatMapState.generateMockMatrix();
 						seatMapState.loadingMessage = 'Mostrando mapa simulado (Fallo de conexión)';
-						setTimeout(() => seatMapState.loadingMessage = '', 4000);
+						setTimeout(() => (seatMapState.loadingMessage = ''), 4000);
 					} else {
-						await new Promise(resolve => setTimeout(resolve, delayMs));
+						await new Promise((resolve) => setTimeout(resolve, delayMs));
 					}
 				}
 			}
@@ -248,6 +227,7 @@ export class BookingState {
 			}
 
 			// DEMO MODE: Desactivado el bloqueo de butacas real para evitar accidentes
+			// Cuando se reactive, va como función en $lib/api (no fetch suelto):
 			// const response = await fetch(`${API_BASE}/api/kiosk/lock-seats`, {
 			// 	method: 'POST',
 			// 	headers: { 'Content-Type': 'application/json' },
@@ -337,6 +317,7 @@ export class BookingState {
 			};
 
 			// DEMO MODE: Desactivada la facturación real
+			// Cuando se reactive, va como función en $lib/api (no fetch suelto):
 			// const response = await fetch(`${API_BASE}/api/kiosk/checkout`, {
 			// 	method: 'POST',
 			// 	headers: { 'Content-Type': 'application/json' },

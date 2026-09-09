@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 import { SvelteDate } from 'svelte/reactivity';
-import { API_BASE } from '$lib/utils/api';
+import { extendGhostSession, fetchGhostPoolStatus, ghostReleaseUrl } from '$lib/api';
 import type { GhostSessionData } from './booking.types';
 
 export class GhostSessionState {
@@ -19,12 +19,9 @@ export class GhostSessionState {
 	async fetchGhostStatus() {
 		if (!browser) return;
 		try {
-			const res = await fetch(`${API_BASE}/api/kiosk/ghost-pool/status`);
-			if (res.ok) {
-				const data = await res.json();
-				if (data.success) {
-					this.ghostAvailableCount = data.availablePreHeated;
-				}
+			const data = await fetchGhostPoolStatus();
+			if (data.success) {
+				this.ghostAvailableCount = data.availablePreHeated ?? null;
 			}
 		} catch {
 			// Silencioso
@@ -66,13 +63,9 @@ export class GhostSessionState {
 
 		try {
 			const ghostUsername = this.ghostSession.ghostUsername;
-			const res = await fetch(`${API_BASE}/api/kiosk/ghost-pool/extend`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ username: ghostUsername })
-			});
+			const ok = await extendGhostSession(ghostUsername);
 
-			if (res.ok) {
+			if (ok) {
 				const newLockedAt = new SvelteDate().toISOString();
 				this.ghostSession.lockedAt = newLockedAt;
 				this.showExtensionModal = false;
@@ -95,7 +88,7 @@ export class GhostSessionState {
 		if (this.ghostSession) {
 			try {
 				const ghostUsername = this.ghostSession.ghostUsername;
-				navigator.sendBeacon(`${API_BASE}/api/kiosk/ghost-pool/release`, JSON.stringify({ username: ghostUsername }));
+				navigator.sendBeacon(ghostReleaseUrl(), JSON.stringify({ username: ghostUsername }));
 			} catch {
 				// Omitir errores durante limpieza
 			}

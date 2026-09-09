@@ -1,11 +1,10 @@
+import { fetchCartelera } from '$lib/api';
 import { cinemaState } from '$lib/state/cinema.svelte';
 import type { Movie } from '$lib/types';
 
 // Catálogo combinado: trae las películas en cartelera de todas las sedes activas
 // y las une en un solo listado (sin duplicar), para el carrusel "Películas en Cinepic" del home.
 export const load = async ({ fetch, depends }) => {
-	const API_URL = import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:5174';
-
 	// Permite que +layout.svelte recargue este load si la verificación del
 	// catálogo detecta que la semilla estaba desactualizada. Sin esto, la
 	// corrección llegaría al selector de sedes pero `nowPlaying` se quedaría
@@ -15,24 +14,11 @@ export const load = async ({ fetch, depends }) => {
 	// Arrancamos con la semilla del bundle, que está disponible de forma
 	// síncrona, y lanzamos la verificación contra Supabase SIN esperarla: ese
 	// viaje en serie era el hueco de ~300ms antes de la primera cartelera.
-	cinemaState.verifyCatalog();
+	cinemaState.verifyCatalog(fetch);
 	const activeCinemas = cinemaState.cinemas;
 
 	const perCinemaData = await Promise.all(
-		activeCinemas.map(async (cinema) => {
-			try {
-				const res = await fetch(`${API_URL}/api/v1/movies?location_id=${cinema.id}`);
-				if (!res.ok) return { nowPlaying: [] as Movie[], comingSoonMovies: [] as Movie[] };
-				const data = await res.json();
-				return {
-					nowPlaying: (data.nowPlaying || []) as Movie[],
-					comingSoonMovies: (data.comingSoonMovies || []) as Movie[]
-				};
-			} catch (e) {
-				console.error(`Error fetching movies for ${cinema.id}:`, e);
-				return { nowPlaying: [] as Movie[], comingSoonMovies: [] as Movie[] };
-			}
-		})
+		activeCinemas.map((cinema) => fetchCartelera(cinema.id, fetch))
 	);
 
 	// Combina un mismo movie.id visto en varias sedes: en vez de quedarse solo

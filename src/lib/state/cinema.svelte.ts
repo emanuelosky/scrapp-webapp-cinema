@@ -1,5 +1,6 @@
-import { supabase } from '$lib/supabase';
 import { browser } from '$app/environment';
+import { fetchLocations } from '$lib/api';
+import type { CinemaLocation } from '$lib/types';
 import { SEED_CINEMAS, catalogSignature } from '$lib/config/cinemasSeed';
 
 // Preferencia de sede recordada entre visitas. Solo se usa para destacar
@@ -20,20 +21,10 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 	return R * c;
 }
 
-export interface CinemaLocation {
-	id: string;
-	name: string;
-	short_name: string | null;
-	city: string | null;
-	latitude: number | null;
-	longitude: number | null;
-	is_active: boolean;
-	// Identificador IANA (ej. 'America/Caracas'). Todas las sedes de hoy están
-	// en Venezuela, pero "hoy"/"ya pasó esta función" debe resolverse contra
-	// la hora de PARED de la sede, no la del navegador del visitante ni una
-	// constante global — así una sede en otro país no hereda el huso de otra.
-	timezone: string;
-}
+// El tipo vive en $lib/types (la capa de datos lo necesita y no debe
+// depender de un módulo de estado). Se reexporta para quienes ya lo importaban
+// desde aquí.
+export type { CinemaLocation };
 
 // Fallback SOLO para cuando todavía no se conoce la sede (semilla sin cargar,
 // verificación fallida, o una fila vieja de la BD sin esta columna todavía).
@@ -104,6 +95,19 @@ export class CinemaState {
 	}
 
 	/**
+	 * Nombre corto y curado de la sede activa ("Candelaria" en vez de "Sambil
+	 * Candelaria"). Es el que se muestra en móvil, donde el nombre completo
+	 * empuja los demás controles a otra fila. Cae al nombre completo si la
+	 * sede no tiene uno corto.
+	 */
+	get selectedCinemaShortName(): string | null {
+		if (!this.selectedCinemaId) return null;
+		const match = this.selectedCinema;
+		if (match) return match.short_name || match.name || null;
+		return this.selectedCinemaName;
+	}
+
+	/**
 	 * Zona horaria (IANA) que debe regir todo cálculo de "hoy" o "ya pasó esta
 	 * función" en la pantalla actual. Es la de la sede activa; en el home
 	 * multisede o mientras el catálogo no ha cargado, cae al fallback — nunca
@@ -112,6 +116,17 @@ export class CinemaState {
 	 */
 	get activeTimezone(): string {
 		return this.selectedCinema?.timezone ?? FALLBACK_TIMEZONE;
+	}
+
+	/**
+	 * Sede que se elige sola cuando la URL no trae ninguna (la ruta /cartelera):
+	 * la preferida del visitante si sigue existiendo, si no la primera del
+	 * catálogo. Vive acá para que el `load()` y el componente resuelvan igual.
+	 */
+	defaultCinemaId(): string | null {
+		const preferred = this.preferredCinemaId;
+		if (preferred && this.isKnownCinema(preferred)) return preferred;
+		return this.cinemas[0]?.id ?? null;
 	}
 
 	isKnownCinema(id: string): boolean {
@@ -123,35 +138,35 @@ export class CinemaState {
 	 * sesión) y devuelve la promesa. Quien necesite CERTEZA debe esperarla;
 	 * quien solo quiera pintar rápido puede ignorarla y usar la semilla.
 	 */
-	verifyCatalog(): Promise<void> {
-		this.#verifyPromise ??= this.#fetchAndCompare();
+	/**
+	 * @param fetchFn El `fetch` del `load()` cuando se llama desde uno. SvelteKit
+	 *   avisa por consola si se usa el `fetch` global dentro de un `load()`, y
+	 *   con razón: el suyo sabe resolver rutas relativas y evita una petición
+	 *   duplicada. Fuera de un `load()` se omite.
+	 */
+	verifyCatalog(fetchFn?: typeof globalThis.fetch): Promise<void> {
+		this.#verifyPromise ??= this.#fetchAndCompare(fetchFn);
 		return this.#verifyPromise;
 	}
 
-	async #fetchAndCompare() {
+	async #fetchAndCompare(fetchFn?: typeof globalThis.fetch) {
 		this.isLoadingCinemas = true;
 		try {
-			// La tabla base `cinema_locations` guarda credenciales del POS/taquilla/
-			// dulcería junto a los datos de sede, y ya no es legible con la anon key
-			// pública (bloqueado tras encontrar que cualquiera podía leerlas desde
-			// el bundle del cliente). `cinema_locations_public` es la vista sin esas
-			// columnas — es la única fuente que el cliente debe consultar.
-			const { data, error } = await supabase
-				.from('cinema_locations_public')
-				.select('id, name, short_name, city, latitude, longitude, is_active, timezone')
-				.eq('is_active', true)
-				.order('sort_order', { ascending: true });
+			// Vía el backend, no contra la base de datos. Antes el navegador
+			// consultaba Supabase directamente con la clave anónima: eso ataba la
+			// webapp a una base concreta (que en producción probablemente no
+			// exista) y metía el cliente de Supabase en el paquete. Ahora el
+			// backend es la única fuente, como para todo lo demás.
+			const frescas = await fetchLocations(fetchFn);
 
-			// Guarda contra la forma del error: si esto devuelve algo que no es
-			// un arreglo, nos quedamos con la semilla en vez de romper los
-			// .map()/.filter() de los load() y del selector.
-			if (error || !Array.isArray(data)) {
+			// Guarda contra la forma de la respuesta: si viene vacía nos quedamos
+			// con la semilla en vez de borrar el selector de sedes.
+			if (frescas.length === 0) {
 				this.catalogStatus = 'error';
-				console.error('[catalogo] No se pudo verificar cinema_locations_public; seguimos con la semilla.', error);
+				console.error('[catalogo] No se pudieron verificar las sedes; seguimos con la semilla.');
 				return;
 			}
 
-			const frescas = data as CinemaLocation[];
 			const iguales = catalogSignature(frescas) === catalogSignature(SEED_CINEMAS);
 
 			// La red SIEMPRE pisa a la semilla, nunca al revés.

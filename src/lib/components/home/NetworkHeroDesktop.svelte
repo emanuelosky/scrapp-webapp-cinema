@@ -279,7 +279,7 @@
 		     la columna de texto) — pausa, volumen (si el clip trae audio) y
 		     abrir el reproductor centrado. -->
 		{#if hasOwnClip}
-			<div class="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex items-center justify-end gap-2 px-4 xl:px-6">
+			<div class="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex items-center justify-end gap-2 px-4 xl:px-6">
 				<button
 					type="button"
 					onclick={() => (isPlaying = !isPlaying)}
@@ -321,7 +321,7 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div 
-			class="absolute inset-y-0 left-4 xl:left-8 z-20 w-20 xl:w-24 pointer-events-auto flex items-center justify-start group cursor-pointer"
+			class="absolute top-0 bottom-24 left-4 xl:left-8 z-20 w-20 xl:w-24 pointer-events-auto flex items-center justify-start group cursor-pointer"
 			onclick={onPrev}
 			aria-label="Película anterior"
 		>
@@ -334,7 +334,7 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div 
-			class="absolute inset-y-0 right-4 xl:right-8 z-20 w-20 xl:w-24 pointer-events-auto flex items-center justify-end group cursor-pointer"
+			class="absolute top-0 bottom-24 right-4 xl:right-8 z-20 w-20 xl:w-24 pointer-events-auto flex items-center justify-end group cursor-pointer"
 			onclick={onNext}
 			aria-label="Siguiente película"
 		>

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { today, now, type DateValue } from '@internationalized/date';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -7,66 +6,47 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import TrailerLightbox from '$lib/components/home/TrailerLightbox.svelte';
 	import DateSelector from '$lib/components/home/DateSelector.svelte';
+	import UpcomingCarousel from '$lib/components/home/UpcomingCarousel.svelte';
 	import CarteleraTopBar from '$lib/components/cartelera/CarteleraTopBar.svelte';
 	import CarteleraSedeTrigger from '$lib/components/cartelera/CarteleraSedeTrigger.svelte';
-	import CarteleraList from '$lib/components/cartelera/CarteleraList.svelte';
-	import CarteleraDetailPanel from '$lib/components/cartelera/CarteleraDetailPanel.svelte';
+	import CarteleraSearch from '$lib/components/cartelera/CarteleraSearch.svelte';
+	import CarteleraChapters from '$lib/components/cartelera/CarteleraChapters.svelte';
 	import { cinemaState } from '$lib/state/cinema.svelte';
+	import { matchesSearch } from '$lib/utils/carteleraSearch';
 	import type { Movie } from '$lib/types';
 
-	onMount(() => {
-		cinemaState.verifyCatalog();
-	});
+	let { data } = $props();
 
-	// Sede activa elegida sola al entrar (preferida, si no la primera) -- ver
-	// nota en +page.ts sobre por qué ya no se agregan varias sedes a la vez.
-	// `cinemaState.syncFromUrl` NO se llama aquí a propósito: esta ruta no
-	// tiene [sede] en la URL, así que el resto de la app (header, etc.) debe
-	// seguir viéndose como "sin sede", aunque acá adentro sí trabajemos con
-	// una internamente para poder mostrar horarios reales.
-	let activeSedeId = $state<string | null>(null);
-	$effect(() => {
-		if (activeSedeId || cinemaState.cinemas.length === 0) return;
-		const preferred = cinemaState.preferredCinemaId;
-		activeSedeId = preferred && cinemaState.isKnownCinema(preferred) ? preferred : cinemaState.cinemas[0].id;
-	});
+	// El load() ya resolvió la sede y trajo su cartelera: la página puede pintar
+	// con datos desde el primer frame, sin esperar a montar.
+	// `cinemaState.syncFromUrl` NO se llama aquí a propósito: esta ruta no tiene
+	// [sede] en la URL, así que el resto de la app (header, etc.) debe seguir
+	// viéndose como "sin sede", aunque acá adentro sí trabajemos con una.
+	// Derivados de `data`, no copias en $state: cuando la verificación del
+	// catálogo detecta divergencia, +layout.svelte llama a invalidateAll() y
+	// este load() (que declara depends('app:cinemas')) se vuelve a ejecutar ya
+	// con el catálogo corregido. Una copia en $state se habría quedado con los
+	// datos viejos, y además el load() reresuelve la sede solo, así que tampoco
+	// hace falta un efecto que vuelva a pedir la cartelera desde acá.
+	let activeSedeId = $derived(data.sedeId);
+	let nowPlaying = $derived(data.nowPlaying);
+	let comingSoonMovies = $derived(data.comingSoonMovies);
+	let activeDates = $derived(data.activeDates);
 
-	let sedeDisplayName = $derived(
-		cinemaState.cinemas.find((c) => c.id === activeSedeId)?.name ??
-			cinemaState.cinemas.find((c) => c.id === activeSedeId)?.short_name ??
-			''
-	);
+	let sedeActiva = $derived(cinemaState.cinemas.find((c) => c.id === activeSedeId));
+	let sedeDisplayName = $derived(sedeActiva?.name ?? sedeActiva?.short_name ?? '');
+	let sedeShortName = $derived(sedeActiva?.short_name ?? sedeActiva?.name ?? '');
 
-	let nowPlaying = $state<Movie[]>([]);
-	let comingSoonMovies = $state<Movie[]>([]);
-	let activeDates = $state<string[]>([]);
-
-	// El fetch vive acá (no en el load()) porque la sede activa puede cambiar
-	// sin navegar -- elegir otra sede en el diálogo SÍ navega (a
-	// /cines/<sede>/cartelera, ver CarteleraSedeTrigger), pero la primera
-	// resolución automática al entrar no debe empujar una URL nueva.
-	$effect(() => {
-		const sedeId = activeSedeId;
-		if (!sedeId) return;
-		const API_URL = import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:5174';
-		fetch(`${API_URL}/api/v1/movies?location_id=${sedeId}`)
-			.then((res) => (res.ok ? res.json() : null))
-			.then((data) => {
-				if (!data) return;
-				nowPlaying = data.nowPlaying || [];
-				comingSoonMovies = data.comingSoonMovies || [];
-				activeDates = data.activeDates || [];
-			})
-			.catch((e) => console.error('Error fetching movies:', e));
-	});
-
-	let activeMovie = $state<Movie | null>(null);
+	// Alto real del grupo sticky (header + filtros): las tarjetas lo usan
+	// como línea de reposo en vez de un valor inventado.
+	let headerHeight = $state(0);
 
 	let trailerMovie = $state<Movie | null>(null);
 	let trailerOpen = $state(false);
 
 	let selectedDateTab = $state<'hoy' | 'manana' | 'custom'>('hoy');
 	let customDate = $state<DateValue | undefined>();
+	let searchQuery = $state('');
 
 	let selectedDateStr = $derived.by(() => {
 		const tz = cinemaState.activeTimezone;
@@ -83,6 +63,7 @@
 		const todayStr = today(tz).toString();
 
 		return nowPlaying
+			.filter((movie) => matchesSearch(movie, searchQuery))
 			.map((movie) => {
 				const rawDayShowtimes = movie.showtimesByDate?.[selectedDateStr] || [];
 				const dayShowtimes = rawDayShowtimes.filter((s) => {
@@ -94,23 +75,20 @@
 			.filter((movie) => movie.showtimes.length > 0);
 	});
 
-	$effect(() => {
-		const list = filteredNowPlaying;
-		if (list.length === 0) {
-			activeMovie = null;
-			return;
-		}
-		if (!activeMovie || !list.some((m) => m.id === activeMovie!.id)) {
-			activeMovie = list[0];
-		}
-	});
+	let filteredComingSoon = $derived(comingSoonMovies.filter((movie) => matchesSearch(movie, searchQuery)));
+
+	let emptyMessage = $derived(
+		searchQuery.trim()
+			? `No encontramos "${searchQuery.trim()}" en esta sede.`
+			: 'No hay funciones para esta fecha en este cine.'
+	);
 
 	function onPlayTrailer(movie: Movie) {
 		trailerMovie = movie;
 		trailerOpen = true;
 	}
 
-	// "Más información" no abre MovieDetailsDialog aquí: ese diálogo reserva
+	// "Ficha completa" no abre MovieDetailsDialog aquí: ese diálogo reserva
 	// vía `$page.params.sede`, que en esta ruta no existe (no tiene [sede] en
 	// la URL). Como ya sabemos la sede activa, mandamos directo a su
 	// cartelera -- que sí tiene el diálogo real -- con `?pelicula=` para que
@@ -126,40 +104,45 @@
 </svelte:head>
 
 <div class="flex min-h-screen flex-col bg-black font-sans text-zinc-50">
-	<CarteleraTopBar back={{ type: 'home' }} />
-
-	<div class="sticky top-16 z-30 bg-black border-b border-zinc-800 px-4 md:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
-		<CarteleraSedeTrigger sedeName={sedeDisplayName} destination="cartelera" />
-		<DateSelector bind:selectedDateTab bind:customDate {activeDates} accentClass="text-white" />
+	<!-- Sin PromoBanner acá: `activePromo` solo existe con una sede en la URL
+	     (ver +layout.ts), y esta ruta nunca la tiene. Mismo contenedor sticky
+	     que la página de sede igual, para que ambas queden estructuralmente
+	     análogas. -->
+	<div class="sticky top-0 z-40 flex w-full flex-col" bind:clientHeight={headerHeight}>
+		<!-- En móvil (< sm) la fila "Cartelera" no se muestra: eran 64px fijos
+		     de una pantalla de 812. La flecha de volver baja a la fila de
+		     filtros (misma lógica de destino, variant="icon") y el selector de
+		     fecha ocupa su propia fila a lo ancho. -->
+		<div class="hidden sm:block"><CarteleraTopBar back={{ type: 'home' }} /></div>
+		<div class="bg-black border-b border-zinc-800 px-4 md:px-8 py-3 flex flex-wrap items-center gap-3">
+			<div class="sm:hidden"><CarteleraTopBar back={{ type: 'home' }} variant="icon" /></div>
+			<CarteleraSedeTrigger sedeName={sedeDisplayName} {sedeShortName} destination="cartelera" />
+			<CarteleraSearch bind:query={searchQuery} />
+			<div class="ml-auto w-full sm:w-auto">
+				<DateSelector bind:selectedDateTab bind:customDate {activeDates} accentClass="text-white" />
+			</div>
+		</div>
 	</div>
 
-	<section class="w-full px-4 md:px-8 lg:px-12 py-8 grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-x-12">
-		<div class="min-w-0">
-			<CarteleraList
-				movies={filteredNowPlaying}
-				activeMovieId={activeMovie?.id ?? null}
-				onSelect={(m) => (activeMovie = m)}
-				sede={activeSedeId ?? undefined}
-				{selectedDateStr}
-				emptyMessage="No hay funciones para esta fecha en este cine."
-			/>
-
-			{#if comingSoonMovies.length > 0}
-				<h2 class="font-display text-xl tracking-wider text-white mt-12 mb-2">PRÓXIMAMENTE</h2>
-				<CarteleraList
-					movies={comingSoonMovies}
-					activeMovieId={activeMovie?.id ?? null}
-					onSelect={(m) => (activeMovie = m)}
-					sede={activeSedeId ?? undefined}
-					{selectedDateStr}
-				/>
-			{/if}
-		</div>
-
-		<div class="hidden lg:block">
-			<CarteleraDetailPanel movie={activeMovie} {onPlayTrailer} {onMoreInfo} />
-		</div>
+	<section class="w-full">
+		<CarteleraChapters
+			movies={filteredNowPlaying}
+			sede={activeSedeId ?? undefined}
+			{selectedDateStr}
+			{onPlayTrailer}
+			{onMoreInfo}
+			{emptyMessage}
+			{headerHeight}
+			ambientPaused={trailerOpen}
+		/>
 	</section>
+
+	<!-- Próximamente: el carrusel tradicional (el mismo que ya usan las
+	     sedes), no más tarjetas de pantalla completa -- esta sección no tiene
+	     horarios reales que mostrar, así que no necesita el mismo tratamiento. -->
+	{#if filteredComingSoon.length > 0}
+		<UpcomingCarousel movies={filteredComingSoon} isPaused={trailerOpen} />
+	{/if}
 
 	<Footer />
 </div>

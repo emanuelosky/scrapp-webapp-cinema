@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { resolve } from '$app/paths';
 	import Ticket from '@lucide/svelte/icons/ticket';
 	import Star from '@lucide/svelte/icons/star';
 	import Info from '@lucide/svelte/icons/info';
@@ -22,13 +23,17 @@
 
 {#if isVisible && promo}
 	<div class="relative z-50 flex items-center justify-center bg-white px-4 md:px-8 py-2.5 text-center text-xs md:text-sm font-bold tracking-wide text-black shadow-md transition-all duration-300">
-		<p class="pr-6 flex items-center justify-center gap-1.5">
+		<!-- El mensaje termina en "Compra tus boletos ahora" pero antes no
+		     llevaba a ningún lado -- /cartelera resuelve sola una sede y
+		     muestra horarios reales para reservar, así que funciona como
+		     destino sin importar desde qué página se muestre el aviso. -->
+		<a href={resolve('/cartelera')} class="pr-6 flex items-center justify-center gap-1.5 hover:underline">
 			{#if IconsMap[promo.icon]}
 				{@const IconComponent = IconsMap[promo.icon]}
 				<IconComponent class="inline-block shrink-0 size-4 md:size-5 align-text-bottom text-black" />
 			{/if}
 			<span>{promo.message}</span>
-		</p>
+		</a>
 		<button aria-label="Cerrar" class="absolute top-1/2 right-4 -translate-y-1/2 hover:opacity-70 transition-transform hover:scale-110 active:scale-95" onclick={() => isVisible = false}>
 			<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 				<path d="M18 6 6 18" />

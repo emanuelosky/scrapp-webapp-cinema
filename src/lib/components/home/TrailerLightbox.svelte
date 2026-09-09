@@ -13,6 +13,8 @@
 	import VolumeX from '@lucide/svelte/icons/volume-x';
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 	import SkipForward from '@lucide/svelte/icons/skip-forward';
+	import Smartphone from '@lucide/svelte/icons/smartphone';
+	import { animate } from 'animejs';
 	import type { Movie } from '$lib/types';
 
 	let {
@@ -170,6 +172,58 @@
 		}
 	}
 
+	// Aviso "gira tu teléfono" (solo táctil y en vertical): al abrir, un
+	// cartel breve con el ícono girando 90°; tocarlo pide pantalla completa
+	// y, donde el navegador lo permite (Android/Chrome), bloquea la
+	// orientación en horizontal. iPhone Safari no tiene esa API: ahí queda
+	// solo el aviso. Se va solo al girar el teléfono, al tocarlo o a los 5 s.
+	let showRotateHint = $state(false);
+	let rotateIconEl = $state<HTMLSpanElement | null>(null);
+
+	$effect(() => {
+		if (!open) {
+			showRotateHint = false;
+			return;
+		}
+		const portraitTouch = window.matchMedia('(pointer: coarse) and (orientation: portrait)');
+		if (!portraitTouch.matches) return;
+		showRotateHint = true;
+		const onChange = () => {
+			if (!portraitTouch.matches) showRotateHint = false;
+		};
+		portraitTouch.addEventListener('change', onChange);
+		const timer = setTimeout(() => (showRotateHint = false), 5000);
+		return () => {
+			portraitTouch.removeEventListener('change', onChange);
+			clearTimeout(timer);
+		};
+	});
+
+	$effect(() => {
+		const el = rotateIconEl;
+		if (!el) return;
+		const spin = animate(el, {
+			rotate: [0, 90],
+			duration: 900,
+			ease: 'inOutQuad',
+			loop: 3,
+			alternate: true,
+			loopDelay: 250
+		});
+		return () => spin.revert();
+	});
+
+	async function enterLandscape() {
+		showRotateHint = false;
+		try {
+			if (!document.fullscreenElement) await videoContainer?.requestFullscreen();
+			const orientation = screen.orientation as unknown as { lock?: (type: string) => Promise<void> };
+			await orientation.lock?.('landscape');
+		} catch {
+			// Sin soporte (iOS Safari) o rechazado por el usuario: no pasa nada.
+		}
+	}
+
 	$effect(() => {
 		const onFullscreenChange = () => {
 			isFullscreen = !!document.fullscreenElement;
@@ -232,6 +286,23 @@
 					<Dialog.Close class="absolute top-4 right-4 z-50 flex size-9 items-center justify-center rounded-full bg-zinc-900/60 text-zinc-400 border border-zinc-800/50 backdrop-blur-md transition-all hover:bg-zinc-800 hover:text-white hover:scale-105 active:scale-95 {showControls || !isPlaying ? 'opacity-100' : 'opacity-0'} duration-300" aria-label="Cerrar modal">
 						<X class="size-4" />
 					</Dialog.Close>
+
+					{#if showRotateHint}
+						<!-- Gira tu teléfono -- solo táctil en vertical, ver enterLandscape() -->
+						<button
+							type="button"
+							class="absolute left-1/2 top-14 z-40 flex max-w-[90%] -translate-x-1/2 items-center gap-3 rounded-full border border-white/15 bg-black/70 px-4 py-2.5 text-left text-white shadow-xl backdrop-blur-md"
+							onclick={enterLandscape}
+						>
+							<span bind:this={rotateIconEl} class="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10">
+								<Smartphone class="size-5" />
+							</span>
+							<span class="text-[11px] font-black uppercase leading-tight tracking-wide">
+								Gira tu teléfono
+								<span class="block font-medium normal-case tracking-normal text-zinc-300">Toca para verlo en grande</span>
+							</span>
+						</button>
+					{/if}
 
 					<!-- svelte-ignore a11y_media_has_caption -->
 					<video

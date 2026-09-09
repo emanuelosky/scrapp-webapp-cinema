@@ -9,11 +9,14 @@
 	import MovieDetailsDialog from '$lib/components/MovieDetailsDialog.svelte';
 	import TrailerLightbox from '$lib/components/home/TrailerLightbox.svelte';
 	import DateSelector from '$lib/components/home/DateSelector.svelte';
+	import PromoBanner from '$lib/components/home/PromoBanner.svelte';
+	import UpcomingCarousel from '$lib/components/home/UpcomingCarousel.svelte';
 	import CarteleraTopBar from '$lib/components/cartelera/CarteleraTopBar.svelte';
 	import CarteleraSedeTrigger from '$lib/components/cartelera/CarteleraSedeTrigger.svelte';
-	import CarteleraList from '$lib/components/cartelera/CarteleraList.svelte';
-	import CarteleraDetailPanel from '$lib/components/cartelera/CarteleraDetailPanel.svelte';
+	import CarteleraSearch from '$lib/components/cartelera/CarteleraSearch.svelte';
+	import CarteleraChapters from '$lib/components/cartelera/CarteleraChapters.svelte';
 	import { cinemaState } from '$lib/state/cinema.svelte';
+	import { matchesSearch } from '$lib/utils/carteleraSearch';
 	import type { Movie } from '$lib/types';
 
 	let { data } = $props();
@@ -31,17 +34,22 @@
 	});
 
 	let sedeDisplayName = $derived(cinemaState.selectedCinemaName ?? '');
+	let sedeShortName = $derived(cinemaState.selectedCinemaShortName ?? '');
 	let currentSede = $derived($page.params.sede);
 
 	let isDialogOpen = $state(false);
 	let selectedMovie = $state<Movie | null>(null);
-	let activeMovie = $state<Movie | null>(null);
+	// Alto real del grupo sticky (promo + header + filtros): las tarjetas lo
+	// usan como línea de reposo en vez de un valor inventado. Cambia solo
+	// cuando el PromoBanner carga o la barra de filtros hace wrap en móvil.
+	let headerHeight = $state(0);
 
 	let trailerMovie = $state<Movie | null>(null);
 	let trailerOpen = $state(false);
 
 	let selectedDateTab = $state<'hoy' | 'manana' | 'custom'>('hoy');
 	let customDate = $state<DateValue | undefined>();
+	let searchQuery = $state('');
 
 	let selectedDateStr = $derived.by(() => {
 		const tz = cinemaState.activeTimezone;
@@ -58,6 +66,7 @@
 		const todayStr = today(tz).toString();
 
 		return (data.nowPlaying as Movie[])
+			.filter((movie) => matchesSearch(movie, searchQuery))
 			.map((movie) => {
 				const rawDayShowtimes = movie.showtimesByDate?.[selectedDateStr] || [];
 				const dayShowtimes = rawDayShowtimes.filter((s) => {
@@ -69,16 +78,13 @@
 			.filter((movie) => movie.showtimes.length > 0);
 	});
 
-	$effect(() => {
-		const list = filteredNowPlaying;
-		if (list.length === 0) {
-			activeMovie = null;
-			return;
-		}
-		if (!activeMovie || !list.some((m) => m.id === activeMovie!.id)) {
-			activeMovie = list[0];
-		}
-	});
+	let filteredComingSoon = $derived(comingSoonMovies.filter((movie) => matchesSearch(movie, searchQuery)));
+
+	let emptyMessage = $derived(
+		searchQuery.trim()
+			? `No encontramos "${searchQuery.trim()}" en esta sede.`
+			: 'No hay funciones para esta fecha en este cine.'
+	);
 
 	function openMovieDetails(movie: Movie) {
 		selectedMovie = movie;
@@ -91,9 +97,9 @@
 	}
 
 	// `/cartelera` (sin sede) manda aquí con `?pelicula=<id>` cuando el
-	// usuario pidió más información antes de tener una sede resuelta -- mismo
-	// mecanismo que ya usa `cines/[sede]/+page.svelte` para el caso análogo
-	// del home real.
+	// usuario pidió la ficha completa antes de tener una sede resuelta --
+	// mismo mecanismo que ya usa `cines/[sede]/+page.svelte` para el caso
+	// análogo del home real.
 	let handledPendingMovie = $state<string | null>(null);
 	$effect(() => {
 		const pending = $page.url.searchParams.get('pelicula');
@@ -122,40 +128,47 @@
 </svelte:head>
 
 <div class="flex min-h-screen flex-col bg-black font-sans text-zinc-50">
-	<CarteleraTopBar back={{ type: 'sede', sede: currentSede }} />
-
-	<div class="sticky top-16 z-30 bg-black border-b border-zinc-800 px-4 md:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
-		<CarteleraSedeTrigger sedeName={sedeDisplayName} destination="cartelera" />
-		<DateSelector bind:selectedDateTab bind:customDate {activeDates} accentClass="text-white" />
+	<!-- Un solo contenedor sticky para promo + header + filtros -- mismo
+	     patrón que SiteHeader.svelte usa para el resto del sitio. Antes el
+	     PromoBanner vivía suelto (no sticky) y desaparecía en el primer
+	     scroll; agrupándolo acá se queda fijo mientras esté disponible, sin
+	     depender de calcular su alto (que varía según el texto). -->
+	<div class="sticky top-0 z-40 flex w-full flex-col" bind:clientHeight={headerHeight}>
+		<PromoBanner />
+		<!-- En móvil (< sm) la fila "Cartelera" no se muestra: eran 64px fijos
+		     de una pantalla de 812. La flecha de volver baja a la fila de
+		     filtros (misma lógica de destino, variant="icon") y el selector de
+		     fecha ocupa su propia fila a lo ancho. -->
+		<div class="hidden sm:block"><CarteleraTopBar back={{ type: 'sede', sede: currentSede }} /></div>
+		<div class="bg-black border-b border-zinc-800 px-4 md:px-8 py-3 flex flex-wrap items-center gap-3">
+			<div class="sm:hidden"><CarteleraTopBar back={{ type: 'sede', sede: currentSede }} variant="icon" /></div>
+			<CarteleraSedeTrigger sedeName={sedeDisplayName} {sedeShortName} destination="cartelera" />
+			<CarteleraSearch bind:query={searchQuery} />
+			<div class="ml-auto w-full sm:w-auto">
+				<DateSelector bind:selectedDateTab bind:customDate {activeDates} accentClass="text-white" />
+			</div>
+		</div>
 	</div>
 
-	<section class="w-full px-4 md:px-8 lg:px-12 py-8 grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-x-12">
-		<div class="min-w-0">
-			<CarteleraList
-				movies={filteredNowPlaying}
-				activeMovieId={activeMovie?.id ?? null}
-				onSelect={(m) => (activeMovie = m)}
-				sede={currentSede}
-				{selectedDateStr}
-				emptyMessage="No hay funciones para esta fecha en este cine."
-			/>
-
-			{#if comingSoonMovies.length > 0}
-				<h2 class="font-display text-xl tracking-wider text-white mt-12 mb-2">PRÓXIMAMENTE</h2>
-				<CarteleraList
-					movies={comingSoonMovies}
-					activeMovieId={activeMovie?.id ?? null}
-					onSelect={(m) => (activeMovie = m)}
-					sede={currentSede}
-					{selectedDateStr}
-				/>
-			{/if}
-		</div>
-
-		<div class="hidden lg:block">
-			<CarteleraDetailPanel movie={activeMovie} {onPlayTrailer} onMoreInfo={openMovieDetails} showPromo={true} />
-		</div>
+	<section class="w-full">
+		<CarteleraChapters
+			movies={filteredNowPlaying}
+			sede={currentSede}
+			{selectedDateStr}
+			{onPlayTrailer}
+			onMoreInfo={openMovieDetails}
+			{emptyMessage}
+			{headerHeight}
+			ambientPaused={trailerOpen || isDialogOpen}
+		/>
 	</section>
+
+	<!-- Próximamente: el carrusel tradicional (el mismo que ya usan las
+	     sedes), no más tarjetas de pantalla completa -- esta sección no tiene
+	     horarios reales que mostrar, así que no necesita el mismo tratamiento. -->
+	{#if filteredComingSoon.length > 0}
+		<UpcomingCarousel movies={filteredComingSoon} isPaused={trailerOpen} />
+	{/if}
 
 	<Footer />
 </div>

@@ -8,7 +8,18 @@
 	// buscador que ya usa el resto del sitio (`TheatreSelectorDialog`) sí
 	// escala, y mantiene un solo mecanismo de cambio de sede en toda la app
 	// en vez de uno nuevo solo para cartelera.
-	let { sedeName, destination }: { sedeName: string; destination: 'home' | 'cartelera' } = $props();
+	// Dos nombres, no truncado: en móvil el nombre completo ("Sambil
+	// Candelaria") hacía que este botón midiera 238px, la fila se quedara
+	// corta por 7px y el buscador se fuera a una fila propia -- 56px de
+	// pantalla para un botón de 44. El nombre corto es dato curado del
+	// catálogo, así que se lee mejor que cualquier recorte automático.
+	let {
+		sedeName,
+		sedeShortName,
+		destination
+	}: { sedeName: string; sedeShortName?: string; destination: 'home' | 'cartelera' } = $props();
+
+	let corto = $derived(sedeShortName || sedeName);
 
 	let open = $state(false);
 </script>
@@ -19,7 +30,8 @@
 	onclick={() => (open = true)}
 >
 	<MapPin class="size-4 text-zinc-400" />
-	<span class="truncate max-w-[160px] sm:max-w-none">{sedeName || 'Elegir cine'}</span>
+	<span class="truncate sm:hidden">{corto || 'Elegir cine'}</span>
+	<span class="hidden truncate sm:inline sm:max-w-none">{sedeName || 'Elegir cine'}</span>
 	<ChevronDown class="size-4 text-zinc-400" />
 </button>
 

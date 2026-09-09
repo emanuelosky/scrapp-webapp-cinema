@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { blurSource } from '$lib/utils/images';
 	import TrailerBackground from '$lib/components/home/TrailerBackground.svelte';
 	import TrailerVolumeControl from '$lib/components/home/TrailerVolumeControl.svelte';
 	import TrailerLightbox from '$lib/components/home/TrailerLightbox.svelte';
@@ -158,8 +159,10 @@
 					style="mask-image: {auraMask}; -webkit-mask-image: {auraMask};"
 				>
 					<img
-						src={movie.banner}
+						src={blurSource(movie.banner, movie.bannerSizes, 'w300')}
 						alt=""
+						aria-hidden="true"
+						decoding="async"
 						class="absolute -inset-20 h-[calc(100%+10rem)] w-[calc(100%+10rem)] scale-125 object-cover opacity-25 blur-3xl"
 					/>
 				</div>

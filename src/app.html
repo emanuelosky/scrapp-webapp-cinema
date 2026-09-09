@@ -6,6 +6,17 @@
 		<title>CINEPIC</title>
 		<meta name="theme-color" content="#000000" />
 
+		<!-- ================= QUITAR AL PUBLICAR =================
+		     Mientras la webapp esté en pruebas no debe aparecer en Google ni
+		     mostrar vista previa al compartirla. Alojarla en Render ya la hace
+		     alcanzable: el certificado TLS de cada subdominio queda registrado
+		     en los listados públicos de Certificate Transparency, que los bots
+		     rastrean en minutos. Nadie tiene que enlazarla para que la
+		     encuentren.
+		     Esta etiqueta es la que de verdad la mantiene fuera del índice
+		     (robots.txt por sí solo no lo logra; ver static/robots.txt).
+		     ====================================================== -->
+		<meta name="robots" content="noindex, nofollow" />
 		<meta name="text-scale" content="scale" />
 
 		<!-- Fuentes autoalojadas (static/fonts). Antes venían de Google Fonts:

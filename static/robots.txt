@@ -1,3 +1,16 @@
-# allow crawling everything by default
+# PRE-LANZAMIENTO: la webapp no debe aparecer en buscadores todavía.
+#
+# Ojo con la trampa clásica: "Disallow: /" NO saca una página del índice.
+# Solo impide rastrearla, y si Google llega a la URL por otro camino
+# (los registros públicos de certificados TLS de *.onrender.com se rastrean
+# constantemente) puede listarla igual, sin contenido y sin poder ver que
+# pedimos no indexarla.
+#
+# La forma correcta es la contraria: DEJAR rastrear, y que cada página
+# responda "noindex" (ver la etiqueta robots en src/app.html). Así el
+# buscador entra, lee la orden y no la indexa.
+#
+# AL PUBLICAR: quitar el noindex de src/app.html y reemplazar este archivo
+# por uno que apunte al sitemap.
 User-agent: *
-Disallow:
+Allow: /

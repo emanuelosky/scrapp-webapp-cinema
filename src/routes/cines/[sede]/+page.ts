@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { fetchCartelera } from '$lib/api';
+import { fetchCartelera, fetchCombos } from '$lib/api';
 import { cinemaState } from '$lib/state/cinema.svelte';
 
 export const load = async ({ fetch, params }) => {
@@ -10,6 +10,8 @@ export const load = async ({ fetch, params }) => {
     // Supabase al de la API antes de pintar nada.
     const catalogReady = cinemaState.verifyCatalog(fetch);
     const carteleraReq = fetchCartelera(sede, fetch);
+    // Los combos no dependen de nada de lo anterior; que arranquen ya.
+    const combosReq = fetchCombos(sede, fetch);
 
     // Un slug inventado (/cines/loquesea) devolvía catálogo vacío y además
     // escribía "Loquesea" como sede activa en el header global. Cortamos acá.
@@ -22,6 +24,7 @@ export const load = async ({ fetch, params }) => {
     }
 
     const { nowPlaying, comingSoonMovies, activeDates } = await carteleraReq;
+    const combos = await combosReq;
 
-    return { nowPlaying, comingSoonMovies, activeDates };
+    return { nowPlaying, comingSoonMovies, activeDates, combos };
 }

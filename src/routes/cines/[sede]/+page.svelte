@@ -10,6 +10,7 @@
 	import DateSelector from '$lib/components/home/DateSelector.svelte';
 	import NowPlayingCarousel from '$lib/components/home/NowPlayingCarousel.svelte';
 	import UpcomingCarousel from '$lib/components/home/UpcomingCarousel.svelte';
+	import CombosSection from '$lib/components/dulceria/CombosSection.svelte';
 	import HeroDesktop from '$lib/components/home/HeroDesktop.svelte';
 	import HeroMobile from '$lib/components/home/HeroMobile.svelte';
 	import HeroScrolly from '$lib/components/home/HeroScrolly.svelte';
@@ -21,6 +22,7 @@
 	let { data } = $props();
 	let comingSoonMovies = $derived(data.comingSoonMovies);
 	let activeDates = $derived(data.activeDates || []);
+	let combos = $derived(data.combos ?? []);
 	import type { Movie } from '$lib/types';
 
 	import { page } from '$app/stores';
@@ -273,6 +275,12 @@
 </div>
 
 <UpcomingCarousel movies={comingSoonMovies} isPaused={isAnyModalOpen} />
+<CombosSection
+	{combos}
+	sede={$page.params.sede ?? ''}
+	sedeName={sedeDisplayName}
+	isPaused={isAnyModalOpen}
+/>
 <Footer />
 <MovieDetailsDialog bind:open={isDialogOpen} movie={selectedMovie} />
 

@@ -120,6 +120,81 @@ sube tres archivos pequeños en vez de un original de varios MB. Está
 verificado que TMDB responde con `Access-Control-Allow-Origin: *`, así que el
 mismo camino sirve para una imagen subida a mano y para una traída de TMDB.
 
+## Confitería: combos, menú y promociones
+
+Esta sección **todavía no existe del lado del backend**. La webapp ya la
+consume a través de `fetchCombos`, `fetchMenu`, `fetchArmador` y
+`fetchPromociones`, pero hoy esas funciones devuelven una maqueta local
+(`$lib/data/*.mock.ts`). Lo que sigue es lo que hace falta para reemplazarla.
+
+### Por qué no alcanza con lo que ya hay
+
+El catálogo comercial vive en el POS heredado. El intermediario lo cachea como
+JSON crudo en `legacy_catalog_cache` y lo expone en
+`/api/legacy-pos/catalog?type=combos`. Eso sirve para operar la taquilla, pero
+no para una vitrina pública, por tres razones:
+
+1. **No tiene imágenes.** No hay campo de imagen para productos ni combos en
+   ninguna tabla, vista ni pantalla de administración. La única subida de
+   imágenes que existe es la de películas. Hoy nadie es dueño de la foto de un
+   combo.
+2. **No tiene precio por sede.** `legacy_catalog_cache` es una fila global sin
+   `location_id`. El único precio que sí varía por sede es el de boletos.
+3. **No tiene texto comercial.** El POS guarda la receta interna (qué insumos
+   descuenta un combo), no cómo se le cuenta al visitante. "1 cotufa grande, 2
+   refrescos medianos, ración de nuggets" es texto de mercadeo, y no siempre
+   coincide con la receta.
+
+Es decir: hace falta una capa propia, no un proxy del POS.
+
+### Lo que la webapp necesita
+
+**Combos.** Por sede. Cada combo: `id`, `slug`, `name` (solo el apellido:
+"Acción", no "COMBO ACCIÓN" — el rótulo lo pone la interfaz), `items` (líneas
+de texto, en orden), `price`, `addons` (opcional), `image` y `featured`.
+
+**Menú.** Por sede, agrupado en categorías. Cada categoría: `id`, `name`,
+`tagline` opcional y sus productos. Cada producto: `id`, `name`,
+`description` opcional, `price`, y `sizes` opcional cuando se vende en varios
+tamaños.
+
+**Armador.** Los pasos para componer un combo a medida: `id`, `title`, `hint`,
+`required` y sus opciones (`id`, `name`, `price`). El orden importa y lo define
+el backend, no la webapp.
+
+**Promociones y coleccionables.** Una sola lista con un campo `kind` que
+distingue entre los dos. Cada uno: `title`, `description`, `price` opcional,
+`terms` opcional e `image` opcional.
+
+### Imágenes
+
+Vale lo mismo que para pósters y banners (ver la sección de imágenes más
+arriba): idealmente tres tamaños en WebP, y **solo `full` es obligatorio**.
+`$lib/utils/images` degrada solo si vienen menos.
+
+El caso de los combos tiene un detalle propio que conviene no repetir. El arte
+que entrega mercadeo son banners 1920x1080 de señalética, con el nombre, el
+contenido y el precio **quemados en el JPEG**. Para la web ese texto es un
+estorbo: congela el precio en píxeles, no se puede leer por un lector de
+pantalla ni buscar, y un 16:9 con el texto al costado no entra en una tarjeta
+vertical de móvil. Por eso `scripts/procesar-combos.py` recorta la foto y
+descarta el texto, y el texto vuelve como datos.
+
+**Lo ideal es que el backend reciba la foto ya limpia**, sin texto encima, y
+que el nombre y el precio viajen como campos. Si el catálogo lo entrega un
+sistema que solo da el arte compuesto, la webapp lo va a mostrar igual, pero se
+pierde el móvil y la posibilidad de corregir una errata sin volver a diseño.
+
+### Precio
+
+El precio se muestra como lo escribe la señalética: `REF 18⁹⁹`, referencia en
+dólares. La webapp **no convierte a bolívares** y no debería empezar a hacerlo
+hasta resolver una contradicción que ya existe en el código: la tasa está
+duplicada como `EXCHANGE_RATE = 40.50` en `cines/[sede]/concessions/[id]` y en
+`cines/[sede]/checkout/[id]`, pero el payload de pago de ese mismo checkout usa
+`582.68`. Si el backend va a mandar la tasa, que la mande una sola vez y que
+sea la única.
+
 ## Lo que la webapp NO debe hacer
 
 - **No hablar con la base de datos directamente.** Se hacía (el catálogo de

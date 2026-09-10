@@ -23,7 +23,15 @@
  * último parámetro; fuera de un `load()` se omite.
  */
 
-import type { CinemaLocation, Movie, PromoBanner } from '$lib/types';
+import type {
+	CinemaLocation,
+	Combo,
+	ComboStep,
+	MenuCategory,
+	Movie,
+	PromoBanner,
+	Promocion
+} from '$lib/types';
 
 // --- Dirección base -------------------------------------------------------
 
@@ -224,4 +232,54 @@ export function chatEndpoint(): string {
 
 export function chatHeaders(): Record<string, string> {
 	return { 'x-epik-secret': import.meta.env.VITE_EPIK_SECRET || 'scrapp_epik_secret_2026_dev' };
+}
+
+// --- Confitería -----------------------------------------------------------
+//
+// Estas cuatro funciones todavía no hablan con nadie: devuelven la maqueta de
+// `$lib/data`. Están acá igual, y no importadas directamente desde las
+// páginas, para que enchufar el backend sea cambiar el cuerpo de la función y
+// nada más -- que es exactamente la razón de existir de este archivo.
+//
+// El catálogo real vive en el POS heredado. El intermediario lo cachea como
+// JSON crudo (`legacy_catalog_cache`), sin campo de imagen, sin precio por
+// sede y sin endpoint público. Lo que hace falta del lado del backend está
+// escrito en `CONTRATO-BACKEND.md`, sección "Confitería".
+//
+// Son `async` a propósito aunque hoy resuelvan de inmediato: así el día que
+// haya red, ninguna página que las llame tiene que cambiar.
+//
+// La importación es dinámica para que los datos de maqueta no viajen en el
+// paquete de las páginas que no los usan (la cartelera, el checkout).
+
+/** Combos armados. `sede` se ignora hoy; el catálogo real sí varía por sede. */
+export async function fetchCombos(sede?: string, fetchFn?: Fetch): Promise<Combo[]> {
+	void sede;
+	void fetchFn;
+	const { COMBOS_MOCK } = await import('$lib/data/combos.mock');
+	return COMBOS_MOCK;
+}
+
+/** El menú completo, por categorías. */
+export async function fetchMenu(sede?: string, fetchFn?: Fetch): Promise<MenuCategory[]> {
+	void sede;
+	void fetchFn;
+	const { MENU_MOCK } = await import('$lib/data/menu.mock');
+	return MENU_MOCK;
+}
+
+/** Los pasos del armador de combos, en orden. */
+export async function fetchArmador(sede?: string, fetchFn?: Fetch): Promise<ComboStep[]> {
+	void sede;
+	void fetchFn;
+	const { ARMADOR_MOCK } = await import('$lib/data/menu.mock');
+	return ARMADOR_MOCK;
+}
+
+/** Promociones y coleccionables vigentes, mezclados. */
+export async function fetchPromociones(sede?: string, fetchFn?: Fetch): Promise<Promocion[]> {
+	void sede;
+	void fetchFn;
+	const { PROMOCIONES_MOCK } = await import('$lib/data/promociones.mock');
+	return PROMOCIONES_MOCK;
 }

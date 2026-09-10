@@ -82,3 +82,86 @@ export interface CinemaLocation {
 	is_active: boolean;
 	timezone: string;
 }
+
+// --- Confitería -----------------------------------------------------------
+//
+// Hoy estos datos son una maqueta (`$lib/data/*.mock.ts`) que entra por
+// `$lib/api`. El catálogo real vive en el POS heredado y todavía no tiene
+// tabla propia ni campo de imagen; cuando la tenga, cambia la fuente, no
+// estos tipos. Ver `src/lib/api/CONTRATO-BACKEND.md`.
+
+/**
+ * Un combo de confitería.
+ *
+ * `name` es solo el apellido -- "Acción", "Romántico" -- porque la palabra
+ * "COMBO" la pone la interfaz. Así el nombre no se repite dentro de la
+ * tarjeta, que ya lleva el rótulo.
+ *
+ * `items` viene como líneas sueltas, tal cual las redacta mercadeo
+ * ("1 cotufa grande"), y no como cantidades estructuradas: el POS sí modela
+ * el combo como entidad compuesta, pero lo que se le muestra al visitante es
+ * el texto comercial, que no siempre coincide con la receta interna.
+ */
+export interface Combo {
+	id: string;
+	slug: string;
+	name: string;
+	items: string[];
+	/** Precio de referencia en dólares. Ver `formatRef` en `$lib/utils/price`. */
+	price: number;
+	/** Extras que el combo admite ("nachos, nuggets, pops y/o tequeños"). */
+	addons?: string[];
+	image: ImageVariants;
+	/** Se destaca en la vitrina del home de sede. */
+	featured?: boolean;
+}
+
+export interface MenuProduct {
+	id: string;
+	name: string;
+	description?: string;
+	price: number;
+	/** Tamaños disponibles, si el producto se vende en varios. */
+	sizes?: { label: string; price: number }[];
+}
+
+export interface MenuCategory {
+	id: string;
+	name: string;
+	tagline?: string;
+	products: MenuProduct[];
+}
+
+/** Un paso del armador de combos: elegí uno de `options`. */
+export interface ComboStep {
+	id: string;
+	title: string;
+	hint?: string;
+	/** Sin selección no se puede avanzar. Los pasos opcionales se pueden saltar. */
+	required: boolean;
+	options: ComboOption[];
+}
+
+export interface ComboOption {
+	id: string;
+	name: string;
+	/** Cuánto suma al total. Puede ser 0 (incluido) y nunca es negativo. */
+	price: number;
+}
+
+/**
+ * Promociones y coleccionables comparten página porque en la práctica nunca
+ * hay muchos de ninguno de los dos: dos rejillas casi vacías se ven peor que
+ * una sola con contenido.
+ */
+export interface Promocion {
+	id: string;
+	kind: 'promocion' | 'coleccionable';
+	title: string;
+	description: string;
+	price?: number;
+	/** Texto legal o condición, en letra chica. */
+	terms?: string;
+	/** Mientras no haya arte propio, la tarjeta se resuelve tipográficamente. */
+	image?: ImageVariants;
+}

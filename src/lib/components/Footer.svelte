@@ -4,6 +4,7 @@
 	import FileText from '@lucide/svelte/icons/file-text';
 	import { bookingState } from '$lib/state/booking.svelte';
 	import { toast } from 'svelte-sonner';
+	import { resolve } from '$app/paths';
 </script>
 
 <footer class="w-full bg-[#000000] border-t border-white/5 pt-16 pb-8 px-4 z-10 relative">
@@ -35,7 +36,7 @@
 				<h4 class="text-white font-bold uppercase tracking-wider text-sm mb-2">Explorar</h4>
 				<ul class="flex flex-col items-center md:items-start gap-3">
 					<li><button onclick={() => toast('Oops. Esta función todavía no está disponible.')} class="text-zinc-400 hover:text-white transition-colors text-sm">Ver Cartelera</button></li>
-					<li><button onclick={() => toast('Oops. Esta función todavía no está disponible.')} class="text-zinc-400 hover:text-white transition-colors text-sm">Ver Combos</button></li>
+					<li><a href={resolve('/dulceria/menu')} class="text-zinc-400 hover:text-white transition-colors text-sm">Ver Combos</a></li>
 					<li><button onclick={() => toast('Oops. Esta función todavía no está disponible.')} class="text-zinc-400 hover:text-white transition-colors text-sm">Próximos Estrenos</button></li>
 				</ul>
 			</div>

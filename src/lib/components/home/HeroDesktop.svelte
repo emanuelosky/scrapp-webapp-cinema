@@ -1,6 +1,7 @@
 <script lang="ts">
 	import MapPin from '@lucide/svelte/icons/map-pin';
 	import { Button } from '$lib/components/ui/button';
+	import { resolve } from '$app/paths';
 	import HeroCarousel from '$lib/components/HeroCarousel.svelte';
 	import { cinemaState } from '$lib/state/cinema.svelte';
 	import type { Movie } from '$lib/types';
@@ -76,6 +77,7 @@
 				Comprar Boletos
 			</Button>
 			<Button
+				href={resolve('/dulceria/menu')}
 				class="flex h-12 w-auto items-center justify-center rounded-full bg-white/5 backdrop-blur-md border border-white/10 px-8 text-sm font-bold text-white/90 shadow-xl transition-all duration-300 hover:scale-105 hover:bg-white/10 hover:border-white/30 hover:text-white md:text-base tracking-wide"
 			>
 				Ver Combos

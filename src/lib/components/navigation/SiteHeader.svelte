@@ -14,6 +14,7 @@
 	import TheatreSelectorDialog from '$lib/components/TheatreSelectorDialog.svelte';
 	import ShoppingCartDropdown from '$lib/components/booking/ShoppingCartDropdown.svelte';
 
+	import { resolve } from '$app/paths';
 	import { cinemaState } from '$lib/state/cinema.svelte';
 	import { bookingState } from '$lib/state/booking.svelte';
 	import type { Movie } from '$lib/types';
@@ -132,7 +133,7 @@
 				</button>
 				<div class="hidden items-center gap-6 md:flex">
 					<button class="transition-colors hover:text-white" onclick={() => isComingSoonOpen = true}>Tarjetas de Regalo</button>
-					<button class="transition-colors hover:text-white" onclick={() => isComingSoonOpen = true}>Ofertas</button>
+					<a href={resolve('/promociones')} class="transition-colors hover:text-white">Ofertas</a>
 				</div>
 			</div>
 		</div>
@@ -150,7 +151,7 @@
 		</Sheet.Header>
 		<div class="flex flex-col pb-8">
 			<a href="/cartelera" class="p-6 border-b border-zinc-800/50 font-bold text-lg hover:text-white hover:bg-zinc-900 transition-colors uppercase tracking-wider" onclick={() => isMobileMenuOpen = false}>Ver Cartelera</a>
-			<a href="/dulceria/arma-tu-combo" class="p-6 border-b border-zinc-800/50 font-bold text-lg hover:text-white hover:bg-zinc-900 transition-colors uppercase tracking-wider" onclick={() => isMobileMenuOpen = false}>Armá tu Combo</a>
+			<a href="/dulceria/arma-tu-combo" class="p-6 border-b border-zinc-800/50 font-bold text-lg hover:text-white hover:bg-zinc-900 transition-colors uppercase tracking-wider" onclick={() => isMobileMenuOpen = false}>Arma tu Combo</a>
 			<a href="/dulceria/menu" class="p-6 border-b border-zinc-800/50 font-bold text-lg hover:text-white hover:bg-zinc-900 transition-colors uppercase tracking-wider" onclick={() => isMobileMenuOpen = false}>Nuestro Menú</a>
 			<a href="/promociones" class="p-6 border-b border-zinc-800/50 font-bold text-lg hover:text-white hover:bg-zinc-900 transition-colors uppercase tracking-wider" onclick={() => isMobileMenuOpen = false}>Promociones</a>
 			<a href="/corporativo/anunciate" class="p-6 border-b border-zinc-800/50 font-bold text-lg hover:text-white hover:bg-zinc-900 transition-colors uppercase tracking-wider" onclick={() => isMobileMenuOpen = false}>Anúnciate en Cinepic</a>

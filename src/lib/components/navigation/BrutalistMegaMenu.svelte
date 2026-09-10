@@ -53,7 +53,7 @@
 
     const MENU_DATA: Record<string, { label: string, href: string }[]> = {
         combos: [
-            { label: "ARMÁ TU COMBO", href: "/dulceria/arma-tu-combo" },
+            { label: "ARMA TU COMBO", href: "/dulceria/arma-tu-combo" },
             { label: "NUESTRO MENÚ", href: "/dulceria/menu" },
             { label: "PROMOCIONES", href: "/promociones" }
         ],

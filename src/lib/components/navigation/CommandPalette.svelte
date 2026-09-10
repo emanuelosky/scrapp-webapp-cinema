@@ -2,6 +2,17 @@
     import * as Command from "$lib/components/ui/command";
     import type { Movie } from "$lib/types";
     import { fade } from 'svelte/transition';
+    import { goto } from '$app/navigation';
+    import { resolve } from '$app/paths';
+
+    // Ir a una ruta desde el paletón: cerrar primero para que la navegación no
+    // ocurra con el diálogo montado encima.
+    function irA(ruta: string) {
+        open = false;
+        // `ruta` ya viene pasada por resolve() en cada llamada.
+        // eslint-disable-next-line svelte/no-navigation-without-resolve
+        goto(ruta);
+    }
 
     let { 
         open = $bindable(false), 
@@ -57,11 +68,14 @@
                 <Command.Separator class="bg-zinc-900" />
                 
                 <Command.Group heading="[ DULCERÍA Y COMBOS ]" class="py-2">
-                    <Command.Item value="combos" onSelect={() => open = false}>
-                        <div class="font-bold uppercase tracking-widest flex-1">VER COMBOS EXCLUSIVOS</div>
+                    <Command.Item value="combos dulceria menu cotufas" onSelect={() => irA(resolve('/dulceria/menu'))}>
+                        <div class="font-bold uppercase tracking-widest flex-1">VER COMBOS Y MENÚ</div>
                     </Command.Item>
-                    <Command.Item value="palomitas" onSelect={() => open = false}>
-                        <div class="font-bold uppercase tracking-widest flex-1">PALOMITAS CARAMELIZADAS</div>
+                    <Command.Item value="armar combo personalizado" onSelect={() => irA(resolve('/dulceria/arma-tu-combo'))}>
+                        <div class="font-bold uppercase tracking-widest flex-1">ARMA TU COMBO</div>
+                    </Command.Item>
+                    <Command.Item value="promociones coleccionables descuentos" onSelect={() => irA(resolve('/promociones'))}>
+                        <div class="font-bold uppercase tracking-widest flex-1">PROMOCIONES Y COLECCIONABLES</div>
                     </Command.Item>
                 </Command.Group>
 

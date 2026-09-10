@@ -7,6 +7,16 @@
  * es silencioso y peligroso: el sitio "funciona" contra la infraestructura
  * equivocada y nadie lo nota hasta que falla en público. Mejor que no compile.
  */
+// El mensaje de abajo manda a crear un `.env`, así que hay que leerlo: este
+// script corre como `node` pelado (prebuild), no a través de Vite, y por su
+// cuenta `process.env` no sabe nada de ese archivo. En CI y en Render no hay
+// `.env` y la variable llega del entorno; por eso el fallo es silencioso.
+try {
+	process.loadEnvFile();
+} catch {
+	// No hay .env: es lo normal fuera de una máquina de desarrollo.
+}
+
 const url = process.env.VITE_ADMIN_API_URL;
 
 if (!url) {

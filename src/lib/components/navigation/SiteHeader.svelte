@@ -151,7 +151,7 @@
 		</Sheet.Header>
 		<div class="flex flex-col pb-8">
 			<a href="/cartelera" class="p-6 border-b border-zinc-800/50 font-bold text-lg hover:text-white hover:bg-zinc-900 transition-colors uppercase tracking-wider" onclick={() => isMobileMenuOpen = false}>Ver Cartelera</a>
-			<a href="/dulceria/arma-tu-combo" class="p-6 border-b border-zinc-800/50 font-bold text-lg hover:text-white hover:bg-zinc-900 transition-colors uppercase tracking-wider" onclick={() => isMobileMenuOpen = false}>Arma tu Combo</a>
+			<a href="/dulceria/crea-tu-combo" class="p-6 border-b border-zinc-800/50 font-bold text-lg hover:text-white hover:bg-zinc-900 transition-colors uppercase tracking-wider" onclick={() => isMobileMenuOpen = false}>Crea tu Combo</a>
 			<a href="/dulceria/menu" class="p-6 border-b border-zinc-800/50 font-bold text-lg hover:text-white hover:bg-zinc-900 transition-colors uppercase tracking-wider" onclick={() => isMobileMenuOpen = false}>Nuestro Menú</a>
 			<a href="/promociones" class="p-6 border-b border-zinc-800/50 font-bold text-lg hover:text-white hover:bg-zinc-900 transition-colors uppercase tracking-wider" onclick={() => isMobileMenuOpen = false}>Promociones</a>
 			<a href="/corporativo/anunciate" class="p-6 border-b border-zinc-800/50 font-bold text-lg hover:text-white hover:bg-zinc-900 transition-colors uppercase tracking-wider" onclick={() => isMobileMenuOpen = false}>Anúnciate en Cinepic</a>

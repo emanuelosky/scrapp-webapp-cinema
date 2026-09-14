@@ -96,7 +96,7 @@
 			class="mt-3 font-display text-6xl leading-[0.85] tracking-wide text-white uppercase md:text-8xl"
 		>
 			Nuestro <span
-				class="bg-gradient-to-r from-goldenrose-300 to-goldenrose-700 bg-clip-text text-transparent"
+				class="bg-gradient-to-r from-zinc-100 via-zinc-300 to-zinc-400 bg-clip-text text-transparent"
 				>menú</span
 			>
 		</h1>
@@ -265,16 +265,16 @@
 			<h2
 				class="mt-3 font-display text-4xl leading-none tracking-wide text-white uppercase md:text-6xl"
 			>
-				Arma el tuyo
+				Crea el tuyo
 			</h2>
 			<p class="mt-4 max-w-lg text-base leading-relaxed text-zinc-300">
-				Elige la cotufa, la bebida y lo que quieras sumarle. El precio se arma contigo, paso a paso.
+				Elige la cotufa, la bebida y lo que quieras sumarle. El precio se calcula contigo, paso a paso.
 			</p>
 			<a
-				href={resolve('/dulceria/arma-tu-combo')}
+				href={resolve('/dulceria/crea-tu-combo')}
 				class="mt-8 rounded-full bg-white px-6 py-3 text-sm font-bold tracking-wider text-black uppercase transition-all hover:scale-105 hover:bg-zinc-200 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none active:scale-95 motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:active:scale-100"
 			>
-				Arma tu combo
+				Crea tu combo
 			</a>
 		</div>
 	</section>

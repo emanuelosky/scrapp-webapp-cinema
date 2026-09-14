@@ -131,10 +131,10 @@
 
 					<div class="mt-6 flex flex-wrap items-center gap-3">
 						<a
-							href={resolve('/dulceria/arma-tu-combo')}
+							href={resolve('/dulceria/crea-tu-combo')}
 							class="rounded-full bg-white px-6 py-3 text-sm font-bold uppercase tracking-wider text-black transition-all hover:scale-105 hover:bg-zinc-200 active:scale-95"
 						>
-							Arma tu combo
+							Crea tu combo
 						</a>
 						<a
 							href={resolve('/dulceria/menu')}

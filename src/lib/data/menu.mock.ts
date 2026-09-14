@@ -112,8 +112,8 @@ export const MENU_MOCK: MenuCategory[] = [
 export const ARMADOR_MOCK: ComboStep[] = [
 	{
 		id: 'cotufa',
-		title: 'La cotufa',
-		hint: 'Por algo estás acá.',
+		title: 'Cotufas',
+		hint: 'Recién hechas, crujientes y en la porción ideal.',
 		required: true,
 		options: [
 			{ id: 'cotufa-mediana', name: 'Mediana', price: 5.99 },
@@ -124,8 +124,8 @@ export const ARMADOR_MOCK: ComboStep[] = [
 	},
 	{
 		id: 'bebida',
-		title: 'La bebida',
-		hint: 'Para dos, o para uno con sed.',
+		title: 'Bebidas',
+		hint: 'Bien frías, individuales o para compartir.',
 		required: true,
 		options: [
 			{ id: 'bebida-1m', name: '1 refresco mediano', price: 3.49 },
@@ -136,8 +136,8 @@ export const ARMADOR_MOCK: ComboStep[] = [
 	},
 	{
 		id: 'picar',
-		title: 'Algo para picar',
-		hint: 'Opcional, pero nadie se arrepiente.',
+		title: 'Snacks',
+		hint: 'Tequeños, nuggets, nachos con queso y bocados calientes.',
 		required: false,
 		options: [
 			{ id: 'picar-tequenos', name: 'Tequeños', price: 5.49 },
@@ -149,8 +149,8 @@ export const ARMADOR_MOCK: ComboStep[] = [
 	},
 	{
 		id: 'dulce',
-		title: 'Y el final feliz',
-		hint: 'Opcional.',
+		title: 'Dulces',
+		hint: 'Chocolates, gomitas y helados para complementar tu función.',
 		required: false,
 		options: [
 			{ id: 'dulce-chocolate', name: 'Chocolates', price: 2.49 },

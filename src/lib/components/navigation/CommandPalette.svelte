@@ -71,8 +71,8 @@
                     <Command.Item value="combos dulceria menu cotufas" onSelect={() => irA(resolve('/dulceria/menu'))}>
                         <div class="font-bold uppercase tracking-widest flex-1">VER COMBOS Y MENÚ</div>
                     </Command.Item>
-                    <Command.Item value="armar combo personalizado" onSelect={() => irA(resolve('/dulceria/arma-tu-combo'))}>
-                        <div class="font-bold uppercase tracking-widest flex-1">ARMA TU COMBO</div>
+                    <Command.Item value="crear combo personalizado arma tu combo" onSelect={() => irA(resolve('/dulceria/crea-tu-combo'))}>
+                        <div class="font-bold uppercase tracking-widest flex-1">CREA TU COMBO</div>
                     </Command.Item>
                     <Command.Item value="promociones coleccionables descuentos" onSelect={() => irA(resolve('/promociones'))}>
                         <div class="font-bold uppercase tracking-widest flex-1">PROMOCIONES Y COLECCIONABLES</div>

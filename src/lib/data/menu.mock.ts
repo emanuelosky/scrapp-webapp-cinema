@@ -128,10 +128,9 @@ export const ARMADOR_MOCK: ComboStep[] = [
 		hint: 'Bien frías, individuales o para compartir.',
 		required: true,
 		options: [
-			{ id: 'bebida-1m', name: '1 refresco mediano', price: 3.49 },
-			{ id: 'bebida-2m', name: '2 refrescos medianos', price: 5.99 },
-			{ id: 'bebida-2g', name: '2 refrescos grandes', price: 7.49 },
-			{ id: 'bebida-agua', name: '1 refresco grande + 1 agua', price: 6.49 }
+			{ id: 'bebida-mediana', name: 'Refresco Mediano', price: 3.49 },
+			{ id: 'bebida-grande', name: 'Refresco Grande', price: 4.49 },
+			{ id: 'bebida-agua', name: 'Agua Mineral', price: 2.49 }
 		]
 	},
 	{

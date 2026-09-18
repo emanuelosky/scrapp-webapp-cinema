@@ -84,7 +84,7 @@
 {/snippet}
 
 <div class="flex min-h-screen flex-col bg-black font-sans text-zinc-50">
-	<SiteHeader />
+	<SiteHeader nowPlaying={data.nowPlaying} comingSoonMovies={data.comingSoonMovies} />
 
 	<!-- Portada corta a propósito: esta página se abre para buscar algo
 	     concreto, así que la lista tiene que asomar sin scrollear. Nada de
@@ -226,17 +226,17 @@
 												{#each producto.sizes as tamano (tamano.label)}
 													<div class="sm:text-right">
 														<p
-															class="text-[10px] font-black tracking-[0.3em] text-zinc-500 uppercase"
+															class="text-[10px] md:text-xs font-black tracking-[0.3em] text-zinc-500 uppercase"
 														>
 															{tamano.label}
 														</p>
-														<PriceRef muted value={tamano.price} class="mt-1 text-xl" />
+														<PriceRef muted value={tamano.price} class="mt-1 text-xl md:text-2xl" />
 													</div>
 												{/each}
 											</div>
 										{:else}
 											<div class="sm:text-right">
-												<PriceRef muted value={producto.price} class="text-2xl" />
+												<PriceRef muted value={producto.price} class="text-2xl md:text-3xl" />
 											</div>
 										{/if}
 									</li>

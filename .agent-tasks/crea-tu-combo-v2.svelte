@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { fly } from 'svelte/transition';
 	import CheckIcon from '@lucide/svelte/icons/check';
 
 	import SiteHeader from '$lib/components/navigation/SiteHeader.svelte';
@@ -16,25 +15,17 @@
 	// (invalidación, cambio de catálogo), los pasos se actualizan solos.
 	let pasos: ComboStep[] = $derived(data.pasos ?? []);
 
-	let elegidas = $state<Record<string, Record<string, number>>>({});
+	/**
+	 * Lo elegido, por paso: `{ [pasoId]: opcionId }`.
+	 *
+	 * Arranca VACÍO a propósito. Preseleccionar la primera opción de cada paso
+	 * obligatorio haría que el visitante entre viendo un total que nadie pidió,
+	 * casi siempre más alto que el mínimo real; y peor, lo dejaría creyendo que
+	 * ya eligió. Mientras falte algo, el resumen lo dice.
+	 */
+	let elegidas = $state<Record<string, string>>({});
 
 	let activa = $state('');
-	let debouncedActiva = $state('');
-	let activaTimeout: ReturnType<typeof setTimeout> | null = null;
-
-	// Añadir debounce para la animación de la leyenda
-	$effect(() => {
-		// Leer activa de forma síncrona para que Svelte registre la dependencia
-		const currentActiva = activa; 
-		
-		// Al cambiar activa (por scroll rápido), escondemos el texto de inmediato
-		debouncedActiva = '';
-		if (activaTimeout) clearTimeout(activaTimeout);
-		activaTimeout = setTimeout(() => {
-			// Y lo mostramos en la nueva categoría solo si el usuario se detuvo
-			debouncedActiva = currentActiva;
-		}, 1500);
-	});
 	let filaAnclas = $state<HTMLElement | null>(null);
 	let isScrollingTo = false;
 	let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -82,28 +73,14 @@
 			activa = pasoCandidato;
 		}
 
-		// Ejecutar al inicio
+		// Ejecutar al inicio y en cada evento de scroll
 		actualizarPasoActivo();
-		
-		// Optimización de rendimiento: requestAnimationFrame previene el "layout thrashing"
-		// asegurando que getBoundingClientRect() se ejecute solo una vez por frame del navegador.
-		let ticking = false;
-		function onScroll() {
-			if (!ticking) {
-				window.requestAnimationFrame(() => {
-					actualizarPasoActivo();
-					ticking = false;
-				});
-				ticking = true;
-			}
-		}
-
-		window.addEventListener('scroll', onScroll, { passive: true });
-		window.addEventListener('resize', onScroll, { passive: true });
+		window.addEventListener('scroll', actualizarPasoActivo, { passive: true });
+		window.addEventListener('resize', actualizarPasoActivo, { passive: true });
 
 		return () => {
-			window.removeEventListener('scroll', onScroll);
-			window.removeEventListener('resize', onScroll);
+			window.removeEventListener('scroll', actualizarPasoActivo);
+			window.removeEventListener('resize', actualizarPasoActivo);
 			if (scrollTimeout) clearTimeout(scrollTimeout);
 		};
 	});
@@ -146,24 +123,18 @@
 	// Las líneas del combo, en el orden de los pasos (no en el orden en que el
 	// visitante fue tocando): así el resumen se lee igual que la página.
 	let lineas = $derived.by(() => {
-		const out: { paso: ComboStep; opcion: ComboOption; qty: number }[] = [];
+		const out: { paso: ComboStep; opcion: ComboOption }[] = [];
 		for (const paso of pasos) {
-			const selecciones = elegidas[paso.id] || {};
-			for (const opcionId of Object.keys(selecciones)) {
-				const qty = selecciones[opcionId];
-				if (qty > 0) {
-					const opcion = paso.options.find((o) => o.id === opcionId);
-					if (opcion) out.push({ paso, opcion, qty });
-				}
-			}
+			const opcion = paso.options.find((o) => o.id === elegidas[paso.id]);
+			if (opcion) out.push({ paso, opcion });
 		}
 		return out;
 	});
 
-	let total = $derived(lineas.reduce((suma, linea) => suma + linea.opcion.price * linea.qty, 0));
+	let total = $derived(lineas.reduce((suma, linea) => suma + linea.opcion.price, 0));
 
 	let faltantes = $derived(
-		pasos.filter((paso) => paso.required && paso.options.length > 0 && !Object.keys(elegidas[paso.id] || {}).some(k => elegidas[paso.id][k] > 0))
+		pasos.filter((paso) => paso.required && paso.options.length > 0 && !elegidas[paso.id])
 	);
 	// Sin nada elegido no hay combo, aunque no falte ningun paso obligatorio:
 	// con la lista de pasos vacia (o con todos opcionales) el total daria
@@ -185,19 +156,15 @@
 	// no mostrar ninguno.
 	let mostrarPedido = $derived(revelado && completo);
 
-	function addOption(pasoId: string, opcionId: string) {
-		if (!elegidas[pasoId]) elegidas[pasoId] = {};
-		elegidas[pasoId][opcionId] = (elegidas[pasoId][opcionId] || 0) + 1;
-	}
-
-	function subtractOption(pasoId: string, opcionId: string, event: Event) {
-		event.stopPropagation();
-		if (!elegidas[pasoId] || !elegidas[pasoId][opcionId]) return;
-		
-		elegidas[pasoId][opcionId]--;
-		if (elegidas[pasoId][opcionId] <= 0) {
-			delete elegidas[pasoId][opcionId];
+	function alternar(paso: ComboStep, opcionId: string) {
+		if (elegidas[paso.id] === opcionId) {
+			// Volver a tocar lo elegido lo quita, pero solo donde vaciar es una
+			// respuesta válida: en un paso obligatorio dejaría el combo roto sin
+			// que el visitante lo haya pedido, así que ahí el toque no hace nada.
+			if (!paso.required) delete elegidas[paso.id];
+			return;
 		}
+		elegidas[paso.id] = opcionId;
 	}
 
 	async function verMiCombo() {
@@ -226,7 +193,7 @@
 <div
 	class="flex min-h-screen flex-col bg-black pb-[calc(8rem+env(safe-area-inset-bottom))] font-sans text-zinc-50 lg:pb-0"
 >
-	<SiteHeader nowPlaying={data.nowPlaying} comingSoonMovies={data.comingSoonMovies} />
+	<SiteHeader />
 
 	<!-- Header con imagen de fondo ambiental integrada y difuminada en los bordes -->
 	<div class="relative w-full overflow-hidden border-b border-zinc-800 bg-black pt-14 pb-8 md:pt-20 md:pb-12">
@@ -235,18 +202,13 @@
 			class="pointer-events-none absolute inset-y-0 right-0 w-full overflow-hidden opacity-30 md:w-1/2 md:opacity-65 lg:w-5/12"
 			aria-hidden="true"
 		>
-			<!-- Usando la etiqueta picture para cargar versiones ligeras de la imagen dependiendo de la pantalla -->
-			<picture>
-				<source media="(min-width: 1280px)" srcset="/img/crea-combo/pickup-hero-full.webp" type="image/webp" />
-				<source media="(min-width: 768px)" srcset="/img/crea-combo/pickup-hero-landscape.webp" type="image/webp" />
-				<img
-					src="/img/crea-combo/pickup-hero-md.webp"
-					alt="Zona de retiro"
-					loading="lazy"
-					decoding="async"
-					class="h-full w-full object-cover object-center md:object-[center_30%]"
-				/>
-			</picture>
+			<img
+				src="/img/crea-combo/crea-tu-combo-hero.jpg"
+				alt=""
+				loading="lazy"
+				decoding="async"
+				class="h-full w-full object-cover object-center md:object-[center_30%]"
+			/>
 			<!-- Difuminados graduales en los 4 extremos para fundirse naturalmente en el fondo negro -->
 			<div class="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-black via-black/80 to-transparent"></div>
 			<div class="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black to-transparent"></div>
@@ -286,7 +248,7 @@
 					{#each pasos as paso, indice (paso.id)}
 						{@const pasoAnchorId = `paso-${paso.id}`}
 						{@const isActivo = activa === pasoAnchorId}
-						{@const isSeleccionado = Object.keys(elegidas[paso.id] || {}).some(k => elegidas[paso.id][k] > 0)}
+						{@const isSeleccionado = !!elegidas[paso.id]}
 						<li class="shrink-0">
 							<button
 								type="button"
@@ -342,57 +304,32 @@
 								{/if}
 							</legend>
 
-							<div class="mt-6 flex flex-wrap gap-4">
+							<div class="mt-5 flex flex-wrap gap-3">
 								{#each paso.options as opcion (opcion.id)}
-									{@const qty = elegidas[paso.id]?.[opcion.id] || 0}
-									
-									<div class="flex items-center gap-2.5">
-										<!-- Píldora principal -->
-										<button
-											type="button"
-											aria-pressed={qty > 0}
-											onclick={() => addOption(paso.id, opcion.id)}
-											class="relative flex items-center justify-between gap-3 overflow-visible rounded-full border px-5 py-3 text-sm font-bold tracking-wider uppercase transition-all hover:scale-[1.02] active:scale-[0.98] {qty > 0
-												? 'border-white bg-white text-black'
-												: 'border-zinc-700 text-white hover:border-white hover:bg-white hover:text-black'}"
+									{@const elegida = elegidas[paso.id] === opcion.id}
+									<!-- Botón de dos estados en vez de radio nativo: en los pasos
+									     opcionales el visitante tiene que poder DESmarcar, y un radio
+									     no se desmarca. `aria-pressed` dice el estado sin mentir sobre
+									     el control. -->
+									<button
+										type="button"
+										aria-pressed={elegida}
+										onclick={() => alternar(paso, opcion.id)}
+										class="flex items-baseline gap-2.5 rounded-full border px-5 py-3 text-sm font-bold tracking-wider uppercase transition-all hover:scale-105 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none active:scale-95 motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:active:scale-100 {elegida
+											? 'border-white bg-white text-black'
+											: 'border-zinc-700 text-white hover:border-white hover:bg-white hover:text-black'}"
+									>
+										<span>{opcion.name}</span>
+										<span
+											class="font-display text-base tracking-wide {elegida
+												? 'text-zinc-600'
+												: 'text-zinc-500'}"
 										>
-											<!-- Badge notificación de cantidad -->
-											{#if qty > 0}
-												<span class="absolute -left-2.5 -top-2.5 flex h-7 min-w-[28px] items-center justify-center rounded-full bg-zinc-200 px-1 text-[15px] font-black text-black shadow-[0_4px_12px_rgba(0,0,0,0.5)] ring-1 ring-black/20">
-													{qty}
-												</span>
-											{/if}
-
-											<div class="flex items-center gap-2.5">
-												<span>{opcion.name}</span>
-												<span class="font-display text-base tracking-wide {qty > 0 ? 'text-zinc-600' : 'text-zinc-500'}">
-													{opcion.price === 0 ? 'Incluido' : `+${formatPrice(opcion.price)}`}
-												</span>
-											</div>
-										</button>
-
-										<!-- Botón de restar (afuera, a la derecha) -->
-										{#if qty > 0}
-											<button 
-												type="button"
-												onclick={(e) => subtractOption(paso.id, opcion.id, e)}
-												class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-red-500/20 bg-red-500/10 text-red-500 shadow-sm transition-all hover:scale-110 hover:bg-red-500 hover:text-white active:scale-95"
-												aria-label="Restar {opcion.name}"
-											>
-												<span class="text-2xl font-light leading-none pb-0.5">−</span>
-											</button>
-										{/if}
-									</div>
+											{opcion.price === 0 ? 'Incluido' : `+${formatPrice(opcion.price)}`}
+										</span>
+									</button>
 								{/each}
 							</div>
-
-							{#if debouncedActiva === `paso-${paso.id}`}
-								<div transition:fly={{ y: -10, duration: 400 }}>
-									<p class="mt-8 text-[13px] text-zinc-500 max-w-2xl leading-relaxed">
-										Toca las opciones para sumar cantidades. Si deseas reducir la cantidad, usa el botón <span class="mx-0.5 inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-red-500/10 text-red-500 border border-red-500/20 leading-none">−</span> que aparecerá a su lado.
-									</p>
-								</div>
-							{/if}
 						</fieldset>
 					</section>
 				{/each}
@@ -414,17 +351,15 @@
 						<p class="text-[10px] font-black tracking-[0.3em] text-zinc-500 uppercase">Tu combo</p>
 
 						<ul class="mt-4 divide-y divide-zinc-800">
-							{#each lineas as linea (linea.paso.id + '-' + linea.opcion.id)}
+							{#each lineas as linea (linea.paso.id)}
 								<li class="flex items-center justify-between gap-4 py-3">
 									<div class="min-w-0">
 										<p class="text-[10px] font-black tracking-[0.3em] text-zinc-500 uppercase">
 											{linea.paso.title}
 										</p>
-										<p class="mt-1 truncate text-base text-zinc-100">
-											<span class="mr-2 font-black text-zinc-400">{linea.qty}x</span>{linea.opcion.name}
-										</p>
+										<p class="mt-1 truncate text-base text-zinc-100">{linea.opcion.name}</p>
 									</div>
-									<PriceRef value={linea.opcion.price * linea.qty} class="text-xl" muted />
+									<PriceRef value={linea.opcion.price} class="text-xl" muted />
 								</li>
 							{/each}
 						</ul>
@@ -461,11 +396,11 @@
 
 						{#if lineas.length > 0}
 							<ul class="mt-5 space-y-2 text-sm text-zinc-300">
-								{#each lineas as linea (linea.paso.id + '-' + linea.opcion.id)}
+								{#each lineas as linea (linea.paso.id)}
 									<li class="flex items-baseline justify-between gap-3">
-										<span class="min-w-0 truncate"><span class="mr-1.5 font-black text-zinc-500">{linea.qty}x</span>{linea.opcion.name}</span>
+										<span class="min-w-0 truncate">{linea.opcion.name}</span>
 										<span class="shrink-0 font-display text-base tracking-wide text-zinc-500">
-											{formatPrice(linea.opcion.price * linea.qty)}
+											{formatPrice(linea.opcion.price)}
 										</span>
 									</li>
 								{/each}

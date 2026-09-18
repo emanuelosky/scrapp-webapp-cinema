@@ -160,7 +160,7 @@
 {/snippet}
 
 <div class="flex min-h-screen flex-col bg-black font-sans text-zinc-50">
-	<SiteHeader />
+	<SiteHeader nowPlaying={data.nowPlaying} comingSoonMovies={data.comingSoonMovies} />
 
 	<!-- Portada corta: quien entra acá viene a ver la lista, no a leer una
 	     presentación. Sin imagen de fondo tampoco, por lo mismo que las

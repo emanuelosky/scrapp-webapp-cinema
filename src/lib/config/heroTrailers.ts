@@ -3,7 +3,7 @@
 // video al bucket de Supabase (ahorra la cuota de egress mientras se
 // trabaja en otras partes del home). Volver a true cuando se retome el
 // trabajo sobre esta funcionalidad específica.
-export const HERO_TRAILERS_ENABLED = false;
+export const HERO_TRAILERS_ENABLED = true;
 
 // Cuánto tiempo se muestra el banner estático antes de pasar al clip de
 // video (si ya está disponible) — evita el "flash" de pasar directo al

@@ -1,5 +1,7 @@
 # Qué necesita la webapp de su backend
 
+Estado: verificado el 10-oct-2026 en las funciones de `index.ts`, `utils/images.ts`, `utils/price.ts` y en las tasas de los checkouts. La sección de Confitería describe la maqueta actual (`src/lib/data/*.mock.ts`). Las referencias a `legacy_catalog_cache` y `/api/legacy-pos/` son del backend y no se verificaron aquí.
+
 Este documento describe lo que la webapp pide para funcionar, **sin asumir qué
 sistema lo va a servir**. Sirve para dos cosas: evaluar un candidato (Vista, un
 conector al sistema legacy, o el intermediario actual llevado a producción), y

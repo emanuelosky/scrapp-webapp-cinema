@@ -1,6 +1,8 @@
-# Tareas — auditoría de caché, rendimiento, legalidad y sedes
+# Backlog — webapp cinema
 
-> Detalle completo, citas de código y advertencias de cada punto: [02-informe-completo.md](./02-informe-completo.md). Este archivo es el checklist de trabajo; el informe es la referencia.
+Estado: sin verificar desde el 06-sep-2026 (fecha de la auditoría). Antes de tocar un punto, re-verificar líneas y comportamiento en el código: varios apuntan a código que hoy es demo (ver [arquitectura](./arquitectura.md#flujo-de-venta-estado-real)).
+
+> Detalle completo, citas de código y advertencias de cada punto: [auditorias/2026-09-informe.md](./auditorias/2026-09-informe.md). Este archivo es el checklist de trabajo; el informe es la referencia.
 
 Orden acordado: **primero la estética de las rutas visuales, luego lo funcional (tasas/pago/facturación), y la integración con el POS legacy que bloquea butacas queda como iniciativa aparte para más adelante.** El backlog de rendimiento no bloquea nada y se puede tomar en cualquier momento libre.
 
@@ -76,7 +78,7 @@ Ordenado por ganancia/esfuerzo. Detalle y advertencias de cada uno en el informe
 
 **Bajo esfuerzo, ganancia grande:**
 - [ ] P1 — Diferir `EpikWidget` (chat): ~62 KB gzip fuera del camino crítico de TODAS las rutas. ⚠️ No usar `{#if}` para desmontar el panel — pierde el historial del chat y puede re-disparar acciones ya procesadas. Mantenerlo montado, ocultar con `hidden`.
-- [ ] P2 — Sustituir `supabase-js` por `fetch` a PostgREST (se usa para una sola query). Medido: -200 KB crudos / -50 KB gzip. ⚠️ Mandar `apikey` y `Authorization: Bearer`; guardar contra la forma del error (PostgREST devuelve objeto en 4xx, no array).
+- [ ] P2 — (Probablemente obsoleto: `supabase-js` ya no se importa en `src/`; solo está en `package.json`. Quitar la dependencia en vez de sustituirla. Medido en su día: -200 KB crudos / -50 KB gzip.) ⚠️ Mandar `apikey` y `Authorization: Bearer`; guardar contra la forma del error (PostgREST devuelve objeto en 4xx, no array).
 - [ ] P3 — Excluir del escaneo de Tailwind los 45 directorios `ui/` sin usar (o mejor: borrarlos, son regenerables). Medido: -78 KB de CSS bloqueante en todas las rutas.
 - [ ] P4 — `loading`/`decoding` en imágenes de carrusel (ver Fase 1, ya listado ahí).
 - [ ] P5 — `preconnect` a Supabase, **con** `crossorigin`.
@@ -98,6 +100,21 @@ Ordenado por ganancia/esfuerzo. Detalle y advertencias de cada uno en el informe
 - [ ] P19 — Ver ítem de Fase 3 (`?location_id=all`).
 
 ---
+
+## Otros pendientes (de los antiguos `.agents/pending-tasks.md` y `09-webapp-roadmap.md`)
+
+Estado de cada uno comprobado contra el código el 10-oct-2026.
+
+- [ ] Centralizar enlaces de navegación en `src/lib/config/navigation.ts`. Hoy la lista está duplicada en `BrutalistMegaMenu.svelte`, `SiteHeader.svelte` (móvil) y `CommandPalette.svelte`. El archivo no existe.
+- [ ] EPIK: las acciones `highlight_element`, `add_to_cart` y `open_login` no existen. `EpikWidget.svelte` solo maneja `navigate_to`, `open_movie_modal` y `start_booking`.
+- [ ] Estado global de usuario (`user.svelte.ts`) no existe. Sí existen `cart`, `booking`, `cinema`, `ghostSession`, `chat` y `seatMap` en `src/lib/state/`.
+- [ ] Híbrido móvil: Capacitor no está en `package.json`. PWA y temas por sede: sin verificar.
+- [ ] Pagos: el plan de la guía de UI de septiembre (pago móvil C2P/P2P con banco, teléfono y referencia; Zelle con captura de confirmación) no está implementado. El formulario actual del checkout pide tarjeta y es mock. Antes de cablear un procesador, decidir el método y revisar la sección de pagos de la auditoría.
+- [ ] Scrollytelling de promociones (Lunes Populares, niños, experiencia VIP, Club Cinepic): idea sin implementar; el hero actual es `HeroScrolly.svelte`.
+- [ ] Permiso de la distribuidora para publicar tráilers en la web pública: confirmar antes de publicar el primer clip (ver [catálogo y medios](./referencia/catalogo-y-medios.md)).
+- [ ] Reemplazar las citas de `QUOTES` en `TrailerLightbox.svelte` por texto propio (son frases textuales de películas de otros estudios).
+- [ ] Reseñas y "me gusta" de tráilers: hoy solo `localStorage`. Pasarlos a backend requiere cuentas de usuario y tablas nuevas.
+- [ ] Al publicar: quitar `noindex` de `src/app.html` (línea 19) y cambiar `static/robots.txt` por uno con sitemap.
 
 ## No hacer (ya evaluado y descartado — no reabrir sin releer el porqué)
 

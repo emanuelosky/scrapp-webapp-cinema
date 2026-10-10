@@ -1,6 +1,6 @@
 # Evidencia HAR: Payloads Reales de Venta
 
-Durante la auditoría de los archivos `.har` encontrados en `descarga-pagina` (específicamente `192.168.60.30_05_30_2026_21_42_01.har`), hemos extraído los payloads exactos que el Legacy POS dispara al backend. 
+Durante la auditoría de los archivos `.har` encontrados en `descarga-pagina` (un archivo concreto, nombre <REDACTADO>), hemos extraído los payloads exactos que el Legacy POS dispara al backend. 
 
 ## 1. Request a `/apicomplejo/cerrarVenta`
 
@@ -102,7 +102,7 @@ Este request ocurre milisegundos después del anterior, llevando los `idVenta` e
   "desde": "pos-cinexo",
   "regionalizacion": "ven",
   "datosCliente": null,
-  "impresora": "192.168.10.246",
+  "impresora": "<REDACTADO>",
   "idVentaTemporal": "414821",
   "idVenta": 681610,
   "idVentaCandy": 64222,
@@ -120,5 +120,5 @@ Este request ocurre milisegundos después del anterior, llevando los `idVenta` e
 
 ## Conclusiones sobre la Evidencia
 1. El sistema trata Boletería y Candy de forma separada en `/cerrarVenta` pero los une en un solo array de `detalles` para `/facturas/generar`.
-2. Contiene metadatos específicos como `impresora` (192.168.10.246) que revelan que el backend usa esa IP para interactuar (o al menos loguear) a dónde va la impresión fiscal en Venezuela.
+2. Contiene metadatos específicos como `impresora` (<REDACTADO>) que revelan que el backend usa esa IP para interactuar (o al menos loguear) a dónde va la impresión fiscal en Venezuela.
 3. El `impuestoIGFT` (Impuesto a Grandes Transacciones Financieras) se calcula y se pasa directamente en crudo.

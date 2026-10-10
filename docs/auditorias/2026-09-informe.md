@@ -1,6 +1,8 @@
 # Informe completo de auditoría — caché, rendimiento, legalidad y protocolo de sedes
 
-> Generado 2026-09-06 por una auditoria multiagente (62 subagentes, 56 hallazgos, 42 sobrevivieron verificación adversarial contra el código real, 14 descartados). Cada afirmación cita archivo:línea de este repo o del BFF. Ver [01-tareas.md](./01-tareas.md) para el plan de trabajo organizado por fases, y [00-README.md](./00-README.md) para el contexto de por qué existe esta carpeta.
+Estado: sin verificar desde el 06-sep-2026 (snapshot de auditoría; el código cambió después, por ejemplo el catálogo de sedes y el modo demo de butacas).
+
+> Generado 2026-09-06 por una auditoría multiagente (62 subagentes, 56 hallazgos, 42 sobrevivieron verificación adversarial contra el código real, 14 descartados). Cada afirmación cita archivo:línea de este repo o del BFF. Checklist de trabajo: [../backlog.md](../backlog.md).
 
 **Repo auditado:** `C:/ONGOING-PROJECTS/SCRAPP-ENTERPRISE/scrapp-webapp-cinema` (SvelteKit 5, `ssr = false`, adapter-static con `fallback: 'index.html'`).
 **BFF (solo lectura):** `scrapp-administrative-v2`.

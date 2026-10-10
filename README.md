@@ -1,42 +1,44 @@
-# sv
+# scrapp-webapp-cinema (Cinepic)
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Estado: verificado el 10-oct-2026.
 
-## Creating a project
+Webapp pública de venta de boletos y dulcería de las sedes de Cinepic. Es un SvelteKit en modo SPA que se compila a archivos estáticos. Los datos vienen de un backend configurado en `VITE_ADMIN_API_URL`. Hoy la compra (bloqueo de butacas y pago) es demo: no bloquea butacas reales ni cobra. Ver [arquitectura](docs/arquitectura.md#flujo-de-venta-estado-real).
 
-If you're seeing this, you've probably already done this step. Congrats!
+Stack: SvelteKit 2, Svelte 5, Vite 8, Tailwind 4, shadcn-svelte/bits-ui, Node 22.
 
-```sh
-# create a new project
-npx sv create my-app
-```
-
-To recreate this project with the same configuration:
+## Correr
 
 ```sh
-# recreate this project
-npx sv@0.15.4 create --template minimal --types ts --add prettier eslint tailwindcss="plugins:none" --install npm scrapp-webapp-cinema
+npm install
+# crear .env con VITE_ADMIN_API_URL (ver docs/operacion.md)
+npm run dev        # http://localhost:5174
 ```
 
-## Developing
+## Probar
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+No hay pruebas automatizadas. Antes de dar un cambio por bueno:
 
 ```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+npm run check        # svelte-check
+npm run lint         # prettier --check + eslint
+npm run check:sedes  # semilla de sedes contra la base (requiere PUBLIC_SUPABASE_*)
 ```
 
-## Building
-
-To create a production version of your app:
+## Desplegar
 
 ```sh
-npm run build
+npm run build        # prebuild exige VITE_ADMIN_API_URL; salida en build/
 ```
 
-You can preview the production build with `npm run preview`.
+`build/` es un sitio estático con fallback `index.html`. El destino de hosting no está confirmado: ver [operación](docs/operacion.md#build-y-despliegue).
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+## Documentación
+
+- [docs/arquitectura.md](docs/arquitectura.md): rutas, estado global, flujo de venta real, chat EPIK, decisiones.
+- [docs/operacion.md](docs/operacion.md): variables de entorno, scripts, guardas, sedes, despliegue.
+- [docs/referencia/catalogo-y-medios.md](docs/referencia/catalogo-y-medios.md): sedes, cartelera, tráilers, pósters, promociones.
+- [docs/referencia/ui.md](docs/referencia/ui.md): convenciones de estilo y código.
+- [docs/backlog.md](docs/backlog.md): pendientes del frontend.
+- [docs/auditorias/2026-09-informe.md](docs/auditorias/2026-09-informe.md): informe de auditoría de septiembre (sin verificar).
+- [src/lib/api/CONTRATO-BACKEND.md](src/lib/api/CONTRATO-BACKEND.md): qué necesita la webapp de su backend (endpoints, imágenes, confitería).
+- [.agents/](.agents/): documentación general del BFF, POS y chatbot (no verificada desde este repo).

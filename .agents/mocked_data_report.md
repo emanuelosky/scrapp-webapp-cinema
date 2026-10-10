@@ -29,7 +29,7 @@ El payload que se dispara a la impresora fiscal también requiere datos rígidos
 - **`desde`**: Hardcodeado a `"pos-cinexo"`. El POS nativo se identifica así, nosotros lo emulamos para evitar bloqueos por origen.
 - **`regionalizacion`**: Hardcodeado a `"ven"`.
 - **`datosCliente`**: Hardcodeado a `null`. (Por ahora los boletos B2C salen a nombre de consumidor genérico o sin cédula fiscal. Si se requiere factura personalizada con RIF/Cédula, esto deberá mapearse desde la Web App).
-- **`impresora`**: Extraído de `config.pos_impresora` (Actualmente `"192.168.10.246"`).
+- **`impresora`**: Extraído de `config.pos_impresora` (Actualmente `"<REDACTADO>"`, IP privada).
 - **Detalle de Impuestos (`iva`)**: En cada ticket (boleto), el atributo `iva` se inyecta como `"16.00000"`.
 - **`descripcion`**: Si el POS no devuelve el nombre de la película, el sistema cae por defecto a `"ENTRADA"`.
 

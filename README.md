@@ -41,4 +41,3 @@ npm run build        # prebuild exige VITE_ADMIN_API_URL; salida en build/
 - [docs/backlog.md](docs/backlog.md): pendientes del frontend.
 - [docs/auditorias/2026-09-informe.md](docs/auditorias/2026-09-informe.md): informe de auditoría de septiembre (sin verificar).
 - [src/lib/api/CONTRATO-BACKEND.md](src/lib/api/CONTRATO-BACKEND.md): qué necesita la webapp de su backend (endpoints, imágenes, confitería).
-- [.agents/](.agents/): documentación general del BFF, POS y chatbot (no verificada desde este repo).

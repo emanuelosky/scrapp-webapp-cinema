@@ -84,9 +84,4 @@ El fallo de cualquier llamada devuelve un valor vacío y no tumba la página (`g
 
 ## Documentación general (fuera de este repo)
 
-Estos archivos de `.agents/` describen el BFF, el POS legacy y el chatbot del backend. Son documentación general entre proyectos; no se han verificado aquí:
-
-- `.agents/01-architecture-overview.md`, `02-api-contracts.md`, `03-orchestration-rules.md`: carrito único, contratos BFF/POS, mutex de venta.
-- `.agents/07-pos-sync-orchestration.md`: tablas `wbpp_*` y pool de usuarios fantasma.
-- `.agents/08-epik-chatbot.md`: backend del chat (lo referencia `EpikWidget.svelte`).
-- `.agents/mocked_data_report.md`, `.agents/docs-cerrarventa/`: payloads de cierre de venta y factura fiscal en el backend.
+Los documentos de diseño del antiguo BFF (`.agents/`: carrito único, mutex de venta, datos mockeados) se borraron el 10-oct-2026 por obsoletos: la webapp es cliente puro de admin-v2 y el bloqueo real lo hace el broker de sesiones. Lo vigente del legado vive en el portafolio: [flujo de venta, cierre y facturación del POS](../../../.docs/apis/pos-apicomplejo-flujo-venta.md), [broker de sesiones](../../../.docs/cinexo/sesiones/00-indice-y-uso.md) y [pasarela de Cinexo](../../../.docs/cinexo/pasarela-cinexo.md). Los textos borrados siguen en la historia de git.

@@ -1,6 +1,6 @@
 # Backlog — webapp cinema
 
-Estado: sin verificar desde el 06-sep-2026 (fecha de la auditoría). Antes de tocar un punto, re-verificar líneas y comportamiento en el código: varios apuntan a código que hoy es demo (ver [arquitectura](./arquitectura.md#flujo-de-venta-estado-real)).
+Estado: sin verificar desde el 06-sep-2026 (fecha de la auditoría). Las líneas citadas son de esa fecha: en el código del 10-oct-2026 pueden haberse desplazado (buscar por el texto citado). Antes de tocar un punto, re-verificar líneas y comportamiento en el código: varios apuntan a código que hoy es demo (ver [arquitectura](./arquitectura.md#flujo-de-venta-estado-real)).
 
 > Detalle completo, citas de código y advertencias de cada punto: [auditorias/2026-09-informe.md](./auditorias/2026-09-informe.md). Este archivo es el checklist de trabajo; el informe es la referencia.
 
@@ -8,7 +8,7 @@ Orden acordado: **primero la estética de las rutas visuales, luego lo funcional
 
 ---
 
-## ✅ Ya hecho (no repetir)
+## Ya hecho (no repetir)
 
 - [x] Enrutamiento multisede: la URL es la fuente de verdad de la sede activa (`0ca77c8`).
 - [x] Semilla fija de `cinema_locations` + protocolo de divergencia completo + `npm run check:sedes` en CI (`28378be`).
@@ -32,21 +32,21 @@ No prescribo nada del diseño en sí (paleta, layout, composición) — eso es c
 
 ## Fase 2 — Funcional: tasas, pago, facturación
 
-### 🔴 Crítico — dinero real
+### Crítico — dinero real
 
 - [ ] **Tasa de cambio inconsistente.** `checkout/[id]/+page.svelte:48` muestra `EXCHANGE_RATE = 40.50` al cliente; `:33-35` factura con `582.68`. Cobra ~14x lo que se enseñó. Duplicado también en `concessions/[id]/+page.svelte:25`. **Decisión pendiente del usuario:** ¿cuál tasa es la correcta, y de dónde debería salir (constante única, o pedida al BFF)?
 - [ ] **Formulario de tarjeta fantasma con checkout real.** `checkout/[id]/+page.svelte:169-192` — `cardNumber`/`exp`/`cvv` no tienen `bind:value`, nunca se leen. `handlePayment` (líneas 22-45) siempre manda `mockPago` con `metodo: 44`, pero el botón "Pagar Orden" sí completa una venta real: libera el ghost, vacía el carrito, emite la venta. El usuario teclea una tarjeta real y nadie la cobra, pero igual se consumen butacas.
   - [ ] Mientras siga en mock: `autocomplete="off"` en los tres campos, `inputmode="numeric"`, enmascarar CVV con CSS (`-webkit-text-security`) — **no** `type="password"` (dispara gestores de contraseñas), y **no** `autocomplete="cc-csc"` (sube la confianza del navegador en que es un formulario de pago real).
   - [ ] Cuando se cablee un procesador real: usar iframe/SDK alojado (mantiene el sitio en SAQ A). Un formulario propio con direct post cae en SAQ A-EP (~140 preguntas de PCI-DSS).
 
-### 🟠 Datos personales (kiosco compartido)
+### Datos personales (kiosco compartido)
 
 - [ ] **Correo del comprador persistido sin límite fiable.** `booking.svelte.ts:341-346` mete `customerEmail` en `lastCompletedSale`; `saveToLocalStorage()` (línea 89) lo escribe en `scrapp_booking_state`. No se limpia con fiabilidad: `expireSession()` hace `removeItem` (línea 370) y el `$effect` de `+layout.svelte:39-41` lo **reescribe** en la siguiente mutación porque `cartState.clear()` nunca pone `lastCompletedSale` a null. Mover a `sessionStorage` con clave propia (sobrevive F5 y `window.location.href` de la misma pestaña, muere al cerrarla).
 - [ ] **Botón "Tu Última Venta" expone el correo del cliente anterior.** `ShoppingCartDropdown.svelte:202-214` + `checkout/success/+page.svelte:27` — en un kiosco compartido (que es el escenario normal aquí, no la excepción: toda la infraestructura es `/api/kiosk/*`), el siguiente usuario ve el correo del anterior. Se resuelve solo junto con el punto anterior.
 - [ ] **Escritura silenciosa en la primera visita.** `+layout.svelte:39-41` corre en cualquier ruta desde el primer render; `saveToLocalStorage()` no tiene guarda de estado vacío. Un visitante que solo mira la cartelera y se va deja una clave escrita. Añadir guarda: si no hay `selectedShowtime`, `cartItems.length`, `ghostSession` ni `lastCompletedSale` → `removeItem` y salir (no un `return` pelado — hoy la escritura incondicional hace de "limpiar al vaciar").
 - [ ] **Reseñas del tráiler mienten sobre su destino.** `TrailerLightbox.svelte` — el botón dice "Publicar"/"¡Publicado!" pero `cinepic:trailer:review:*` solo vive en `localStorage`, no se lee en ningún otro archivo del repo ni se manda a ninguna API. Relabelar a "Guardar nota"/"Nota guardada", y añadir borrado que limpie las **tres** claves de esa película (like/rating/review) — borrar solo `review` deja el corazón y las estrellas del usuario anterior.
 
-### 🟡 Legal / confianza
+### Legal / confianza
 
 - [ ] **Crear `/legal/privacidad` y `/legal/terminos`.** Hoy `Footer.svelte:57,63` son botones con un toast de "no disponible". No hace falta banner de cookies (no aplica en Venezuela, no aplica GDPR — ver informe §3), pero sí una política real que liste qué se guarda localmente y para qué.
 - [ ] **Hacer cierto el aviso del checkout.** `checkout/[id]/+page.svelte:99-101` dice "Tu recibo y confirmación de compra serán enviados a este correo", pero `checkout()` en `booking.svelte.ts:326-336` nunca manda `customerEmail` al BFF. O se manda el correo, o se cambia el texto.
@@ -77,21 +77,21 @@ Iniciativa aparte, según lo acordado. Casi todos los hallazgos más graves de l
 Ordenado por ganancia/esfuerzo. Detalle y advertencias de cada uno en el informe completo (sección 5, P1-P19).
 
 **Bajo esfuerzo, ganancia grande:**
-- [ ] P1 — Diferir `EpikWidget` (chat): ~62 KB gzip fuera del camino crítico de TODAS las rutas. ⚠️ No usar `{#if}` para desmontar el panel — pierde el historial del chat y puede re-disparar acciones ya procesadas. Mantenerlo montado, ocultar con `hidden`.
-- [ ] P2 — (Probablemente obsoleto: `supabase-js` ya no se importa en `src/`; solo está en `package.json`. Quitar la dependencia en vez de sustituirla. Medido en su día: -200 KB crudos / -50 KB gzip.) ⚠️ Mandar `apikey` y `Authorization: Bearer`; guardar contra la forma del error (PostgREST devuelve objeto en 4xx, no array).
+- [ ] P1 — Diferir `EpikWidget` (chat): ~62 KB gzip fuera del camino crítico de TODAS las rutas. No usar `{#if}` para desmontar el panel — pierde el historial del chat y puede re-disparar acciones ya procesadas. Mantenerlo montado, ocultar con `hidden`.
+- [ ] P2 — (Probablemente obsoleto: `supabase-js` ya no se importa en `src/`; solo está en `package.json`. Quitar la dependencia en vez de sustituirla. Medido en su día: -200 KB crudos / -50 KB gzip.) Mandar `apikey` y `Authorization: Bearer`; guardar contra la forma del error (PostgREST devuelve objeto en 4xx, no array).
 - [ ] P3 — Excluir del escaneo de Tailwind los 45 directorios `ui/` sin usar (o mejor: borrarlos, son regenerables). Medido: -78 KB de CSS bloqueante en todas las rutas.
 - [ ] P4 — `loading`/`decoding` en imágenes de carrusel (ver Fase 1, ya listado ahí).
 - [ ] P5 — `preconnect` a Supabase, **con** `crossorigin`.
 - [ ] P6 — `preconnect` a `image.tmdb.org`, **sin** `crossorigin`.
 - [ ] P7 — Cabeceras de caché del build: `/_app/immutable/*` (no `/_app/*` — congelaría `env.js`) a 1 año; `index.html`/`env.js`/`version.json` a `no-cache`.
-- [ ] P8 — `gsap` con import dinámico en `BrutalistMegaMenu`. ⚠️ Cubrir también `handleMouseLeave`, que también lo usa — sin guardarlo, el mega menú puede quedarse abierto tapando la página.
+- [ ] P8 — `gsap` con import dinámico en `BrutalistMegaMenu`. Cubrir también `handleMouseLeave`, que también lo usa — sin guardarlo, el mega menú puede quedarse abierto tapando la página.
 
 **Esfuerzo medio:**
 - [ ] P9 — `load` del home sin esperar el `Promise.all`, con `{#await}`. Ganancia real ~617ms, pero alcance grande: `data.nowPlaying` se consume en 7 puntos fuera del carrusel (incluido `SiteHeader`, donde un spread de una Promise tumba la página), y hay que construir skeletons de verdad para hero/mega-menú, no solo envolver el carrusel.
 - [ ] P12 — Diferir `Calendar`+`Popover` de `DateSelector` (~40-70 KB). No tocar la aritmética de fechas existente (usa timezone correcto).
-- [ ] P14 — Diferir `CommandPalette` y `TrailerLightbox`. ⚠️ Usar un latch de un solo sentido, no `{#if isOpen}` (rompe el foco de salida de bits-ui).
+- [ ] P14 — Diferir `CommandPalette` y `TrailerLightbox`. Usar un latch de un solo sentido, no `{#if isOpen}` (rompe el foco de salida de bits-ui).
 - [ ] P15 — Autohospedar fuentes de Google. Nota: `Antonio` nunca se descarga (queda higiene, no perf); incluir la itálica de Montserrat si se autohospeda.
-- [ ] P16 — Sacar `@tailwindcss/typography` del CSS global (solo lo usa una burbuja del chat). ⚠️ Si se quita la clase `prose`, hay que cambiar el selector `.closest('.prose')` de `EpikWidget.svelte:227` o se rompe la detección de enlaces del chat.
+- [ ] P16 — Sacar `@tailwindcss/typography` del CSS global (solo lo usa una burbuja del chat). Si se quita la clase `prose`, hay que cambiar el selector `.closest('.prose')` de `EpikWidget.svelte:227` o se rompe la detección de enlaces del chat.
 - [ ] P17 — Montaje condicional (no solo CSS) de `NetworkHeroMobile`/`Desktop` — mismo punto que en Fase 1.
 
 **Más adelante / evaluar con más cuidado:**

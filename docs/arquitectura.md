@@ -14,7 +14,7 @@ Regla del proyecto: ningún componente ni `load()` llama a `fetch` contra el bac
 - SPA: `ssr = false` en `src/routes/+layout.ts`, `@sveltejs/adapter-static` con `fallback: 'index.html'`.
 - Vite 8 (puerto de desarrollo 5174, `strictPort`), Tailwind 4 (configuración en CSS, `src/routes/layout.css`).
 - UI: componentes shadcn-svelte en `src/lib/components/ui/` sobre bits-ui 2; iconos `@lucide/svelte`; toasts `svelte-sonner`; `mode-watcher` para tema.
-- Animación: gsap, animejs, embla-carousel, vaul-svelte.
+- Animación: gsap, animejs, embla-carousel-svelte, vaul-svelte.
 - Chat EPIK: `@ai-sdk/svelte` (streaming al endpoint del backend).
 - Node 22 (`.nvmrc` y `engines`).
 

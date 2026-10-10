@@ -1,10 +1,31 @@
 # Backlog — webapp cinema
 
-Estado: sin verificar desde el 06-sep-2026 (fecha de la auditoría). Las líneas citadas son de esa fecha: en el código del 10-oct-2026 pueden haberse desplazado (buscar por el texto citado). Antes de tocar un punto, re-verificar líneas y comportamiento en el código: varios apuntan a código que hoy es demo (ver [arquitectura](./arquitectura.md#flujo-de-venta-estado-real)).
+Estado: verificado el 10-oct-2026 contra el código y consolidado de auditoría.
 
-> Detalle completo, citas de código y advertencias de cada punto: [auditorias/2026-09-informe.md](./auditorias/2026-09-informe.md). Este archivo es el checklist de trabajo; el informe es la referencia.
+Este documento consolida el backlog activo y los hallazgos técnicos vigentes de la auditoría de septiembre de 2026 (previamente en `docs/auditorias/2026-09-informe.md`, fundido y retirado).
 
 Orden acordado: **primero la estética de las rutas visuales, luego lo funcional (tasas/pago/facturación), y la integración con el POS legacy que bloquea butacas queda como iniciativa aparte para más adelante.** El backlog de rendimiento no bloquea nada y se puede tomar en cualquier momento libre.
+
+---
+
+## Reglas de caché y privacidad derivadas de la auditoría
+
+### Qué es seguro cachear y qué NUNCA en la webapp
+- **Código y assets con hash (`build/_app/immutable/**`):** Seguro cachear a largo plazo (`max-age=31536000, immutable`).
+- **`build/index.html`, `build/_app/env.js`, `build/_app/version.json`:** `no-cache` siempre. Congelar `env.js` rompería credenciales anónimas ante rotaciones; congelar `index.html` sirve bundles desactualizados.
+- **Pósters y banners de `image.tmdb.org`:** Manejados por TMDB (`max-age` de ~1 año); no cachear con Service Worker (URLs sin hash).
+- **Catálogo de sedes (`cinema_locations`):** Semilla fija en bundle como arranque optimista + verificación síncrona/asíncrona en cada carga; la red siempre manda.
+- **Preferencia de sede (`scrapp_preferred_cinema`):** `localStorage` (elección explícita de usuario).
+- **NUNCA CACHEAR (cero caché, `no-store`):**
+  - Horarios de función (`/api/v1/movies`).
+  - Matriz de butacas (`/api/pos/fetch-seats/*`).
+  - Tarifas y precios (`/api/tarifas` y `tariffsData`).
+  - Kiosco / checkout / ghost-pool (`/api/kiosk/*`).
+  - PII del comprador (`customerEmail` dentro de `lastCompletedSale`): nunca en `localStorage`, debe ir a `sessionStorage`.
+
+### Política de privacidad y datos (Venezuela)
+- En Venezuela rige el art. 28 CRBV (habeas data: obligación de informar) y Ley Especial contra Delitos Informáticos (art. 20). No aplica RGPD europeo ni directiva ePrivacy (sin nexo en la UE, sin moneda EUR, servicio prestado en sala): **no hace falta banner de cookies**.
+- Requisitos obligatorios: no persistir PII desprotegida en disco en kioscos compartidos (sacar `customerEmail` de `localStorage` a `sessionStorage`), publicar `/legal/privacidad` y `/legal/terminos`, y unificar el responsable legal (Cinepic vs Scrapp Cinema LLC).
 
 ---
 

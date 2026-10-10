@@ -38,6 +38,5 @@ npm run build        # prebuild exige VITE_ADMIN_API_URL; salida en build/
 - [docs/operacion.md](docs/operacion.md): variables de entorno, scripts, guardas, sedes, despliegue.
 - [docs/referencia/catalogo-y-medios.md](docs/referencia/catalogo-y-medios.md): sedes, cartelera, tráilers, pósters, promociones.
 - [docs/referencia/ui.md](docs/referencia/ui.md): convenciones de estilo y código.
-- [docs/backlog.md](docs/backlog.md): pendientes del frontend.
-- [docs/auditorias/2026-09-informe.md](docs/auditorias/2026-09-informe.md): informe de auditoría de septiembre (sin verificar).
+- [docs/backlog.md](docs/backlog.md): pendientes del frontend y hallazgos técnicos consolidados.
 - [src/lib/api/CONTRATO-BACKEND.md](src/lib/api/CONTRATO-BACKEND.md): qué necesita la webapp de su backend (endpoints, imágenes, confitería).

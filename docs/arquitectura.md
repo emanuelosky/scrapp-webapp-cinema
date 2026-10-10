@@ -84,4 +84,9 @@ El fallo de cualquier llamada devuelve un valor vacío y no tumba la página (`g
 
 ## Documentación general (fuera de este repo)
 
-Los documentos de diseño del antiguo BFF (`.agents/`: carrito único, mutex de venta, datos mockeados) se borraron el 10-oct-2026 por obsoletos: la webapp es cliente puro de admin-v2 y el bloqueo real lo hace el broker de sesiones. Lo vigente del legado vive en el portafolio: [flujo de venta, cierre y facturación del POS](../../../.docs/apis/pos-apicomplejo-flujo-venta.md), [broker de sesiones](../../../.docs/cinexo/sesiones/00-indice-y-uso.md) y [pasarela de Cinexo](../../../.docs/cinexo/pasarela-cinexo.md). Los textos borrados siguen en la historia de git.
+La webapp es un cliente puro del BFF (`scrapp-administrative-v2`) y del backend de IA (`AI-CHATBOT`), consumiendo servicios de taquilla y sesiones que conectan al sistema legado de Cinexo:
+- **BFF y API de gestión:** [Ficha de scrapp-administrative-v2](../../../.docs/proyectos/scrapp-administrative-v2.md) y [resumen operativo del broker](../../scrapp-administrative-v2/docs/02-broker-contrato.md).
+- **POS legado y sesiones:** [Flujo de venta, cierre y facturación del POS](../../../.docs/apis/pos-apicomplejo-flujo-venta.md), [broker de sesiones Cinexo](../../../.docs/cinexo/sesiones/00-indice-y-uso.md), [pasarela de Cinexo](../../../.docs/cinexo/pasarela-cinexo.md) y [caché de lectura del POS y butacas](../../../.docs/infra/cache-pos-butacas.md).
+- **Chat EPIK:** [Ficha de AI-CHATBOT](../../../.docs/proyectos/ai-chatbot.md), [arquitectura de EPIC](../../../AI-CHATBOT/docs/epic/00-arquitectura-de-epic.md) y [contrato HTTP del backend](../../../AI-CHATBOT/docs/CONTRATO-API-BACKEND.md).
+
+Los documentos de diseño de la antigua maqueta del BFF (`.agents/`: carrito único, mutex de venta, datos mockeados) se retiraron el 10-oct-2026 por obsoletos, dado que el bloqueo real lo gestiona el broker de sesiones. Su histórico permanece en git.
